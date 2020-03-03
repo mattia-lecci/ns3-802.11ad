@@ -487,7 +487,7 @@ main (int argc, char *argv[])
 
   /** Connect Traces **/
   AsciiTraceHelper ascii;
-  Ptr<OutputStreamWrapper> outputSlsPhase = ascii.CreateFileStream ("slsResults" + arrayConfig + ".csv");
+  Ptr<OutputStreamWrapper> outputSlsPhase = ascii.CreateFileStream ("../output/slsResults" + arrayConfig + ".csv");
   *outputSlsPhase->GetStream () << "SRC_ID,DST_ID,TRACE_IDX,SECTOR_ID,ANTENNA_ID,ROLE,BSS_ID,Timestamp" << std::endl;
 
   /* DMG AP Straces */
@@ -512,7 +512,7 @@ main (int argc, char *argv[])
   staRemoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeCallback (&MacTxDataFailed));
 
   /* Get SNR Traces */
-  Ptr<OutputStreamWrapper> snrStream = ascii.CreateFileStream ("snrValues.csv");
+  Ptr<OutputStreamWrapper> snrStream = ascii.CreateFileStream ("../output/snrValues.csv");
   apRemoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, apWifiMac, snrStream));
 
   FlowMonitorHelper flowmon;
