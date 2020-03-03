@@ -64,7 +64,7 @@ WifiMacHelper::SetType (std::string type,
 }
 
 void
-WifiMacHelper::SetAttrbiute (std::string n0, const AttributeValue &v0,
+WifiMacHelper::SetAttribute (std::string n0, const AttributeValue &v0,
                              std::string n1, const AttributeValue &v1,
                              std::string n2, const AttributeValue &v2,
                              std::string n3, const AttributeValue &v3,
