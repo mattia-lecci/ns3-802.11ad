@@ -15,3 +15,7 @@ doc/
 waf
 .waf*
 *~
+
+.lock-waf_linux2_build
+
+waf-tools/
