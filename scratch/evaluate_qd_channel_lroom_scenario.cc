@@ -70,6 +70,7 @@ double throughput = 0;
 Ptr<PacketSink> packetSink;
 Ptr<OnOffApplication> onoff;
 Ptr<BulkSendApplication> bulk;
+Time appStartTime = Seconds (0);
 
 /* Network Nodes */
 Ptr<WifiNetDevice> apWifiNetDevice;
@@ -185,6 +186,7 @@ StationAssoicated (Ptr<DmgWifiMac> staWifiMac, Mac48Address address, uint16_t ai
       std::cout << "DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
                 << ", Association ID (AID) = " << aid << std::endl;
     }
+  appStartTime = Simulator::Now ();
   if (applicationType == "onoff")
     {
       onoff->StartApplication ();
@@ -297,6 +299,9 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
+
+  //LogComponentEnable ("EdcaTxopN", LOG_LEVEL_ALL);
+  //LogComponentEnable ("DcfManager", LOG_LEVEL_ALL);
 
   /*** Configure TCP Options ***/
   /* Select TCP variant */
@@ -550,10 +555,10 @@ main (int argc, char *argv[])
               std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")" << std::endl;
               std::cout << "  Tx Packets: " << i->second.txPackets << std::endl;
               std::cout << "  Tx Bytes:   " << i->second.txBytes << std::endl;
-              std::cout << "  TxOffered:  " << i->second.txBytes * 8.0 / ((simulationTime - 1) * 1e6)  << " Mbps" << std::endl;
+              std::cout << "  TxOffered:  " << i->second.txBytes * 8.0 / ((simulationTime - appStartTime.GetSeconds ()) * 1e6)  << " Mbps" << std::endl;
               std::cout << "  Rx Packets: " << i->second.rxPackets << std::endl;
               std::cout << "  Rx Bytes:   " << i->second.rxBytes << std::endl;
-              std::cout << "  Throughput: " << i->second.rxBytes * 8.0 / ((simulationTime - 1) * 1e6)  << " Mbps" << std::endl;
+              std::cout << "  Throughput: " << i->second.rxBytes * 8.0 / ((simulationTime - appStartTime.GetSeconds ()) * 1e6)  << " Mbps" << std::endl;
             }
 
           /* Print Application Layer Results Summary */
@@ -572,7 +577,7 @@ main (int argc, char *argv[])
 
       std::cout << "  Rx Packets: " << packetSink->GetTotalReceivedPackets () << std::endl;
       std::cout << "  Rx Bytes:   " << packetSink->GetTotalRx () << std::endl;
-      std::cout << "  Throughput: " << packetSink->GetTotalRx () * 8.0 / ((simulationTime - 1) * 1e6) << " Mbps" << std::endl;
+      std::cout << "  Throughput: " << packetSink->GetTotalRx () * 8.0 / ((simulationTime - appStartTime.GetSeconds ()) * 1e6) << " Mbps" << std::endl;
 
       /* Print MAC Layer Statistics */
       std::cout << "\nMAC Layer Statistics:" << std::endl;
