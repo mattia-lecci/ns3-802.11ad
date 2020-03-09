@@ -64,7 +64,8 @@ using namespace ns3;
 using namespace std;
 
 /**  Application Variables **/
-string applicationType = "bulk";          /* Type of the Tx application */
+string applicationType = "bulk";              /* Type of the Tx application */
+string socketType = "ns3::TcpSocketFactory";  /* Socket Type (TCP/UDP) */
 uint64_t totalRx = 0;
 double throughput = 0;
 Ptr<PacketSink> packetSink;
@@ -176,10 +177,36 @@ MacRxOk (Ptr<DmgWifiMac> WifiMac, Ptr<OutputStreamWrapper> stream,
     }
 }
 
-
+void
+CwTrace (uint32_t oldCw, uint32_t newCw)
+{
+  // std::cout << "Old Cw: " << oldCw << ", New Cw: " << newCw << std::endl;
+}
 
 void
-StationAssoicated (Ptr<DmgWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
+CongStateTrace (TcpSocketState::TcpCongState_t oldState, TcpSocketState::TcpCongState_t newState)
+{
+  // std::cout << "Old State: " << oldState << ", New State: " << newState << std::endl; 
+}
+
+void
+ConnectTcpTraces ()
+{
+  /* Get Congestion Window traces */
+  if (applicationType == "onoff" && socketType == "ns3::TcpSocketFactory")
+    {
+      onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+      onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+    }
+  else if (applicationType == "bulk" && socketType == "ns3::TcpSocketFactory")
+    {
+      bulk->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+      bulk->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+    }
+}
+
+void
+StationAssociated (Ptr<DmgWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
 {
   if (!csv)
     {
@@ -195,6 +222,7 @@ StationAssoicated (Ptr<DmgWifiMac> staWifiMac, Mac48Address address, uint16_t ai
     {
       bulk->StartApplication ();
     }
+  ConnectTcpTraces (); 
 }
 
 void
@@ -235,11 +263,11 @@ PhyRxEnd (Ptr<const Packet>)
   receivedPackets++;
 }
 
+
 int
 main (int argc, char *argv[])
 {
   bool activateApp = true;                      /* Flag to indicate whether we activate onoff or bulk App */
-  string socketType = "ns3::TcpSocketFactory";  /* Socket Type (TCP/UDP) */
   uint32_t packetSize = 1448;                   /* Application payload size in bytes. */
   string dataRate = "300Mbps";                  /* Application data rate. */
   string tcpVariant = "NewReno";                /* TCP Variant Type. */
@@ -299,6 +327,9 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
+
+  RngSeedManager::SetSeed (1);
+  RngSeedManager::SetRun (1);
 
   //LogComponentEnable ("EdcaTxopN", LOG_LEVEL_ALL);
   //LogComponentEnable ("DcfManager", LOG_LEVEL_ALL);
@@ -467,6 +498,7 @@ main (int argc, char *argv[])
           srcApp = src.Install (staWifiNode);
           bulk = StaticCast<BulkSendApplication> (srcApp.Get (0));
         }
+      /* The application is started as soon as the STA is associated (when callback StationAssociated is called) */
       srcApp.Start (Seconds (simulationTime + 1));
       srcApp.Stop (Seconds (simulationTime));
     }
@@ -511,7 +543,7 @@ main (int argc, char *argv[])
   parametersSta->srcNodeID = staWifiNetDevice->GetNode ()->GetId ();
   parametersSta->dstNodeID = apWifiNetDevice->GetNode ()->GetId ();
   parametersSta->wifiMac = staWifiMac;
-  staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssoicated, staWifiMac));
+  staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, staWifiMac));
   staWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, outputSlsPhase, parametersSta));
   staWifiPhy->TraceConnectWithoutContext ("PhyTxEnd", MakeCallback (&PhyTxEnd));
   staRemoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeCallback (&MacTxDataFailed));
