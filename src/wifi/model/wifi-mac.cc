@@ -478,7 +478,7 @@ WifiMac::Configure80211ad (void)
 }
 
 void
-WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool isDsss, AcIndex ac)
+WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool isDsss, AcIndex ac, bool isDmg)
 {
   NS_LOG_FUNCTION (this << dcf << cwmin << cwmax << isDsss << ac);
   /* see IEEE802.11 section 7.3.2.29 */
@@ -494,7 +494,15 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
         }
       else
         {
-          dcf->SetTxopLimit (MicroSeconds (1504));
+          if (isDmg)
+            {
+              /* See IEEE802.11-2016 Table 9-137 (Clause 20) */
+              dcf->SetTxopLimit (MicroSeconds (0));
+            }
+          else 
+            {
+              dcf->SetTxopLimit (MicroSeconds (1504));
+            }
         }
       break;
     case AC_VI:
@@ -507,7 +515,15 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
         }
       else
         {
-          dcf->SetTxopLimit (MicroSeconds (3008));
+          if (isDmg)
+            {
+              /* See IEEE802.11-2016 Table 9-137 (Clause 20) */
+              dcf->SetTxopLimit (MicroSeconds (0));
+            }
+          else
+            {
+              dcf->SetTxopLimit (MicroSeconds (3008));
+            }
         }
       break;
     case AC_BE:

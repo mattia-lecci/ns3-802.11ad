@@ -325,7 +325,7 @@ protected:
    *
    * Configure the DCF with appropriate values depending on the given access category.
    */
-  void ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool isDsss, AcIndex ac);
+  void ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool isDsss, AcIndex ac, bool isDmg = false);
 
   /**
    * This method sets 802.11ad 60 GHz standards-compliant defaults for following attributes:
