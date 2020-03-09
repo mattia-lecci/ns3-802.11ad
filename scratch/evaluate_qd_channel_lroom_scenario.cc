@@ -283,7 +283,8 @@ main (int argc, char *argv[])
   double simulationTime = 10;                   /* Simulation time in seconds. */
   bool pcapTracing = false;                     /* PCAP Tracing is enabled or not. */
   std::map<std::string, std::string> tcpVariants; /* List of the tcp Variants */
-  uint16_t tos = 0;                             /* Select AC_BE as default AC */
+  uint16_t ac = 0;                              /* Select AC_BE as default AC */
+  /*https://www.nsnam.org/doxygen/wifi-multi-tos_8cc_source.html */
   std::vector<uint8_t> tosValues = {0x70, 0x28, 0xb8, 0xc0}; /* AC_BE, AC_BK, AC_VI, AC_VO */
   std::string arrayConfig = "28";               /* Phased antenna array configuration*/
 
@@ -317,7 +318,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("enableMobility", "Whether to enable mobility or simulate static scenario", enableMobility);
   cmd.AddValue ("verbose", "Turn on all WifiNetDevice log components", verbose);
   cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
-  cmd.AddValue ("tos", "0: AC_BE, 1: AC_BK, 2: AC_VI, 3: AC_VO", tos);
+  cmd.AddValue ("ac", "0: AC_BE, 1: AC_BK, 2: AC_VI, 3: AC_VO", ac);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
   cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
@@ -418,12 +419,12 @@ main (int argc, char *argv[])
                    "BK_MaxAmsduSize", UintegerValue (msduAggregationSize),
                    "VI_MaxAmpduSize", UintegerValue (mpduAggregationSize),
                    "VI_MaxAmsduSize", UintegerValue (msduAggregationSize),
-                   "SSSlotsPerABFT", UintegerValue (8), "SSFramesPerSlot", UintegerValue (13),
-                   "BeaconInterval", TimeValue (MicroSeconds (102400)),
-                   "ATIPresent", BooleanValue (false));
+                   "VO_MaxAmpduSize", UintegerValue (mpduAggregationSize),
+                   "VO_MaxAmsduSize", UintegerValue (msduAggregationSize));
 
-  wifiMac.SetAttribute ("VO_MaxAmpduSize", UintegerValue (mpduAggregationSize),
-                        "VO_MaxAmsduSize", UintegerValue (msduAggregationSize));
+  wifiMac.SetAttribute ("SSSlotsPerABFT", UintegerValue (8), "SSFramesPerSlot", UintegerValue (13),
+                        "BeaconInterval", TimeValue (MicroSeconds (102400)),
+                        "ATIPresent", BooleanValue (false));
 
   /* Set Parametric Codebook for the DMG AP */
   wifi.SetCodebook ("ns3::CodebookParametric",
@@ -479,7 +480,7 @@ main (int argc, char *argv[])
 
       /* Install TCP/UDP Transmitter on the DMG STA */
       InetSocketAddress dest (InetSocketAddress (apInterface.GetAddress (0), 9999));
-      dest.SetTos (tosValues.at (tos));
+      dest.SetTos (tosValues.at (ac));
       ApplicationContainer srcApp;
       if (applicationType == "onoff")
         {
