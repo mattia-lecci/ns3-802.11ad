@@ -23,10 +23,18 @@
 #ifndef DMG_WIFI_SCHEDULER_H
 #define DMG_WIFI_SCHEDULER_H
 
-#include "ns3/traced-callback.h"
+#include <ns3/traced-callback.h>
 
 namespace ns3	{
 
+/**
+ * \brief scheduling features for IEEE 802.11ad
+ *
+ * This class provides the implementation of scheduling features related to
+ * IEEE 802.11ad. In particular, this class organizes the medium access 
+ * according to the availability of contention-free access periods (SPs)
+ * and contention-based access periods (CBAPs) as foresee by 802.11ad.
+ */
 class DmgWifiScheduler : public Object
 {
 public:
