@@ -478,7 +478,7 @@ WifiMac::Configure80211ad (void)
 }
 
 void
-WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool isDsss, AcIndex ac, bool isDmgSupported)
+WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool isDsss, AcIndex ac)
 {
   NS_LOG_FUNCTION (this << dcf << cwmin << cwmax << isDsss << ac);
   /* see IEEE802.11-2016 Table 9-137 */
@@ -491,6 +491,7 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
       switch (m_standard)
         {
         case WIFI_PHY_STANDARD_80211ad:
+          /* PHY defined in Clause 20 */
           dcf->SetTxopLimit (MicroSeconds (0));
           break;
         case WIFI_PHY_STANDARD_80211ax_5GHZ:
@@ -501,17 +502,20 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
         case WIFI_PHY_STANDARD_80211g:
         case WIFI_PHY_STANDARD_holland:
         case WIFI_PHY_STANDARD_80211a:
+          /* PHYs defined in Clauses 17, 18, 19, and 21 */
           dcf->SetTxopLimit (MicroSeconds (2080));
-          break;
+          break;  
         case WIFI_PHY_STANDARD_80211_10MHZ:
         case WIFI_PHY_STANDARD_80211_5MHZ:
         case WIFI_PHY_STANDARD_80211b:
           if (isDsss)
             {
+              /* PHYs defined in Clause 15 and 16 */
               dcf->SetTxopLimit (MicroSeconds (3264));
             }
           else
             {
+              /* PHYs defined in Clauses 17, 18, 19, and 21 */
               dcf->SetTxopLimit (MicroSeconds (2080));
             }
           break;
@@ -526,6 +530,7 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
       switch (m_standard)
         {
         case WIFI_PHY_STANDARD_80211ad:
+          /* PHY defined in Clause 20 */
           dcf->SetTxopLimit (MicroSeconds (0));
           break;
         case WIFI_PHY_STANDARD_80211ax_5GHZ:
@@ -536,6 +541,7 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
         case WIFI_PHY_STANDARD_80211g:
         case WIFI_PHY_STANDARD_holland:
         case WIFI_PHY_STANDARD_80211a:
+          /* PHYs defined in Clauses 17, 18, 19, and 21 */
           dcf->SetTxopLimit (MicroSeconds (4096));
           break;
         case WIFI_PHY_STANDARD_80211_10MHZ:
@@ -543,10 +549,12 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
         case WIFI_PHY_STANDARD_80211b:
           if (isDsss)
             {
+              /* PHYs defined in Clause 15 and 16 */
               dcf->SetTxopLimit (MicroSeconds (6016));
             }
           else
             {
+              /* PHYs defined in Clauses 17, 18, 19, and 21 */
               dcf->SetTxopLimit (MicroSeconds (4096));
             }
           break;
@@ -561,6 +569,7 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
       switch (m_standard)
         {
         case WIFI_PHY_STANDARD_80211ad:
+          /* PHY defined in Clause 20 */
           dcf->SetTxopLimit (MicroSeconds (0));
           break;
         case WIFI_PHY_STANDARD_80211ax_5GHZ:
@@ -571,6 +580,7 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
         case WIFI_PHY_STANDARD_80211g:
         case WIFI_PHY_STANDARD_holland:
         case WIFI_PHY_STANDARD_80211a:
+          /* PHYs defined in Clauses 17, 18, 19, and 21 */
           dcf->SetTxopLimit (MicroSeconds (2528));
           break;
         case WIFI_PHY_STANDARD_80211_10MHZ:
@@ -578,10 +588,12 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
         case WIFI_PHY_STANDARD_80211b:
           if (isDsss)
             {
+              /* PHYs defined in Clause 15 and 16 */
               dcf->SetTxopLimit (MicroSeconds (3264));
             }
           else
             {
+              /* PHYs defined in Clauses 17, 18, 19, and 21 */
               dcf->SetTxopLimit (MicroSeconds (2528));
             }
           break;
@@ -596,6 +608,7 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
       switch (m_standard)
         {
         case WIFI_PHY_STANDARD_80211ad:
+          /* PHY defined in Clause 20 */
           dcf->SetTxopLimit (MicroSeconds (0));
           break;
         case WIFI_PHY_STANDARD_80211ax_5GHZ:
@@ -606,6 +619,7 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
         case WIFI_PHY_STANDARD_80211g:
         case WIFI_PHY_STANDARD_holland:
         case WIFI_PHY_STANDARD_80211a:
+          /* PHYs defined in Clauses 17, 18, 19, and 21 */
           dcf->SetTxopLimit (MicroSeconds (2528));
           break;
         case WIFI_PHY_STANDARD_80211_10MHZ:
@@ -613,10 +627,12 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
         case WIFI_PHY_STANDARD_80211b:
           if (isDsss)
             {
+              /* PHYs defined in Clause 15 and 16 */
               dcf->SetTxopLimit (MicroSeconds (3264));
             }
           else
             {
+              /* PHYs defined in Clauses 17, 18, 19, and 21 */
               dcf->SetTxopLimit (MicroSeconds (2528));
             }
           break;

@@ -1592,12 +1592,12 @@ RegularWifiMac::ConfigureContentionWindow (uint32_t cwMin, uint32_t cwMax)
   bool isDsssOnly = m_dsssSupported && !m_erpSupported;
   //The special value of AC_BE_NQOS which exists in the Access
   //Category enumeration allows us to configure plain old DCF.
-  ConfigureDcf (m_dca, cwMin, cwMax, isDsssOnly, AC_BE_NQOS, GetDmgSupported ());
+  ConfigureDcf (m_dca, cwMin, cwMax, isDsssOnly, AC_BE_NQOS);
 
   //Now we configure the EDCA functions
   for (EdcaQueues::const_iterator i = m_edca.begin (); i != m_edca.end (); ++i)
     {
-      ConfigureDcf (i->second, cwMin, cwMax, isDsssOnly, i->first, GetDmgSupported ());
+      ConfigureDcf (i->second, cwMin, cwMax, isDsssOnly, i->first);
     }
 }
 
