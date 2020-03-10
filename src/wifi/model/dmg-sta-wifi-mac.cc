@@ -3076,7 +3076,7 @@ DmgStaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
 
               /* Organizing medium access periods (Synchronization with TSF) */
               m_abftDuration = m_ssSlotsPerABFT * GetSectorSweepSlotTime (m_ssFramesPerSlot);
-//              m_biStartTime = MicroSeconds (beacon.GetTimestamp ()) + hdr->GetDuration () - m_btiDuration;
+//            m_biStartTime = MicroSeconds (beacon.GetTimestamp ()) + hdr->GetDuration () - m_btiDuration;
               m_biStartTime = MicroSeconds (beacon.GetTimestamp ());
               m_beaconInterval = MicroSeconds (beacon.GetBeaconIntervalUs ());
               NS_LOG_DEBUG ("BI Started=" << m_biStartTime.As (Time::US)
@@ -3098,8 +3098,10 @@ DmgStaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               if (!beaconInterval.IsDiscoveryMode ())
                 {
                   /* This function is triggered on NanoSeconds basis and Thr duration field is in MicroSeconds basis */
-                  Time dmgBeaconDurationUs = MicroSeconds (ceil (static_cast<double> (m_phy->GetLastRxDuration ().GetNanoSeconds ()) / 1000));
-                  Time startTime = hdr->GetDuration () + (dmgBeaconDurationUs - m_phy->GetLastRxDuration ()) + GetMbifs ();
+                  //Time dmgBeaconDurationUs = MicroSeconds (ceil (static_cast<double> (m_phy->GetLastRxDuration ().GetNanoSeconds ()) / 1000));
+                  //Time startTime = hdr->GetDuration () + (dmgBeaconDurationUs - m_phy->GetLastRxDuration ()) + GetMbifs ();
+                  Time btiDuration = MicroSeconds (operationElement->GetMinBHIDuration ()) - m_abftDuration - m_atiDuration - 2 * GetMbifs ();
+                  Time startTime = btiDuration - (Simulator::Now () - m_biStartTime) + GetMbifs ();
                   if (m_nextAbft == 0)
                     {
                       /* Schedule A-BFT following the end of the BTI Period */

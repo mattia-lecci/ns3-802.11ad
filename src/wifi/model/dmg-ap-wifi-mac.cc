@@ -945,6 +945,8 @@ DmgApWifiMac::FrameTxOk (const WifiMacHeader &hdr)
         {
           NS_LOG_DEBUG ("DMG PCP/AP completed the transmission of the last DMG Beacon at " << Simulator::Now ());
           Time startTime = m_nextDmgBeaconDelay + GetMbifs ();
+          NS_ASSERT_MSG (Simulator::Now () + startTime == Simulator::Now () + GetBTIRemainingTime () + GetMbifs (),
+                         "Beacon Transmission Interval exceeding expected duration");
           /* Schedule A-BFT access period */
           if (m_nextAbft != 0)
             {

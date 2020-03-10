@@ -125,7 +125,7 @@ public:
    * All the attributes specified in this method should exist
    * in the requested mac.
    */
-  virtual void SetAttrbiute (std::string n0 = "", const AttributeValue &v0 = EmptyAttributeValue (),
+  virtual void SetAttribute (std::string n0 = "", const AttributeValue &v0 = EmptyAttributeValue (),
                              std::string n1 = "", const AttributeValue &v1 = EmptyAttributeValue (),
                              std::string n2 = "", const AttributeValue &v2 = EmptyAttributeValue (),
                              std::string n3 = "", const AttributeValue &v3 = EmptyAttributeValue (),

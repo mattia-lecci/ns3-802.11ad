@@ -64,12 +64,14 @@ using namespace ns3;
 using namespace std;
 
 /**  Application Variables **/
-string applicationType = "bulk";          /* Type of the Tx application */
+string applicationType = "bulk";              /* Type of the Tx application */
+string socketType = "ns3::TcpSocketFactory";  /* Socket Type (TCP/UDP) */
 uint64_t totalRx = 0;
 double throughput = 0;
 Ptr<PacketSink> packetSink;
 Ptr<OnOffApplication> onoff;
 Ptr<BulkSendApplication> bulk;
+Time appStartTime = Seconds (0);
 
 /* Network Nodes */
 Ptr<WifiNetDevice> apWifiNetDevice;
@@ -175,23 +177,46 @@ MacRxOk (Ptr<DmgWifiMac> WifiMac, Ptr<OutputStreamWrapper> stream,
     }
 }
 
-
+void
+CwTrace (uint32_t oldCw, uint32_t newCw)
+{
+  NS_LOG_DEBUG ("Old Cw: " << oldCw << ", New Cw: " << newCw);
+}
 
 void
-StationAssoicated (Ptr<DmgWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
+CongStateTrace (TcpSocketState::TcpCongState_t oldState, TcpSocketState::TcpCongState_t newState)
+{
+  NS_LOG_DEBUG ("Old State: " << oldState << ", New State: " << newState); 
+}
+
+void
+StationAssociated (Ptr<DmgWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
 {
   if (!csv)
     {
       std::cout << "DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
                 << ", Association ID (AID) = " << aid << std::endl;
     }
+  appStartTime = Simulator::Now ();
   if (applicationType == "onoff")
     {
       onoff->StartApplication ();
+      /* Connect to TCP traces */
+      if (socketType == "ns3::TcpSocketFactory")
+        {
+          onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+          onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+        }
     }
   else
     {
       bulk->StartApplication ();
+      /* Connect to TCP traces */
+      if (socketType == "ns3::TcpSocketFactory")
+        {
+          bulk->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+          bulk->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+        }
     }
 }
 
@@ -233,11 +258,11 @@ PhyRxEnd (Ptr<const Packet>)
   receivedPackets++;
 }
 
+
 int
 main (int argc, char *argv[])
 {
   bool activateApp = true;                      /* Flag to indicate whether we activate onoff or bulk App */
-  string socketType = "ns3::TcpSocketFactory";  /* Socket Type (TCP/UDP) */
   uint32_t packetSize = 1448;                   /* Application payload size in bytes. */
   string dataRate = "300Mbps";                  /* Application data rate. */
   string tcpVariant = "NewReno";                /* TCP Variant Type. */
@@ -253,6 +278,9 @@ main (int argc, char *argv[])
   double simulationTime = 10;                   /* Simulation time in seconds. */
   bool pcapTracing = false;                     /* PCAP Tracing is enabled or not. */
   std::map<std::string, std::string> tcpVariants; /* List of the tcp Variants */
+  uint16_t ac = 0;                              /* Select AC_BE as default AC */
+  /*https://www.nsnam.org/doxygen/wifi-multi-tos_8cc_source.html */
+  std::vector<uint8_t> tosValues = {0x70, 0x28, 0xb8, 0xc0}; /* AC_BE, AC_BK, AC_VI, AC_VO */
   std::string arrayConfig = "28";               /* Phased antenna array configuration*/
 
   /** TCP Variants **/
@@ -285,6 +313,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("enableMobility", "Whether to enable mobility or simulate static scenario", enableMobility);
   cmd.AddValue ("verbose", "Turn on all WifiNetDevice log components", verbose);
   cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
+  cmd.AddValue ("ac", "0: AC_BE, 1: AC_BK, 2: AC_VI, 3: AC_VO", ac);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
   cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
@@ -375,9 +404,16 @@ main (int argc, char *argv[])
                    "Ssid", SsidValue (ssid),
                    "BE_MaxAmpduSize", UintegerValue (mpduAggregationSize),
                    "BE_MaxAmsduSize", UintegerValue (msduAggregationSize),
-                   "SSSlotsPerABFT", UintegerValue (8), "SSFramesPerSlot", UintegerValue (13),
-                   "BeaconInterval", TimeValue (MicroSeconds (102400)),
-                   "ATIPresent", BooleanValue (false));
+                   "BK_MaxAmpduSize", UintegerValue (mpduAggregationSize),
+                   "BK_MaxAmsduSize", UintegerValue (msduAggregationSize),
+                   "VI_MaxAmpduSize", UintegerValue (mpduAggregationSize),
+                   "VI_MaxAmsduSize", UintegerValue (msduAggregationSize),
+                   "VO_MaxAmpduSize", UintegerValue (mpduAggregationSize),
+                   "VO_MaxAmsduSize", UintegerValue (msduAggregationSize));
+
+  wifiMac.SetAttribute ("SSSlotsPerABFT", UintegerValue (8), "SSFramesPerSlot", UintegerValue (13),
+                        "BeaconInterval", TimeValue (MicroSeconds (102400)),
+                        "ATIPresent", BooleanValue (false));
 
   /* Set Parametric Codebook for the DMG AP */
   wifi.SetCodebook ("ns3::CodebookParametric",
@@ -390,7 +426,13 @@ main (int argc, char *argv[])
   wifiMac.SetType ("ns3::DmgStaWifiMac",
                    "Ssid", SsidValue (ssid), "ActiveProbing", BooleanValue (false),
                    "BE_MaxAmpduSize", UintegerValue (mpduAggregationSize),
-                   "BE_MaxAmsduSize", UintegerValue (msduAggregationSize));
+                   "BE_MaxAmsduSize", UintegerValue (msduAggregationSize),
+                   "BK_MaxAmpduSize", UintegerValue (mpduAggregationSize),
+                   "BK_MaxAmsduSize", UintegerValue (msduAggregationSize),
+                   "VO_MaxAmpduSize", UintegerValue (mpduAggregationSize),
+                   "VO_MaxAmsduSize", UintegerValue (msduAggregationSize),
+                   "VI_MaxAmpduSize", UintegerValue (mpduAggregationSize),
+                   "VI_MaxAmsduSize", UintegerValue (msduAggregationSize));
 
   /* Set Parametric Codebook for the DMG STA */
   wifi.SetCodebook ("ns3::CodebookParametric",
@@ -426,7 +468,8 @@ main (int argc, char *argv[])
       sinkApp.Start (Seconds (0.0));
 
       /* Install TCP/UDP Transmitter on the DMG STA */
-      Address dest (InetSocketAddress (apInterface.GetAddress (0), 9999));
+      InetSocketAddress dest (InetSocketAddress (apInterface.GetAddress (0), 9999));
+      dest.SetTos (tosValues.at (ac));
       ApplicationContainer srcApp;
       if (applicationType == "onoff")
         {
@@ -445,6 +488,7 @@ main (int argc, char *argv[])
           srcApp = src.Install (staWifiNode);
           bulk = StaticCast<BulkSendApplication> (srcApp.Get (0));
         }
+      /* The application is started as soon as the STA is associated (when callback StationAssociated is called) */
       srcApp.Start (Seconds (simulationTime + 1));
       srcApp.Stop (Seconds (simulationTime));
     }
@@ -489,7 +533,7 @@ main (int argc, char *argv[])
   parametersSta->srcNodeID = staWifiNetDevice->GetNode ()->GetId ();
   parametersSta->dstNodeID = apWifiNetDevice->GetNode ()->GetId ();
   parametersSta->wifiMac = staWifiMac;
-  staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssoicated, staWifiMac));
+  staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, staWifiMac));
   staWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, outputSlsPhase, parametersSta));
   staWifiPhy->TraceConnectWithoutContext ("PhyTxEnd", MakeCallback (&PhyTxEnd));
   staRemoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeCallback (&MacTxDataFailed));
@@ -527,16 +571,17 @@ main (int argc, char *argv[])
           monitor->CheckForLostPackets ();
           Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
           FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
+          double simDuration = simulationTime - appStartTime.GetSeconds ();
           for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
             {
               Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
               std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")" << std::endl;
               std::cout << "  Tx Packets: " << i->second.txPackets << std::endl;
               std::cout << "  Tx Bytes:   " << i->second.txBytes << std::endl;
-              std::cout << "  TxOffered:  " << i->second.txBytes * 8.0 / ((simulationTime - 1) * 1e6)  << " Mbps" << std::endl;
+              std::cout << "  TxOffered:  " << i->second.txBytes * 8.0 / (simDuration * 1e6)  << " Mbps" << std::endl;
               std::cout << "  Rx Packets: " << i->second.rxPackets << std::endl;
               std::cout << "  Rx Bytes:   " << i->second.rxBytes << std::endl;
-              std::cout << "  Throughput: " << i->second.rxBytes * 8.0 / ((simulationTime - 1) * 1e6)  << " Mbps" << std::endl;
+              std::cout << "  Throughput: " << i->second.rxBytes * 8.0 / (simDuration * 1e6)  << " Mbps" << std::endl;
             }
 
           /* Print Application Layer Results Summary */
@@ -555,7 +600,7 @@ main (int argc, char *argv[])
 
       std::cout << "  Rx Packets: " << packetSink->GetTotalReceivedPackets () << std::endl;
       std::cout << "  Rx Bytes:   " << packetSink->GetTotalRx () << std::endl;
-      std::cout << "  Throughput: " << packetSink->GetTotalRx () * 8.0 / ((simulationTime - 1) * 1e6) << " Mbps" << std::endl;
+      std::cout << "  Throughput: " << packetSink->GetTotalRx () * 8.0 / ((simulationTime - appStartTime.GetSeconds ()) * 1e6) << " Mbps" << std::endl;
 
       /* Print MAC Layer Statistics */
       std::cout << "\nMAC Layer Statistics:" << std::endl;

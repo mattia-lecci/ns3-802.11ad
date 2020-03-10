@@ -165,7 +165,7 @@ CreateAccessPoint (Ptr<Node> apNode, Ssid ssid,
 
   if (enableJitter)
     {
-      wifiMac.SetAttrbiute ("BeaconJitter", StringValue (beaconJitter));
+      wifiMac.SetAttribute ("BeaconJitter", StringValue (beaconJitter));
     }
 
   NetDeviceContainer apDevice = wifi.Install (wifiPhy, wifiMac, apNode);
