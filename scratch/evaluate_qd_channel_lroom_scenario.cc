@@ -180,29 +180,13 @@ MacRxOk (Ptr<DmgWifiMac> WifiMac, Ptr<OutputStreamWrapper> stream,
 void
 CwTrace (uint32_t oldCw, uint32_t newCw)
 {
-  // std::cout << "Old Cw: " << oldCw << ", New Cw: " << newCw << std::endl;
+  NS_LOG_DEBUG ("Old Cw: " << oldCw << ", New Cw: " << newCw);
 }
 
 void
 CongStateTrace (TcpSocketState::TcpCongState_t oldState, TcpSocketState::TcpCongState_t newState)
 {
-  // std::cout << "Old State: " << oldState << ", New State: " << newState << std::endl; 
-}
-
-void
-ConnectTcpTraces ()
-{
-  /* Get Congestion Window traces */
-  if (applicationType == "onoff" && socketType == "ns3::TcpSocketFactory")
-    {
-      onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
-      onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
-    }
-  else if (applicationType == "bulk" && socketType == "ns3::TcpSocketFactory")
-    {
-      bulk->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
-      bulk->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
-    }
+  NS_LOG_DEBUG ("Old State: " << oldState << ", New State: " << newState); 
 }
 
 void
@@ -217,12 +201,23 @@ StationAssociated (Ptr<DmgWifiMac> staWifiMac, Mac48Address address, uint16_t ai
   if (applicationType == "onoff")
     {
       onoff->StartApplication ();
+      /* Connect to TCP traces */
+      if (socketType == "ns3::TcpSocketFactory")
+        {
+          onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+          onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+        }
     }
   else
     {
       bulk->StartApplication ();
+      /* Connect to TCP traces */
+      if (socketType == "ns3::TcpSocketFactory")
+        {
+          bulk->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+          bulk->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+        }
     }
-  ConnectTcpTraces (); 
 }
 
 void
@@ -267,6 +262,8 @@ PhyRxEnd (Ptr<const Packet>)
 int
 main (int argc, char *argv[])
 {
+  uint32_t seed = 1;                            /* Seed number for this simulation */
+  uint32_t run = 1;                             /* Run number for this simulation*/ 
   bool activateApp = true;                      /* Flag to indicate whether we activate onoff or bulk App */
   uint32_t packetSize = 1448;                   /* Application payload size in bytes. */
   string dataRate = "300Mbps";                  /* Application data rate. */
@@ -321,19 +318,18 @@ main (int argc, char *argv[])
   cmd.AddValue ("ac", "0: AC_BE, 1: AC_BK, 2: AC_VI, 3: AC_VO", ac);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
+  cmd.AddValue ("seed", "Seed number for this simulation", seed);
+  cmd.AddValue ("run", "Run number for this simulation", run);
   cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
   cmd.Parse (argc, argv);
+
+  RngSeedManager::SetSeed (seed);
+  RngSeedManager::SetRun (run);
 
   /* Global params: no fragmentation, no RTS/CTS, fixed rate for all packets */
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
-
-  RngSeedManager::SetSeed (1);
-  RngSeedManager::SetRun (1);
-
-  //LogComponentEnable ("EdcaTxopN", LOG_LEVEL_ALL);
-  //LogComponentEnable ("DcfManager", LOG_LEVEL_ALL);
 
   /*** Configure TCP Options ***/
   /* Select TCP variant */
@@ -525,7 +521,7 @@ main (int argc, char *argv[])
 
   /** Connect Traces **/
   AsciiTraceHelper ascii;
-  Ptr<OutputStreamWrapper> outputSlsPhase = ascii.CreateFileStream ("../output/slsResults" + arrayConfig + ".csv");
+  Ptr<OutputStreamWrapper> outputSlsPhase = ascii.CreateFileStream ("slsResults" + arrayConfig + ".csv");
   *outputSlsPhase->GetStream () << "SRC_ID,DST_ID,TRACE_IDX,SECTOR_ID,ANTENNA_ID,ROLE,BSS_ID,Timestamp" << std::endl;
 
   /* DMG AP Straces */
@@ -550,7 +546,7 @@ main (int argc, char *argv[])
   staRemoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeCallback (&MacTxDataFailed));
 
   /* Get SNR Traces */
-  Ptr<OutputStreamWrapper> snrStream = ascii.CreateFileStream ("../output/snrValues.csv");
+  Ptr<OutputStreamWrapper> snrStream = ascii.CreateFileStream ("snrValues.csv");
   apRemoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, apWifiMac, snrStream));
 
   FlowMonitorHelper flowmon;
@@ -582,16 +578,17 @@ main (int argc, char *argv[])
           monitor->CheckForLostPackets ();
           Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
           FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
+          double simDuration = simulationTime - appStartTime.GetSeconds ();
           for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
             {
               Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
               std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")" << std::endl;
               std::cout << "  Tx Packets: " << i->second.txPackets << std::endl;
               std::cout << "  Tx Bytes:   " << i->second.txBytes << std::endl;
-              std::cout << "  TxOffered:  " << i->second.txBytes * 8.0 / ((simulationTime - appStartTime.GetSeconds ()) * 1e6)  << " Mbps" << std::endl;
+              std::cout << "  TxOffered:  " << i->second.txBytes * 8.0 / (simDuration * 1e6)  << " Mbps" << std::endl;
               std::cout << "  Rx Packets: " << i->second.rxPackets << std::endl;
               std::cout << "  Rx Bytes:   " << i->second.rxBytes << std::endl;
-              std::cout << "  Throughput: " << i->second.rxBytes * 8.0 / ((simulationTime - appStartTime.GetSeconds ()) * 1e6)  << " Mbps" << std::endl;
+              std::cout << "  Throughput: " << i->second.rxBytes * 8.0 / (simDuration * 1e6)  << " Mbps" << std::endl;
             }
 
           /* Print Application Layer Results Summary */

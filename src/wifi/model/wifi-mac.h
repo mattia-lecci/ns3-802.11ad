@@ -322,10 +322,11 @@ protected:
    * \param cwmax the maximum congestion window for the DCF
    * \param isDsss flag to indicate whether PHY is DSSS or HR/DSSS
    * \param ac the access category for the DCF
+   * \param isDmgSupported flag to indicate whether PHY is DMG
    *
    * Configure the DCF with appropriate values depending on the given access category.
    */
-  void ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool isDsss, AcIndex ac, bool isDmg = false);
+  void ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool isDsss, AcIndex ac, bool isDmgSupported = false);
 
   /**
    * This method sets 802.11ad 60 GHz standards-compliant defaults for following attributes:

@@ -478,10 +478,10 @@ WifiMac::Configure80211ad (void)
 }
 
 void
-WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool isDsss, AcIndex ac, bool isDmg)
+WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool isDsss, AcIndex ac, bool isDmgSupported)
 {
   NS_LOG_FUNCTION (this << dcf << cwmin << cwmax << isDsss << ac);
-  /* see IEEE802.11 section 7.3.2.29 */
+  /* see IEEE802.11-2016 Table 9-137 */
   switch (ac)
     {
     case AC_VO:
@@ -492,17 +492,13 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
         {
           dcf->SetTxopLimit (MicroSeconds (3264));
         }
+      else if (isDmgSupported)
+        {
+          dcf->SetTxopLimit (MicroSeconds (0));
+        }
       else
         {
-          if (isDmg)
-            {
-              /* See IEEE802.11-2016 Table 9-137 (Clause 20) */
-              dcf->SetTxopLimit (MicroSeconds (0));
-            }
-          else 
-            {
-              dcf->SetTxopLimit (MicroSeconds (1504));
-            }
+          dcf->SetTxopLimit (MicroSeconds (2080));
         }
       break;
     case AC_VI:
@@ -513,30 +509,48 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
         {
           dcf->SetTxopLimit (MicroSeconds (6016));
         }
+      else if (isDmgSupported)
+        {
+          dcf->SetTxopLimit (MicroSeconds (0));
+        }
       else
         {
-          if (isDmg)
-            {
-              /* See IEEE802.11-2016 Table 9-137 (Clause 20) */
-              dcf->SetTxopLimit (MicroSeconds (0));
-            }
-          else
-            {
-              dcf->SetTxopLimit (MicroSeconds (3008));
-            }
+          dcf->SetTxopLimit (MicroSeconds (4096));
         }
       break;
     case AC_BE:
       dcf->SetMinCw (cwmin);
       dcf->SetMaxCw (cwmax);
       dcf->SetAifsn (3);
-      dcf->SetTxopLimit (MicroSeconds (0));
+      if (isDsss)
+        {
+          dcf->SetTxopLimit (MicroSeconds (3264));
+        }
+      else if (isDmgSupported)
+        {
+          dcf->SetTxopLimit (MicroSeconds (0));
+        }
+      else
+        {
+          dcf->SetTxopLimit (MicroSeconds (2528));
+        }
       break;
     case AC_BK:
       dcf->SetMinCw (cwmin);
       dcf->SetMaxCw (cwmax);
       dcf->SetAifsn (7);
-      dcf->SetTxopLimit (MicroSeconds (0));
+      if (isDsss)
+        {
+          dcf->SetTxopLimit (MicroSeconds (3264));
+        }
+      else if (isDmgSupported)
+        {
+          dcf->SetTxopLimit (MicroSeconds (0));
+        }
+      else
+        {
+          dcf->SetTxopLimit (MicroSeconds (2528));
+        }
       break;
     case AC_BE_NQOS:
       dcf->SetMinCw (cwmin);
