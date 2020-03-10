@@ -488,68 +488,140 @@ WifiMac::ConfigureDcf (Ptr<DcaTxop> dcf, uint32_t cwmin, uint32_t cwmax, bool is
       dcf->SetMinCw ((cwmin + 1) / 4 - 1);
       dcf->SetMaxCw ((cwmin + 1) / 2 - 1);
       dcf->SetAifsn (2);
-      if (isDsss)
+      switch (m_standard)
         {
-          dcf->SetTxopLimit (MicroSeconds (3264));
-        }
-      else if (isDmgSupported)
-        {
+        case WIFI_PHY_STANDARD_80211ad:
           dcf->SetTxopLimit (MicroSeconds (0));
-        }
-      else
-        {
+          break;
+        case WIFI_PHY_STANDARD_80211ax_5GHZ:
+        case WIFI_PHY_STANDARD_80211ac:
+        case WIFI_PHY_STANDARD_80211n_5GHZ:
+        case WIFI_PHY_STANDARD_80211ax_2_4GHZ:
+        case WIFI_PHY_STANDARD_80211n_2_4GHZ:
+        case WIFI_PHY_STANDARD_80211g:
+        case WIFI_PHY_STANDARD_holland:
+        case WIFI_PHY_STANDARD_80211a:
           dcf->SetTxopLimit (MicroSeconds (2080));
+          break;
+        case WIFI_PHY_STANDARD_80211_10MHZ:
+        case WIFI_PHY_STANDARD_80211_5MHZ:
+        case WIFI_PHY_STANDARD_80211b:
+          if (isDsss)
+            {
+              dcf->SetTxopLimit (MicroSeconds (3264));
+            }
+          else
+            {
+              dcf->SetTxopLimit (MicroSeconds (2080));
+            }
+          break;
+        default:
+          NS_FATAL_ERROR ("Unsupported WifiPhyStandard in WifiMac::ConfigureDcf ()");
         }
       break;
     case AC_VI:
       dcf->SetMinCw ((cwmin + 1) / 2 - 1);
       dcf->SetMaxCw (cwmin);
       dcf->SetAifsn (2);
-      if (isDsss)
+      switch (m_standard)
         {
-          dcf->SetTxopLimit (MicroSeconds (6016));
-        }
-      else if (isDmgSupported)
-        {
+        case WIFI_PHY_STANDARD_80211ad:
           dcf->SetTxopLimit (MicroSeconds (0));
-        }
-      else
-        {
+          break;
+        case WIFI_PHY_STANDARD_80211ax_5GHZ:
+        case WIFI_PHY_STANDARD_80211ac:
+        case WIFI_PHY_STANDARD_80211n_5GHZ:
+        case WIFI_PHY_STANDARD_80211ax_2_4GHZ:
+        case WIFI_PHY_STANDARD_80211n_2_4GHZ:
+        case WIFI_PHY_STANDARD_80211g:
+        case WIFI_PHY_STANDARD_holland:
+        case WIFI_PHY_STANDARD_80211a:
           dcf->SetTxopLimit (MicroSeconds (4096));
+          break;
+        case WIFI_PHY_STANDARD_80211_10MHZ:
+        case WIFI_PHY_STANDARD_80211_5MHZ:
+        case WIFI_PHY_STANDARD_80211b:
+          if (isDsss)
+            {
+              dcf->SetTxopLimit (MicroSeconds (6016));
+            }
+          else
+            {
+              dcf->SetTxopLimit (MicroSeconds (4096));
+            }
+          break;
+        default:
+          NS_FATAL_ERROR ("Unsupported WifiPhyStandard in WifiMac::ConfigureDcf ()");
         }
       break;
     case AC_BE:
       dcf->SetMinCw (cwmin);
       dcf->SetMaxCw (cwmax);
       dcf->SetAifsn (3);
-      if (isDsss)
+      switch (m_standard)
         {
-          dcf->SetTxopLimit (MicroSeconds (3264));
-        }
-      else if (isDmgSupported)
-        {
+        case WIFI_PHY_STANDARD_80211ad:
           dcf->SetTxopLimit (MicroSeconds (0));
-        }
-      else
-        {
+          break;
+        case WIFI_PHY_STANDARD_80211ax_5GHZ:
+        case WIFI_PHY_STANDARD_80211ac:
+        case WIFI_PHY_STANDARD_80211n_5GHZ:
+        case WIFI_PHY_STANDARD_80211ax_2_4GHZ:
+        case WIFI_PHY_STANDARD_80211n_2_4GHZ:
+        case WIFI_PHY_STANDARD_80211g:
+        case WIFI_PHY_STANDARD_holland:
+        case WIFI_PHY_STANDARD_80211a:
           dcf->SetTxopLimit (MicroSeconds (2528));
+          break;
+        case WIFI_PHY_STANDARD_80211_10MHZ:
+        case WIFI_PHY_STANDARD_80211_5MHZ:
+        case WIFI_PHY_STANDARD_80211b:
+          if (isDsss)
+            {
+              dcf->SetTxopLimit (MicroSeconds (3264));
+            }
+          else
+            {
+              dcf->SetTxopLimit (MicroSeconds (2528));
+            }
+          break;
+        default:
+          NS_FATAL_ERROR ("Unsupported WifiPhyStandard in WifiMac::ConfigureDcf ()");
         }
       break;
     case AC_BK:
       dcf->SetMinCw (cwmin);
       dcf->SetMaxCw (cwmax);
       dcf->SetAifsn (7);
-      if (isDsss)
+      switch (m_standard)
         {
-          dcf->SetTxopLimit (MicroSeconds (3264));
-        }
-      else if (isDmgSupported)
-        {
+        case WIFI_PHY_STANDARD_80211ad:
           dcf->SetTxopLimit (MicroSeconds (0));
-        }
-      else
-        {
+          break;
+        case WIFI_PHY_STANDARD_80211ax_5GHZ:
+        case WIFI_PHY_STANDARD_80211ac:
+        case WIFI_PHY_STANDARD_80211n_5GHZ:
+        case WIFI_PHY_STANDARD_80211ax_2_4GHZ:
+        case WIFI_PHY_STANDARD_80211n_2_4GHZ:
+        case WIFI_PHY_STANDARD_80211g:
+        case WIFI_PHY_STANDARD_holland:
+        case WIFI_PHY_STANDARD_80211a:
           dcf->SetTxopLimit (MicroSeconds (2528));
+          break;
+        case WIFI_PHY_STANDARD_80211_10MHZ:
+        case WIFI_PHY_STANDARD_80211_5MHZ:
+        case WIFI_PHY_STANDARD_80211b:
+          if (isDsss)
+            {
+              dcf->SetTxopLimit (MicroSeconds (3264));
+            }
+          else
+            {
+              dcf->SetTxopLimit (MicroSeconds (2528));
+            }
+          break;
+        default:
+          NS_FATAL_ERROR ("Unsupported WifiPhyStandard in WifiMac::ConfigureDcf ()");
         }
       break;
     case AC_BE_NQOS:

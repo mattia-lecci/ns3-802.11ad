@@ -262,8 +262,6 @@ PhyRxEnd (Ptr<const Packet>)
 int
 main (int argc, char *argv[])
 {
-  uint32_t seed = 1;                            /* Seed number for this simulation */
-  uint32_t run = 1;                             /* Run number for this simulation*/ 
   bool activateApp = true;                      /* Flag to indicate whether we activate onoff or bulk App */
   uint32_t packetSize = 1448;                   /* Application payload size in bytes. */
   string dataRate = "300Mbps";                  /* Application data rate. */
@@ -318,13 +316,8 @@ main (int argc, char *argv[])
   cmd.AddValue ("ac", "0: AC_BE, 1: AC_BK, 2: AC_VI, 3: AC_VO", ac);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
-  cmd.AddValue ("seed", "Seed number for this simulation", seed);
-  cmd.AddValue ("run", "Run number for this simulation", run);
   cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
   cmd.Parse (argc, argv);
-
-  RngSeedManager::SetSeed (seed);
-  RngSeedManager::SetRun (run);
 
   /* Global params: no fragmentation, no RTS/CTS, fixed rate for all packets */
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
