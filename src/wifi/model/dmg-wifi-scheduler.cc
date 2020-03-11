@@ -27,6 +27,7 @@
 #include <ns3/boolean.h>
 
 #include "dmg-wifi-scheduler.h"
+#include "dmg-ap-wifi-mac.h"
 
 namespace ns3	{
 
@@ -58,6 +59,21 @@ void
 DmgWifiScheduler::DoDispose ()
 {
   NS_LOG_FUNCTION (this);
+  m_mac = 0;
+}
+
+void 
+DmgWifiScheduler::SetMac (Ptr<DmgApWifiMac> mac)
+{
+	NS_LOG_FUNCTION (this << mac);
+	m_mac = mac;
+}
+
+void
+DmgWifiScheduler::Initialize (void)
+{
+	NS_LOG_FUNCTION (this);
+	DoInitialize ();
 }
 
 void

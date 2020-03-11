@@ -11,6 +11,7 @@
 #include "amsdu-subframe-header.h"
 #include "dmg-beacon-dca.h"
 #include "dmg-wifi-mac.h"
+#include "dmg-wifi-scheduler.h"
 
 namespace ns3 {
 
@@ -76,6 +77,14 @@ public:
    * \param address the current address of this MAC layer.
    */
   virtual void SetAddress (Mac48Address address);
+  /**
+   * \param dmgScheduler the dmg scheduling algorithm for this MAC.
+   */
+  void SetScheduler (Ptr<DmgWifiScheduler> dmgScheduler);
+  /**
+   * \return the dmg scheduling algorithm of this MAC.
+   */
+  Ptr<DmgWifiScheduler> GetScheduler (void) const;
   /**
    * \param interval the interval between two beacon transmissions.
    */
@@ -301,6 +310,11 @@ protected:
    * \return the DMG capabilities the PCP/AP supports.
    */
   Ptr<DmgCapabilities> GetDmgCapabilities (void) const;
+
+  /**
+   * Dmg Scheduler to be used by the PCP/AP.
+   */
+  Ptr<DmgWifiScheduler> m_dmgScheduler;
 
 private:
   virtual void DoDispose (void);

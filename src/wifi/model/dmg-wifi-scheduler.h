@@ -27,13 +27,15 @@
 
 namespace ns3	{
 
+class DmgApWifiMac;
+
 /**
  * \brief scheduling features for IEEE 802.11ad
  *
  * This class provides the implementation of scheduling features related to
  * IEEE 802.11ad. In particular, this class organizes the medium access 
  * according to the availability of contention-free access periods (SPs)
- * and contention-based access periods (CBAPs) as foresee by 802.11ad.
+ * and contention-based access periods (CBAPs) as foresee by 802.11ad amendment.
  */
 class DmgWifiScheduler : public Object
 {
@@ -42,10 +44,17 @@ public:
 
   DmgWifiScheduler ();
   virtual ~DmgWifiScheduler ();
+  void Initialize (void);
+  /**
+   * \param mac the MAC layer connected with the scheduler.
+   */
+  void SetMac (Ptr<DmgApWifiMac> mac);
 
 protected:
 	virtual void DoDispose (void);
   virtual void DoInitialize (void);
+
+  Ptr<DmgApWifiMac> m_mac; //!< Pointer to the MAC high of PCP/AP.
 
 private:
 

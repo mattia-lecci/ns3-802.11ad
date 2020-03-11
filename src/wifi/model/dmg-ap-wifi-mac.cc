@@ -218,6 +218,16 @@ DmgApWifiMac::DoDispose ()
 }
 
 void
+DmgApWifiMac::SetScheduler (Ptr<DmgWifiScheduler> dmgScheduler)
+{
+  NS_LOG_FUNCTION (this);
+  NS_ASSERT_MSG (m_dmgScheduler == 0, "Dmg scheduler already set up.");
+  m_dmgScheduler = dmgScheduler;
+  m_dmgScheduler->SetMac (this);
+  m_dmgScheduler->Initialize ();
+}
+
+void
 DmgApWifiMac::SetAddress (Mac48Address address)
 {
   NS_LOG_FUNCTION (this << address);
