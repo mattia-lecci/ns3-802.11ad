@@ -227,6 +227,12 @@ DmgApWifiMac::SetScheduler (Ptr<DmgWifiScheduler> dmgScheduler)
   m_dmgScheduler->Initialize ();
 }
 
+Ptr<DmgWifiScheduler>
+DmgApWifiMac::GetScheduler (void) const
+{
+  return m_dmgScheduler;
+}
+
 void
 DmgApWifiMac::SetAddress (Mac48Address address)
 {

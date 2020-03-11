@@ -80,6 +80,13 @@ void
 DmgWifiScheduler::DoInitialize (void)
 {
 	NS_LOG_FUNCTION (this);
+	m_mac->TraceConnectWithoutContext ("ADDTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveAddtsRequest, this));
+}
+
+void
+DmgWifiScheduler::ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element)
+{
+	NS_LOG_DEBUG ("Receive ADDTS request from " << address);
 }
 
 } // namespace ns3

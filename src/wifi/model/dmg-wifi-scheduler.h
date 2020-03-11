@@ -25,6 +25,9 @@
 
 #include <ns3/traced-callback.h>
 
+#include "dmg-capabilities.h"
+#include "dmg-information-elements.h"
+
 namespace ns3	{
 
 class DmgApWifiMac;
@@ -49,6 +52,12 @@ public:
    * \param mac the MAC layer connected with the scheduler.
    */
   void SetMac (Ptr<DmgApWifiMac> mac);
+  /**
+   * Handle an ADDTS request received by the PCP/AP.
+   * \param address the MAC address of the source STA.
+   * \param element the Dmg Tspec Element associated with the request.
+   */
+  void ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element);
 
 protected:
 	virtual void DoDispose (void);
