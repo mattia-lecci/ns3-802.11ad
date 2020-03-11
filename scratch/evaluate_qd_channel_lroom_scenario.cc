@@ -386,6 +386,9 @@ main (int argc, char *argv[])
   /* Sensitivity model includes implementation loss and noise figure */
   spectrumWifiPhy.Set ("CcaMode1Threshold", DoubleValue (-79));
   spectrumWifiPhy.Set ("EnergyDetectionThreshold", DoubleValue (-79 + 3));
+  /* Custom error rate model for IEEE 802.11ad */
+  spectrumWifiPhy.SetErrorRateModel ("ns3::DmgErrorModel",
+                                     "FileName", StringValue ("DmgFiles/ErrorModel/LookupTable_1458.txt"));
   /* Set default algorithm for all nodes to be constant rate */
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "ControlMode", StringValue (phyMode),
                                 "DataMode", StringValue (phyMode));
