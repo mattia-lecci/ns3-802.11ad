@@ -29,7 +29,7 @@
 #include "dmg-information-elements.h"
 #include "dmg-wifi-mac.h"
 
-namespace ns3	{
+namespace ns3 {
 
 class DmgApWifiMac;
 
@@ -72,23 +72,23 @@ public:
   void ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element);
 
 protected:
-	virtual void DoDispose (void);
+  virtual void DoDispose (void);
   virtual void DoInitialize (void);
 
   Ptr<DmgApWifiMac> m_mac; //!< Pointer to the MAC high of PCP/AP.
 
 private:
-	void BeaconIntervalEnded (void);
-	void AnnouncementTransmissionIntervalStarted (void);
+  void BeaconIntervalEnded (void);
+  void AnnouncementTransmissionIntervalStarted (void);
 
-	/* Channel Access Period */
+  /* Channel Access Period */
   ChannelAccessPeriod m_accessPeriod;               //!< The type of the current channel access period.
   Time m_atiDuration;                               //!< The length of the ATI period.
-  Time m_bhiDuration;																//!< The length of the BHI period.
-  Time m_dtiDuration;																//!< The length of the DTI period.
+  Time m_bhiDuration;                               //!< The length of the BHI period.
+  Time m_dtiDuration;                               //!< The length of the DTI period.
   Time m_biStartTime;                               //!< The start time of the BI Interval.
   Time m_atiStartTime;                              //!< The start time of the ATI Interval.
-  Time m_dtiStartTime;															//!< The start time of the DTI Interval.
+  Time m_dtiStartTime;                              //!< The start time of the DTI Interval.
 
 };
 

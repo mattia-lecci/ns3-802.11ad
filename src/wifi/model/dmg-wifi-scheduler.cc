@@ -30,7 +30,7 @@
 #include "dmg-ap-wifi-mac.h"
 #include "wifi-utils.h"
 
-namespace ns3	{
+namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("DmgWifiScheduler");
 
@@ -48,7 +48,7 @@ DmgWifiScheduler::GetTypeId (void)
 
 DmgWifiScheduler::DmgWifiScheduler ()
 {
-	NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this);
 }
 
 DmgWifiScheduler::~DmgWifiScheduler ()
@@ -66,71 +66,71 @@ DmgWifiScheduler::DoDispose ()
 void 
 DmgWifiScheduler::SetMac (Ptr<DmgApWifiMac> mac)
 {
-	NS_LOG_FUNCTION (this << mac);
-	m_mac = mac;
+  NS_LOG_FUNCTION (this << mac);
+  m_mac = mac;
 }
 
 void
 DmgWifiScheduler::Initialize (void)
 {
-	NS_LOG_FUNCTION (this);
-	DoInitialize ();
+  NS_LOG_FUNCTION (this);
+  DoInitialize ();
 }
 
 void
 DmgWifiScheduler::DoInitialize (void)
 {
-	NS_LOG_FUNCTION (this);
-	m_mac->TraceConnectWithoutContext ("ADDTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveAddtsRequest, this));
-	m_mac->TraceConnectWithoutContext ("BIStarted", MakeCallback (&DmgWifiScheduler::BeaconIntervalStarted, this));
-	m_mac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DmgWifiScheduler::DataTransferIntervalStarted, this));
+  NS_LOG_FUNCTION (this);
+  m_mac->TraceConnectWithoutContext ("ADDTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveAddtsRequest, this));
+  m_mac->TraceConnectWithoutContext ("BIStarted", MakeCallback (&DmgWifiScheduler::BeaconIntervalStarted, this));
+  m_mac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DmgWifiScheduler::DataTransferIntervalStarted, this));
 }
 
 void 
 DmgWifiScheduler::BeaconIntervalStarted (Mac48Address address, Time bhiDuration, Time atiDuration)
 {
-	NS_LOG_DEBUG ("Beacon Interval started at " << Simulator::Now ());
-	m_biStartTime = Simulator::Now ();
-	m_accessPeriod = CHANNEL_ACCESS_BHI;
-	m_bhiDuration = bhiDuration;
-	m_atiDuration = atiDuration;
-	if (m_atiDuration.IsStrictlyPositive ())
-		{
-			Simulator::Schedule (m_bhiDuration - m_atiDuration - m_mac->GetMbifs (), 
-				                   &DmgWifiScheduler::AnnouncementTransmissionIntervalStarted, this);
-		}
+  NS_LOG_DEBUG ("Beacon Interval started at " << Simulator::Now ());
+  m_biStartTime = Simulator::Now ();
+  m_accessPeriod = CHANNEL_ACCESS_BHI;
+  m_bhiDuration = bhiDuration;
+  m_atiDuration = atiDuration;
+  if (m_atiDuration.IsStrictlyPositive ())
+    {
+      Simulator::Schedule (m_bhiDuration - m_atiDuration - m_mac->GetMbifs (), 
+                           &DmgWifiScheduler::AnnouncementTransmissionIntervalStarted, this);
+    }
 }
 
 void
 DmgWifiScheduler::AnnouncementTransmissionIntervalStarted (void)
 {
-	NS_LOG_DEBUG ("ATI started at " << Simulator::Now ());
-	m_atiStartTime = Simulator::Now ();
-	m_accessPeriod = CHANNEL_ACCESS_ATI;
+  NS_LOG_DEBUG ("ATI started at " << Simulator::Now ());
+  m_atiStartTime = Simulator::Now ();
+  m_accessPeriod = CHANNEL_ACCESS_ATI;
 }
 
 void 
 DmgWifiScheduler::DataTransferIntervalStarted (Mac48Address address, Time dtiDuration)
 {
-	NS_LOG_DEBUG ("DTI started at " << Simulator::Now ());
-	m_dtiStartTime = Simulator::Now ();
-	m_accessPeriod = CHANNEL_ACCESS_DTI;
-	m_dtiDuration = dtiDuration;
-	Simulator::Schedule (m_dtiDuration, &DmgWifiScheduler::BeaconIntervalEnded, this);
+  NS_LOG_DEBUG ("DTI started at " << Simulator::Now ());
+  m_dtiStartTime = Simulator::Now ();
+  m_accessPeriod = CHANNEL_ACCESS_DTI;
+  m_dtiDuration = dtiDuration;
+  Simulator::Schedule (m_dtiDuration, &DmgWifiScheduler::BeaconIntervalEnded, this);
 }
 
 void
 DmgWifiScheduler::BeaconIntervalEnded (void)
 {
-	NS_LOG_DEBUG ("Beacon Interval ended at " << Simulator::Now ());
-	/* Do something with the ADDTS requests received in the last DTI (if any) */
+  NS_LOG_DEBUG ("Beacon Interval ended at " << Simulator::Now ());
+  /* Do something with the ADDTS requests received in the last DTI (if any) */
 }
 
 
 void
 DmgWifiScheduler::ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element)
 {
-	NS_LOG_DEBUG ("Receive ADDTS request from " << address);
+  NS_LOG_DEBUG ("Receive ADDTS request from " << address);
 }
 
 } // namespace ns3
