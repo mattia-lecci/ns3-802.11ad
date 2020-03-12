@@ -589,7 +589,7 @@ private:
   std::map<uint16_t, WifiInformationElementMap> m_associatedStationsInfoByAid;
 
   /** Beacon Interval **/
-  TracedCallback<Mac48Address> m_biStarted;                 //!< Trace Callback for starting new Beacon Interval.
+  TracedCallback<Mac48Address, Time, Time> m_biStarted;  //!< Trace Callback for starting new Beacon Interval.
 
   /** Traffic Stream Allocation **/
   TracedCallback<Mac48Address, DmgTspecElement> m_addTsRequestReceived;   //!< DMG ADDTS Request received.

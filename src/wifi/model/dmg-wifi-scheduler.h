@@ -27,6 +27,7 @@
 
 #include "dmg-capabilities.h"
 #include "dmg-information-elements.h"
+#include "dmg-wifi-mac.h"
 
 namespace ns3	{
 
@@ -53,6 +54,17 @@ public:
    */
   void SetMac (Ptr<DmgApWifiMac> mac);
   /**
+   * \param address the MAC address of the PCP/AP.
+   * \param bhiDuration the duration of the BHI interval.
+   * \param atiDuration the duration of the ATI interval.
+   */
+  void BeaconIntervalStarted (Mac48Address address, Time bhiDuration, Time atiDuration);
+  /**
+   * \param address the MAC address of the PCP/AP.
+   * \param atiDuration the duration of the DTI interval.
+   */
+  void DataTransferIntervalStarted (Mac48Address address, Time dtiDuration);
+  /**
    * Handle an ADDTS request received by the PCP/AP.
    * \param address the MAC address of the source STA.
    * \param element the Dmg Tspec Element associated with the request.
@@ -66,6 +78,17 @@ protected:
   Ptr<DmgApWifiMac> m_mac; //!< Pointer to the MAC high of PCP/AP.
 
 private:
+	void BeaconIntervalEnded (void);
+	void AnnouncementTransmissionIntervalStarted (void);
+
+	/* Channel Access Period */
+  ChannelAccessPeriod m_accessPeriod;               //!< The type of the current channel access period.
+  Time m_atiDuration;                               //!< The length of the ATI period.
+  Time m_bhiDuration;																//!< The length of the BHI period.
+  Time m_dtiDuration;																//!< The length of the DTI period.
+  Time m_biStartTime;                               //!< The start time of the BI Interval.
+  Time m_atiStartTime;                              //!< The start time of the ATI Interval.
+  Time m_dtiStartTime;															//!< The start time of the DTI Interval.
 
 };
 

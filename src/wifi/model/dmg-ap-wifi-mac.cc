@@ -1135,7 +1135,7 @@ DmgApWifiMac::StartBeaconInterval (void)
   NS_LOG_INFO ("DMG AP Starting BI at " << Simulator::Now ());
 
   /* Invoke callback */
-  m_biStarted (GetAddress ());
+  m_biStarted (GetAddress (), GetBHIDuration (), m_atiDuration);
 
   /* Timing variables */
   m_biStartTime = Simulator::Now ();
