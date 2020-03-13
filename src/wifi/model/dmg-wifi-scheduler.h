@@ -87,11 +87,11 @@ protected:
   /**
    * Add a new allocation with one single block. The duration of the block is limited to 32 767 microseconds for an SP allocation.
    * and to 65 535 microseconds for a CBAP allocation. The allocation is announced in the following DMG Beacon or Announce Frame.
-   * \param allocationID The unique identifier for the allocation.
+   * \param allocationId The unique identifier for the allocation.
    * \param allocationType The type of the allocation (CBAP or SP).
    * \param staticAllocation Is the allocation static.
-   * \param srcAid The AID of the source DMG STA.
-   * \param dstAid The AID of the destination DMG STA.
+   * \param sourceAid The AID of the source DMG STA.
+   * \param destAid The AID of the destination DMG STA.
    * \param allocationStart The start time of the allocation relative to the beginning of DTI.
    * \param blockDuration The duration of the allocation period.
    * \return The start of the next allocation period.
@@ -104,8 +104,8 @@ protected:
    * \param allocationId The unique identifier for the allocation.
    * \param allocationType The type of the allocation (CBAP or SP).
    * \param staticAllocation Is the allocation static.
-   * \param srcAid The AID of the source DMG STA.
-   * \param dstAid The AID of the destination DMG STA.
+   * \param sourceAid The AID of the source DMG STA.
+   * \param destAid The AID of the destination DMG STA.
    * \param allocationStart The start time of the allocation relative to the beginning of DTI.
    * \param blockDuration The duration of the allocation period.
    * \param blocks The number of blocks making up the allocation.
@@ -116,8 +116,8 @@ protected:
   /**
    * Allocate maximum part of DTI as an SP.
    * \param allocationId The unique identifier for the allocation.
-   * \param srcAid The AID of the source DMG STA.
-   * \param dstAid The AID of the destination DMG STA.
+   * \param sourceAid The AID of the source DMG STA.
+   * \param destAid The AID of the destination DMG STA.
    */
   void AllocateDTIAsServicePeriod (AllocationID allocationId, uint8_t sourceAid, uint8_t destAid);
   /**
@@ -125,16 +125,49 @@ protected:
    * \param allocationId The unique identifier for the allocation.
    * \param allocationType The type of allocation (CBAP or SP).
    * \param staticAllocation Is the allocation static.
-   * \param srcAid The AID of the source DMG STA.
-   * \param dstAid The AID of the destination DMG STA.
+   * \param sourceAid The AID of the source DMG STA.
+   * \param destAid The AID of the destination DMG STA.
    * \param allocationStart The start time of the allocation relative to the beginning of DTI.
    * \param blockDuration The duration of the allocation period.
    * \param blocks The number of blocks making up the allocation.
    * \return The start time of the following allocation period.
    */
   uint32_t AddAllocationPeriod (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
-                                uint8_t srcAid, uint8_t dstAid, uint32_t allocationStart, uint16_t blockDuration,
+                                uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, uint16_t blockDuration,
                                 uint16_t blockPeriod, uint8_t blocks);
+  /**
+   * Allocate SP allocation for Beamforming training.
+   * \param sourceAid The AID of the source DMG STA.
+   * \param destAid The AID of the destination DMG STA.
+   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
+   * \param isTxss Is the Beamforming TxSS or RxSS.
+   * \return The start of the next allocation period.
+   */
+  uint32_t AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, bool isTxss);
+  /**
+   * Allocate SP allocation for Beamforming training.
+   * \param srcAid The AID of the source DMG STA.
+   * \param dstAid The AID of the destination DMG STA.
+   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
+   * \param allocationDuration The duration of the beamforming allocation.
+   * \param isInitiatorTxss Is the Initiator Beamforming TxSS or RxSS.
+   * \param isResponderTxss Is the Responder Beamforming TxSS or RxSS.
+   * \return The start of the next allocation period.
+   */
+  uint32_t AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, 
+                                             uint16_t allocationDuration, bool isInitiatorTxss, bool isResponderTxss);
+  /**
+   * \return The current Allocation list.
+   */
+  AllocationFieldList GetAllocationList (void);
+  /**
+   * \return The current Allocation list.
+   */
+  void SetAllocationList (AllocationFieldList allocationList);
+  /**
+   * \return The size of the current Allocation list.
+   */
+  uint32_t GetAllocationListSize (void) const;
 
   Ptr<DmgApWifiMac> m_mac;                     //!< Pointer to the MAC high of PCP/AP.
 
@@ -144,6 +177,16 @@ protected:
 private:
   void BeaconIntervalEnded (void);
   void AnnouncementTransmissionIntervalStarted (void);
+  /**
+   * Modify the scheduling parameters of an existing allocation.
+   * \param allocationId The unique identifier for the allocation.
+   * \param sourceAid The AID of the source DMG STA.
+   * \param destAid The AID of the destination DMG STA.
+   * \param newStartTime The new starting time of the allocation.
+   * \param newDuration The new duration of the allocation.
+   */
+  void ModifyAllocation (AllocationID allocationId, uint8_t sourceAid, uint8_t destAid, 
+                         uint32_t newStartTime, uint16_t newDuration);
   /**
    * Cleanup non-static allocations.
    */

@@ -86,6 +86,18 @@ DmgWifiScheduler::DoInitialize (void)
   m_mac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DmgWifiScheduler::DataTransferIntervalStarted, this));
 }
 
+AllocationFieldList
+DmgWifiScheduler::GetAllocationList (void)
+{
+  return m_allocationList;
+}
+
+void
+DmgWifiScheduler::SetAllocationList (AllocationFieldList allocationList)
+{
+  m_allocationList = allocationList;
+}
+
 void 
 DmgWifiScheduler::BeaconIntervalStarted (Mac48Address address, Time bhiDuration, Time atiDuration)
 {
@@ -198,6 +210,45 @@ DmgWifiScheduler::AddAllocationPeriod (AllocationID allocationId, AllocationType
   return (allocationStart + blockDuration);
 }
 
+uint32_t
+DmgWifiScheduler::AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, bool isTxss)
+{
+  return AllocateBeamformingServicePeriod (sourceAid, destAid, allocationStart, 2000, isTxss, isTxss);
+}
+
+uint32_t
+DmgWifiScheduler::AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart,
+                                                    uint16_t allocationDuration, bool isInitiatorTxss, bool isResponderTxss)
+{
+  NS_LOG_FUNCTION (this << +sourceAid << +destAid << allocationStart << allocationDuration << isInitiatorTxss << isResponderTxss);
+  AllocationField field;
+  /* Allocation Control Field */
+  field.SetAllocationType (SERVICE_PERIOD_ALLOCATION);
+  field.SetAsPseudoStatic (false);
+  /* Allocation Field */
+  field.SetSourceAid (sourceAid);
+  field.SetDestinationAid (destAid);
+  field.SetAllocationStart (allocationStart);
+  field.SetAllocationBlockDuration (allocationDuration);     // Microseconds
+  field.SetNumberOfBlocks (1);
+
+  BF_Control_Field bfField;
+  bfField.SetBeamformTraining (true);
+  bfField.SetAsInitiatorTxss (isInitiatorTxss);
+  bfField.SetAsResponderTxss (isResponderTxss);
+
+  field.SetBfControl (bfField);
+  m_allocationList.push_back (field);
+
+  return (allocationStart + allocationDuration + 1000); // 1000 = 1 us protection period
+}
+
+uint32_t
+DmgWifiScheduler::GetAllocationListSize (void) const
+{
+  return m_allocationList.size ();
+}
+
 void
 DmgWifiScheduler::CleanupAllocations (void)
 {
@@ -213,6 +264,24 @@ DmgWifiScheduler::CleanupAllocations (void)
       else
         {
           ++iter;
+        }
+    }
+}
+
+void
+DmgWifiScheduler::ModifyAllocation (AllocationID allocationId, uint8_t sourceAid, uint8_t destAid, 
+                                    uint32_t newStartTime, uint16_t newDuration)
+{
+  NS_LOG_FUNCTION (this << +allocationId << +sourceAid << +destAid << newStartTime << newDuration);
+  for (AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
+    {
+      AllocationField field = (*iter);
+      if ((field.GetAllocationID () == allocationId) &&
+          (field.GetSourceAid () == sourceAid) && (field.GetDestinationAid () == destAid))
+        {
+          field.SetAllocationStart (newStartTime);
+          field.SetAllocationBlockDuration (newDuration);
+          break;
         }
     }
 }

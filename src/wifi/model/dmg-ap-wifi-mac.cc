@@ -512,63 +512,8 @@ Ptr<ExtendedScheduleElement>
 DmgApWifiMac::GetExtendedScheduleElement (void) const
 {
   Ptr<ExtendedScheduleElement> scheduleElement = Create<ExtendedScheduleElement> ();
-  scheduleElement->SetAllocationFieldList (m_allocationList);
+  scheduleElement->SetAllocationFieldList (m_dmgScheduler->GetAllocationList ());
   return scheduleElement;
-}
-
-uint32_t
-DmgApWifiMac::AllocateCbapPeriod (bool staticAllocation, uint32_t allocationStart, uint16_t blockDuration)
-{
-  NS_LOG_FUNCTION (this);
-  AllocateSingleContiguousBlock (0, CBAP_ALLOCATION, staticAllocation, AID_BROADCAST, AID_BROADCAST, allocationStart, blockDuration);
-  return (allocationStart + blockDuration);
-}
-
-uint32_t
-DmgApWifiMac::AllocateSingleContiguousBlock (AllocationID allocationID,
-                                             AllocationType allocationType,
-                                             bool staticAllocation,
-                                             uint8_t sourceAid, uint8_t destAid,
-                                             uint32_t allocationStart, uint16_t blockDuration)
-{
-  NS_LOG_FUNCTION (this);
-  return m_dmgScheduler->AddAllocationPeriod (allocationID, allocationType, staticAllocation, sourceAid, destAid,
-                                               allocationStart, blockDuration, 0, 1);
-}
-
-uint32_t
-DmgApWifiMac::AllocateMultipleContiguousBlocks (AllocationID allocationID,
-                                                AllocationType allocationType,
-                                                bool staticAllocation,
-                                                uint8_t sourceAid, uint8_t destAid,
-                                                uint32_t allocationStart,
-                                                uint16_t blockDuration, uint8_t blocks)
-{
-  NS_LOG_FUNCTION (this);
-  m_dmgScheduler->AddAllocationPeriod (allocationID, allocationType, staticAllocation, sourceAid, destAid,
-                                       allocationStart, blockDuration, 0, blocks);
-  return (allocationStart + blockDuration * blocks);
-}
-
-void
-DmgApWifiMac::AllocateDTIAsServicePeriod (AllocationID id, uint8_t srcAid, uint8_t dstAid)
-{
-  NS_LOG_FUNCTION (this << static_cast<uint16_t> (id) << static_cast<uint16_t> (srcAid) << static_cast<uint16_t> (dstAid));
-  uint16_t spDuration = floor (GetDTIDuration ().GetMicroSeconds () / MAX_NUM_BLOCKS);
-  m_dmgScheduler->AddAllocationPeriod (id, SERVICE_PERIOD_ALLOCATION, true, srcAid, dstAid,
-                                       0, spDuration, 0, MAX_NUM_BLOCKS);
-}
-
-uint32_t
-DmgApWifiMac::AddAllocationPeriod (AllocationID id,
-                                   AllocationType allocationType,
-                                   bool staticAllocation,
-                                   uint8_t sourceAid, uint8_t destAid,
-                                   uint32_t allocationStart, uint16_t blockDuration,
-                                   uint16_t blockPeriod, uint8_t blocks)
-{
-  return m_dmgScheduler->AddAllocationPeriod (id, allocationType, staticAllocation, sourceAid, destAid,
-                                              allocationStart, blockDuration, blockPeriod, blocks);
 }
 
 void
@@ -576,66 +521,6 @@ DmgApWifiMac::ContinueBeamformingInDTI (void)
 {
   NS_LOG_FUNCTION (this);
 
-}
-
-uint32_t
-DmgApWifiMac::AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t destAid,
-                                                uint32_t allocationStart, bool isTxss)
-{
-  return AllocateBeamformingServicePeriod (sourceAid, destAid, allocationStart, 2000, isTxss, isTxss);
-}
-
-uint32_t
-DmgApWifiMac::AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t destAid,
-                                                uint32_t allocationStart, uint16_t allocationDuration,
-                                                bool isInitiatorTxss, bool isResponderTxss)
-{
-  NS_LOG_FUNCTION (this << static_cast<uint16_t> (sourceAid) << static_cast<uint16_t> (destAid)
-                   << allocationStart << allocationDuration << isInitiatorTxss << isResponderTxss);
-  AllocationField field;
-  /* Allocation Control Field */
-  field.SetAllocationType (SERVICE_PERIOD_ALLOCATION);
-  field.SetAsPseudoStatic (false);
-  /* Allocation Field */
-  field.SetSourceAid (sourceAid);
-  field.SetDestinationAid (destAid);
-  field.SetAllocationStart (allocationStart);
-  field.SetAllocationBlockDuration (allocationDuration);     // Microseconds
-  field.SetNumberOfBlocks (1);
-
-  BF_Control_Field bfField;
-  bfField.SetBeamformTraining (true);
-  bfField.SetAsInitiatorTxss (isInitiatorTxss);
-  bfField.SetAsResponderTxss (isResponderTxss);
-
-  field.SetBfControl (bfField);
-  m_allocationList.push_back (field);
-
-  return (allocationStart + allocationDuration + 1000); // 1000 = 1 us protection period
-}
-
-void
-DmgApWifiMac::ModifyAllocation (AllocationID id, uint8_t srcAid, uint8_t dstAid, uint32_t newStartTime, uint16_t newDuration)
-{
-  NS_LOG_FUNCTION (this << static_cast<uint16_t> (id) << static_cast<uint16_t> (srcAid)
-                   << static_cast<uint16_t> (dstAid) << newStartTime << newDuration);
-  for (AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
-    {
-      AllocationField field = (*iter);
-      if ((field.GetAllocationID () == id) &&
-          (field.GetSourceAid () == srcAid) && (field.GetDestinationAid () == dstAid))
-        {
-          field.SetAllocationStart (newStartTime);
-          field.SetAllocationBlockDuration (newDuration);
-          break;
-        }
-    }
-}
-
-AllocationFieldList
-DmgApWifiMac::GetAllocationList (void) const
-{
-  return m_allocationList;
 }
 
 void
@@ -724,7 +609,7 @@ DmgApWifiMac::SendOneDMGBeacon (void)
   ctrl.SetDiscoveryMode (false);          /* Discovery Mode = 0 when transmitted by PCP/AP */
   ctrl.SetNextBeacon (m_nextBeacon);
   /* Signal the presence of an ATI interval */
-  m_isCbapOnly = (m_allocationList.size () == 0);
+  m_isCbapOnly = (m_dmgScheduler->GetAllocationListSize () == 0);
 //  if (m_isCbapOnly)
 //    {
       /* For CBAP DTI, the ATI is not present */
@@ -1329,6 +1214,7 @@ DmgApWifiMac::StartDataTransmissionInterval (void)
     }
   else
     {
+      m_allocationList = m_dmgScheduler->GetAllocationList ();
       AllocationField field;
       for (AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
         {
@@ -1406,6 +1292,7 @@ DmgApWifiMac::StartDataTransmissionInterval (void)
                                    field.GetAllocationID (), MicroSeconds (field.GetAllocationBlockDuration ()));
             }
         }
+      m_dmgScheduler->SetAllocationList (m_allocationList);
     }
 }
 
@@ -1428,7 +1315,7 @@ DmgApWifiMac::InitiateDynamicAllocation (void)
                                                                                        m_stationManager->GetDmgLowestScVector (), 0));
       ppDuration = GetPollingPeriodDuration (m_polledStationsCount);
       /* Allocate SP for the Polling phase as indicated in 9.33.7.2 */
-      AllocateSingleContiguousBlock (1, SERVICE_PERIOD_ALLOCATION, true,
+      m_dmgScheduler->AllocateSingleContiguousBlock (1, SERVICE_PERIOD_ALLOCATION, true,
                                      AID_BROADCAST, AID_BROADCAST, 0, ppDuration.GetMicroSeconds ());
     }
   else
@@ -2305,10 +2192,10 @@ DmgApWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                         for (RelayCapableStaList::const_iterator iter = m_rdsList.begin (); iter != m_rdsList.end (); iter++)
                           {
                             /* First SP between the source REDS and the RDS */
-                            allocationStart = AllocateBeamformingServicePeriod (srcDmgCapabilities->GetAID (),
+                            allocationStart = m_dmgScheduler->AllocateBeamformingServicePeriod (srcDmgCapabilities->GetAID (),
                                                                                 iter->first, allocationStart, true);
                             /* Second SP between the source REDS and the Destination REDS */
-                            allocationStart = AllocateBeamformingServicePeriod (iter->first, requestHdr.GetDestinationRedsAid (),
+                            allocationStart = m_dmgScheduler->AllocateBeamformingServicePeriod (iter->first, requestHdr.GetDestinationRedsAid (),
                                                                                 allocationStart, true);
                           }
 
