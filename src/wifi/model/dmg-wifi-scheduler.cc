@@ -84,6 +84,7 @@ DmgWifiScheduler::DoInitialize (void)
   m_mac->TraceConnectWithoutContext ("ADDTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveAddtsRequest, this));
   m_mac->TraceConnectWithoutContext ("BIStarted", MakeCallback (&DmgWifiScheduler::BeaconIntervalStarted, this));
   m_mac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DmgWifiScheduler::DataTransferIntervalStarted, this));
+  m_mac->TraceConnectWithoutContext ("DELTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveDeltsRequest, this));
 }
 
 AllocationFieldList
@@ -138,6 +139,28 @@ DmgWifiScheduler::BeaconIntervalEnded (void)
   /* Cleanup non-static allocations. */
   CleanupAllocations ();
   /* Do something with the ADDTS requests received in the last DTI (if any) */
+}
+
+void
+DmgWifiScheduler::ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo info)
+{
+  NS_LOG_DEBUG ("Receive DELTS request from " << address);
+  AllocationField allocation;
+  for (AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end ();)
+    {
+      allocation = (*iter);
+      if ((allocation.GetAllocationID () == info.GetAllocationID ()) &&
+          (allocation.GetSourceAid () == m_mac->GetStationAid (address)) &&
+          (allocation.GetDestinationAid () == info.GetDestinationAid ()))
+        {
+          iter = m_allocationList.erase (iter);
+          break;
+        }
+      else
+        {
+          ++iter;
+        }
+    }
 }
 
 void

@@ -50,26 +50,32 @@ public:
   virtual ~DmgWifiScheduler ();
   void Initialize (void);
   /**
-   * \param mac the MAC layer connected with the scheduler.
+   * \param mac The MAC layer connected with the scheduler.
    */
   void SetMac (Ptr<DmgApWifiMac> mac);
   /**
-   * \param address the MAC address of the PCP/AP.
-   * \param bhiDuration the duration of the BHI interval.
-   * \param atiDuration the duration of the ATI interval.
+   * \param address The MAC address of the PCP/AP.
+   * \param bhiDuration The duration of the BHI interval.
+   * \param atiDuration The duration of the ATI interval.
    */
   void BeaconIntervalStarted (Mac48Address address, Time bhiDuration, Time atiDuration);
   /**
-   * \param address the MAC address of the PCP/AP.
-   * \param atiDuration the duration of the DTI interval.
+   * \param address The MAC address of the PCP/AP.
+   * \param atiDuration The duration of the DTI interval.
    */
   void DataTransferIntervalStarted (Mac48Address address, Time dtiDuration);
   /**
-   * Handle an ADDTS request received by the PCP/AP.
-   * \param address the MAC address of the source STA.
-   * \param element the Dmg Tspec Element associated with the request.
+   * Handle an ADDTS request received at the PCP/AP.
+   * \param address The MAC address of the source STA.
+   * \param element The Dmg Tspec Element associated with the request.
    */
   void ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element);
+  /**
+   * Handle a DELTS request received at the PCP/AP.
+   * \param address The MAC address of the requesting STA.
+   * \param info The Dmg Allocation Info field associated with the request.
+   */
+  void ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo info);
 
 protected:
   friend class DmgApWifiMac;

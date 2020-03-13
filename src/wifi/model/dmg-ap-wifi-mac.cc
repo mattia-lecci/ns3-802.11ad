@@ -177,6 +177,9 @@ DmgApWifiMac::GetTypeId (void)
     .AddTraceSource ("ADDTSReceived", "The PCP/AP received DMG ADDTS Request.",
                      MakeTraceSourceAccessor (&DmgApWifiMac::m_addTsRequestReceived),
                      "ns3::DmgApWifiMac::AddTsRequestReceivedTracedCallback")
+    .AddTraceSource ("DELTSReceived", "The PCP/AP received DELTS Request.",
+                     MakeTraceSourceAccessor (&DmgApWifiMac::m_delTsRequestReceived),
+                     "ns3::DmgApWifiMac::DelTsRequestReceivedTracedCallback")
   ;
   return tid;
 }
@@ -2133,7 +2136,7 @@ DmgApWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                       {
                         DmgAddTSRequestFrame frame;
                         packet->RemoveHeader (frame);
-                        /* Callback to the user, so can take decision */
+                        /* Callback to the scheduler to take a decision */
                         m_addTsRequestReceived (hdr->GetAddr2 (), frame.GetDmgTspec ());
                         return;
                       }
@@ -2141,24 +2144,8 @@ DmgApWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                       {
                         DelTsFrame frame;
                         packet->RemoveHeader (frame);
-                        /* Search for the allocation */
-                        DmgAllocationInfo info = frame.GetDmgAllocationInfo ();
-                        AllocationField allocation;
-                        for(AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end ();)
-                          {
-                            allocation = (*iter);
-                            if ((allocation.GetAllocationID () == info.GetAllocationID ()) &&
-                                (allocation.GetSourceAid () == GetStationAid (hdr->GetAddr2 ())) &&
-                                (allocation.GetDestinationAid () == info.GetDestinationAid ()))
-                              {
-                                iter = m_allocationList.erase (iter);
-                                break;
-                              }
-                            else
-                              {
-                                ++iter;
-                              }
-                          }
+                        /* Callback to the scheduler to delete the allocation */
+                        m_delTsRequestReceived (hdr->GetAddr2 (), frame.GetDmgAllocationInfo ());
                         return;
                       }
                     default:

@@ -490,10 +490,20 @@ private:
   /**
    * TracedCallback signature for receiving ADDTS Request.
    *
-   * \param address The MAC address of the station.
+   * \param address The MAC address of the requesting station.
    * \param element The TSPEC information element.
    */
   typedef void (* AddTsRequestReceivedCallback)(Mac48Address address, DmgTspecElement element);
+
+  /** Traffic Stream Deletion **/
+  TracedCallback<Mac48Address, DmgAllocationInfo> m_delTsRequestReceived;  //!< DELTS Request received.
+  /**
+   * TracedCallback signature for receiving DELTS Request.
+   *
+   * \param address The MAC address of the requesting station.
+   * \param element The TSPEC information element.
+   */
+  typedef void (* DelTsRequestReceivedCallback)(Mac48Address address, DmgAllocationInfo info);
 
   /** Dynamic Allocation of Service Period **/
   bool m_initiateDynamicAllocation;                 //!< Flag to indicate whether to commence PP phase at the beginning of the DTI.
