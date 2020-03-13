@@ -492,10 +492,6 @@ private:
    */
   Ptr<ExtendedScheduleElement> GetExtendedScheduleElement (void) const;
   /**
-   * Cleanup non-static allocations. This is method is called after the transmission of the last DMG Beacon.
-   */
-  void CleanupAllocations (void);
-  /**
    * Calculate BTI access period variables.
    */
   void CalculateBTIVariables (void);

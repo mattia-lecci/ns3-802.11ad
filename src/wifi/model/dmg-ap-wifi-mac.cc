@@ -185,6 +185,11 @@ DmgApWifiMac::DmgApWifiMac ()
   : m_sswFbckEvent ()
 {
   NS_LOG_FUNCTION (this);
+  /* DMG Wifi Scheduler */
+  m_dmgScheduler = CreateObject<DmgWifiScheduler> ();
+  m_dmgScheduler->SetMac (this);
+  m_dmgScheduler->Initialize ();
+
   /* DMG Beacon DCF Manager */
   m_beaconDca = CreateObject<DmgBeaconDca> ();
   m_beaconDca->SetAifsn (0);
@@ -221,7 +226,6 @@ void
 DmgApWifiMac::SetScheduler (Ptr<DmgWifiScheduler> dmgScheduler)
 {
   NS_LOG_FUNCTION (this);
-  NS_ASSERT_MSG (m_dmgScheduler == 0, "Dmg scheduler already set up.");
   m_dmgScheduler = dmgScheduler;
   m_dmgScheduler->SetMac (this);
   m_dmgScheduler->Initialize ();
@@ -512,29 +516,10 @@ DmgApWifiMac::GetExtendedScheduleElement (void) const
   return scheduleElement;
 }
 
-void
-DmgApWifiMac::CleanupAllocations (void)
-{
-  NS_LOG_FUNCTION (this);
-  AllocationField allocation;
-  for(AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end ();)
-    {
-      allocation = (*iter);
-      if (!allocation.IsPseudoStatic () && iter->IsAllocationAnnounced ())
-        {
-          iter = m_allocationList.erase (iter);
-        }
-      else
-        {
-          ++iter;
-        }
-    }
-}
-
 uint32_t
 DmgApWifiMac::AllocateCbapPeriod (bool staticAllocation, uint32_t allocationStart, uint16_t blockDuration)
 {
-  NS_LOG_FUNCTION (this << staticAllocation << allocationStart << blockDuration);
+  NS_LOG_FUNCTION (this);
   AllocateSingleContiguousBlock (0, CBAP_ALLOCATION, staticAllocation, AID_BROADCAST, AID_BROADCAST, allocationStart, blockDuration);
   return (allocationStart + blockDuration);
 }
@@ -547,8 +532,8 @@ DmgApWifiMac::AllocateSingleContiguousBlock (AllocationID allocationID,
                                              uint32_t allocationStart, uint16_t blockDuration)
 {
   NS_LOG_FUNCTION (this);
-  return (AddAllocationPeriod (allocationID, allocationType, staticAllocation, sourceAid, destAid,
-                               allocationStart, blockDuration, 0, 1));
+  return m_dmgScheduler->AddAllocationPeriod (allocationID, allocationType, staticAllocation, sourceAid, destAid,
+                                               allocationStart, blockDuration, 0, 1);
 }
 
 uint32_t
@@ -560,8 +545,8 @@ DmgApWifiMac::AllocateMultipleContiguousBlocks (AllocationID allocationID,
                                                 uint16_t blockDuration, uint8_t blocks)
 {
   NS_LOG_FUNCTION (this);
-  AddAllocationPeriod (allocationID, allocationType, staticAllocation, sourceAid, destAid,
-                       allocationStart, blockDuration, 0, blocks);
+  m_dmgScheduler->AddAllocationPeriod (allocationID, allocationType, staticAllocation, sourceAid, destAid,
+                                       allocationStart, blockDuration, 0, blocks);
   return (allocationStart + blockDuration * blocks);
 }
 
@@ -570,8 +555,8 @@ DmgApWifiMac::AllocateDTIAsServicePeriod (AllocationID id, uint8_t srcAid, uint8
 {
   NS_LOG_FUNCTION (this << static_cast<uint16_t> (id) << static_cast<uint16_t> (srcAid) << static_cast<uint16_t> (dstAid));
   uint16_t spDuration = floor (GetDTIDuration ().GetMicroSeconds () / MAX_NUM_BLOCKS);
-  AddAllocationPeriod (id, SERVICE_PERIOD_ALLOCATION, true, srcAid, dstAid,
-                       0, spDuration, 0, MAX_NUM_BLOCKS);
+  m_dmgScheduler->AddAllocationPeriod (id, SERVICE_PERIOD_ALLOCATION, true, srcAid, dstAid,
+                                       0, spDuration, 0, MAX_NUM_BLOCKS);
 }
 
 uint32_t
@@ -582,28 +567,8 @@ DmgApWifiMac::AddAllocationPeriod (AllocationID id,
                                    uint32_t allocationStart, uint16_t blockDuration,
                                    uint16_t blockPeriod, uint8_t blocks)
 {
-  NS_LOG_FUNCTION (this << static_cast<uint16_t> (id) << allocationType << staticAllocation
-                   << static_cast<uint16_t> (sourceAid) << static_cast<uint16_t> (destAid)
-                   << allocationStart << blockDuration << blockPeriod << static_cast<uint16_t> (blocks));
-  AllocationField field;
-  /* Allocation Control Field */
-  field.SetAllocationID (id);
-  field.SetAllocationType (allocationType);
-  field.SetAsPseudoStatic (staticAllocation);
-  /* Allocation Field */
-  field.SetSourceAid (sourceAid);
-  field.SetDestinationAid (destAid);
-  field.SetAllocationStart (allocationStart);
-  field.SetAllocationBlockDuration (blockDuration);
-  field.SetAllocationBlockPeriod (blockPeriod);
-  field.SetNumberOfBlocks (blocks);
-  /**
-   * When scheduling two adjacent SPs, the PCP/AP should allocate the SPs separated by at least
-   * aDMGPPMinListeningTime if one or more of the source or destination DMG STAs participate in both SPs.
-   */
-  m_allocationList.push_back (field);
-
-  return (allocationStart + blockDuration);
+  return m_dmgScheduler->AddAllocationPeriod (id, allocationType, staticAllocation, sourceAid, destAid,
+                                              allocationStart, blockDuration, blockPeriod, blocks);
 }
 
 void
@@ -1162,8 +1127,6 @@ DmgApWifiMac::EndBeaconInterval (void)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_INFO ("DMG AP Ending BI at " << Simulator::Now ());
-  /* Cleanup non-static allocations */
-  CleanupAllocations ();
   /* Start New Beacon Interval */
   StartBeaconInterval ();
 }

@@ -123,14 +123,98 @@ void
 DmgWifiScheduler::BeaconIntervalEnded (void)
 {
   NS_LOG_DEBUG ("Beacon Interval ended at " << Simulator::Now ());
+  /* Cleanup non-static allocations. */
+  CleanupAllocations ();
   /* Do something with the ADDTS requests received in the last DTI (if any) */
 }
-
 
 void
 DmgWifiScheduler::ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element)
 {
   NS_LOG_DEBUG ("Receive ADDTS request from " << address);
+}
+
+uint32_t
+DmgWifiScheduler::AllocateCbapPeriod (bool staticAllocation, uint32_t allocationStart, uint16_t blockDuration)
+{
+  NS_LOG_FUNCTION (this << staticAllocation << allocationStart << blockDuration);
+  AllocateSingleContiguousBlock (0, CBAP_ALLOCATION, staticAllocation, AID_BROADCAST, AID_BROADCAST, allocationStart, blockDuration);
+  return (allocationStart + blockDuration);
+}
+
+uint32_t
+DmgWifiScheduler::AllocateSingleContiguousBlock (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
+                                                 uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, uint16_t blockDuration)
+{
+  NS_LOG_FUNCTION (this);
+  return (AddAllocationPeriod (allocationId, allocationType, staticAllocation, sourceAid, destAid,
+                               allocationStart, blockDuration, 0, 1));
+}
+
+uint32_t
+DmgWifiScheduler::AllocateMultipleContiguousBlocks (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
+                                                    uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, uint16_t blockDuration, uint8_t blocks)
+{
+  NS_LOG_FUNCTION (this);
+  AddAllocationPeriod (allocationId, allocationType, staticAllocation, sourceAid, destAid,
+                       allocationStart, blockDuration, 0, blocks);
+  return (allocationStart + blockDuration * blocks);
+}
+
+void
+DmgWifiScheduler::AllocateDTIAsServicePeriod (AllocationID allocationId, uint8_t sourceAid, uint8_t destAid)
+{
+  NS_LOG_FUNCTION (this);
+  uint16_t spDuration = floor (m_dtiDuration.GetMicroSeconds () / MAX_NUM_BLOCKS);
+  AddAllocationPeriod (allocationId, SERVICE_PERIOD_ALLOCATION, true, sourceAid, destAid,
+                       0, spDuration, 0, MAX_NUM_BLOCKS);
+}
+
+uint32_t
+DmgWifiScheduler::AddAllocationPeriod (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
+                                       uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, uint16_t blockDuration,
+                                       uint16_t blockPeriod, uint8_t blocks)
+{
+  NS_LOG_FUNCTION (this << +allocationId << allocationType << staticAllocation << +sourceAid 
+                   << +destAid << allocationStart << blockDuration << blockPeriod << +blocks);
+  AllocationField field;
+  /* Allocation Control Field */
+  field.SetAllocationID (allocationId);
+  field.SetAllocationType (allocationType);
+  field.SetAsPseudoStatic (staticAllocation);
+  /* Allocation Field */
+  field.SetSourceAid (sourceAid);
+  field.SetDestinationAid (destAid);
+  field.SetAllocationStart (allocationStart);
+  field.SetAllocationBlockDuration (blockDuration);
+  field.SetAllocationBlockPeriod (blockPeriod);
+  field.SetNumberOfBlocks (blocks);
+  /**
+   * When scheduling two adjacent SPs, the PCP/AP should allocate the SPs separated by at least
+   * aDMGPPMinListeningTime if one or more of the source or destination DMG STAs participate in both SPs.
+   */
+  m_allocationList.push_back (field);
+
+  return (allocationStart + blockDuration);
+}
+
+void
+DmgWifiScheduler::CleanupAllocations (void)
+{
+  NS_LOG_FUNCTION (this);
+  AllocationField allocation;
+  for(AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end ();)
+    {
+      allocation = (*iter);
+      if (!allocation.IsPseudoStatic () && iter->IsAllocationAnnounced ())
+        {
+          iter = m_allocationList.erase (iter);
+        }
+      else
+        {
+          ++iter;
+        }
+    }
 }
 
 } // namespace ns3

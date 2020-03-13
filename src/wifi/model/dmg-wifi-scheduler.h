@@ -72,23 +72,91 @@ public:
   void ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element);
 
 protected:
+  friend class DmgApWifiMac;
+
   virtual void DoDispose (void);
   virtual void DoInitialize (void);
+  /**
+   * Allocate CBAP period to be announced in DMG Beacon or Announce Frame.
+   * \param staticAllocation Is the allocation static.
+   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
+   * \param blockDuration The duration of the allocation period.
+   * \return The start of the next allocation period.
+   */
+  uint32_t AllocateCbapPeriod (bool staticAllocation, uint32_t allocationStart, uint16_t blockDuration);
+  /**
+   * Add a new allocation with one single block. The duration of the block is limited to 32 767 microseconds for an SP allocation.
+   * and to 65 535 microseconds for a CBAP allocation. The allocation is announced in the following DMG Beacon or Announce Frame.
+   * \param allocationID The unique identifier for the allocation.
+   * \param allocationType The type of the allocation (CBAP or SP).
+   * \param staticAllocation Is the allocation static.
+   * \param srcAid The AID of the source DMG STA.
+   * \param dstAid The AID of the destination DMG STA.
+   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
+   * \param blockDuration The duration of the allocation period.
+   * \return The start of the next allocation period.
+   */
+  uint32_t AllocateSingleContiguousBlock (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
+                                          uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, uint16_t blockDuration);
+  /**
+   * Add a new allocation consisting of consectuive allocation blocks.
+   * The allocation is announced in the following DMG Beacon or Announce Frame.
+   * \param allocationId The unique identifier for the allocation.
+   * \param allocationType The type of the allocation (CBAP or SP).
+   * \param staticAllocation Is the allocation static.
+   * \param srcAid The AID of the source DMG STA.
+   * \param dstAid The AID of the destination DMG STA.
+   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
+   * \param blockDuration The duration of the allocation period.
+   * \param blocks The number of blocks making up the allocation.
+   * \return The start of the next allocation period.
+   */
+  uint32_t AllocateMultipleContiguousBlocks (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
+                                             uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, uint16_t blockDuration, uint8_t blocks);
+  /**
+   * Allocate maximum part of DTI as an SP.
+   * \param allocationId The unique identifier for the allocation.
+   * \param srcAid The AID of the source DMG STA.
+   * \param dstAid The AID of the destination DMG STA.
+   */
+  void AllocateDTIAsServicePeriod (AllocationID allocationId, uint8_t sourceAid, uint8_t destAid);
+  /**
+   * Add a new allocation period to be announced in DMG Beacon or Announce Frame.
+   * \param allocationId The unique identifier for the allocation.
+   * \param allocationType The type of allocation (CBAP or SP).
+   * \param staticAllocation Is the allocation static.
+   * \param srcAid The AID of the source DMG STA.
+   * \param dstAid The AID of the destination DMG STA.
+   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
+   * \param blockDuration The duration of the allocation period.
+   * \param blocks The number of blocks making up the allocation.
+   * \return The start time of the following allocation period.
+   */
+  uint32_t AddAllocationPeriod (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
+                                uint8_t srcAid, uint8_t dstAid, uint32_t allocationStart, uint16_t blockDuration,
+                                uint16_t blockPeriod, uint8_t blocks);
 
-  Ptr<DmgApWifiMac> m_mac; //!< Pointer to the MAC high of PCP/AP.
+  Ptr<DmgApWifiMac> m_mac;                     //!< Pointer to the MAC high of PCP/AP.
+
+  /* Access Period Allocations */
+  AllocationFieldList m_allocationList;        //!< List of access period allocations in DTI.
 
 private:
   void BeaconIntervalEnded (void);
   void AnnouncementTransmissionIntervalStarted (void);
+  /**
+   * Cleanup non-static allocations.
+   */
+  void CleanupAllocations (void);
 
   /* Channel Access Period */
-  ChannelAccessPeriod m_accessPeriod;               //!< The type of the current channel access period.
-  Time m_atiDuration;                               //!< The length of the ATI period.
-  Time m_bhiDuration;                               //!< The length of the BHI period.
-  Time m_dtiDuration;                               //!< The length of the DTI period.
-  Time m_biStartTime;                               //!< The start time of the BI Interval.
-  Time m_atiStartTime;                              //!< The start time of the ATI Interval.
-  Time m_dtiStartTime;                              //!< The start time of the DTI Interval.
+  ChannelAccessPeriod m_accessPeriod;          //!< The type of the current channel access period.
+  Time m_atiDuration;                          //!< The length of the ATI period.
+  Time m_bhiDuration;                          //!< The length of the BHI period.
+  Time m_dtiDuration;                          //!< The length of the DTI period.
+  Time m_biStartTime;                          //!< The start time of the BI Interval.
+  Time m_atiStartTime;                         //!< The start time of the ATI Interval.
+  Time m_dtiStartTime;                         //!< The start time of the DTI Interval.
 
 };
 
