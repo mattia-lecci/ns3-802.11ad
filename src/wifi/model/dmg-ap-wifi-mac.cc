@@ -1219,7 +1219,7 @@ DmgApWifiMac::StartDataTransmissionInterval (void)
     {
       m_allocationList = m_dmgScheduler->GetAllocationList ();
       AllocationField field;
-      for (AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
+      for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
         {
           (*iter).SetAllocationAnnounced ();
           field = (*iter);

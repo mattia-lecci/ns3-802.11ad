@@ -1203,7 +1203,7 @@ DmgStaWifiMac::StartDataTransmissionInterval (void)
       else
         {
           AllocationField field;
-          for (AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
+          for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
             {
               field = (*iter);
               if (field.GetAllocationType () == SERVICE_PERIOD_ALLOCATION)

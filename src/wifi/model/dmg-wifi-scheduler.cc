@@ -146,11 +146,12 @@ DmgWifiScheduler::ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo i
 {
   NS_LOG_DEBUG ("Receive DELTS request from " << address);
   AllocationField allocation;
-  for (AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end ();)
+  uint8_t stationAid = m_mac->GetStationAid (address);
+  for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end ();)
     {
       allocation = (*iter);
       if ((allocation.GetAllocationID () == info.GetAllocationID ()) &&
-          (allocation.GetSourceAid () == m_mac->GetStationAid (address)) &&
+          (allocation.GetSourceAid () == stationAid) &&
           (allocation.GetDestinationAid () == info.GetDestinationAid ()))
         {
           iter = m_allocationList.erase (iter);
@@ -277,7 +278,7 @@ DmgWifiScheduler::CleanupAllocations (void)
 {
   NS_LOG_FUNCTION (this);
   AllocationField allocation;
-  for(AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end ();)
+  for(AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end ();)
     {
       allocation = (*iter);
       if (!allocation.IsPseudoStatic () && iter->IsAllocationAnnounced ())
@@ -296,7 +297,7 @@ DmgWifiScheduler::ModifyAllocation (AllocationID allocationId, uint8_t sourceAid
                                     uint32_t newStartTime, uint16_t newDuration)
 {
   NS_LOG_FUNCTION (this << +allocationId << +sourceAid << +destAid << newStartTime << newDuration);
-  for (AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
+  for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
     {
       AllocationField field = (*iter);
       if ((field.GetAllocationID () == allocationId) &&
