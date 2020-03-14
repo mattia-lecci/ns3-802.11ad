@@ -61,6 +61,7 @@ DmgWifiScheduler::DoDispose ()
 {
   NS_LOG_FUNCTION (this);
   m_mac = 0;
+  m_receiveAddtsRequests.clear ();
 }
 
 void 
@@ -139,6 +140,11 @@ DmgWifiScheduler::BeaconIntervalEnded (void)
   /* Cleanup non-static allocations. */
   CleanupAllocations ();
   /* Do something with the ADDTS requests received in the last DTI (if any) */
+  if (!m_receiveAddtsRequests.empty ())
+  {
+    /* At least one ADDTS request has been received */
+    ManageAddtsRequests (); 
+  }
 }
 
 void
@@ -168,6 +174,22 @@ void
 DmgWifiScheduler::ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element)
 {
   NS_LOG_DEBUG ("Receive ADDTS request from " << address);
+  /* Store the ADDTS request received in the current DTI */
+  AddtsRequest request;
+  request.sourceAid = m_mac->GetStationAid (address);
+  request.dmgTspec = element;
+  m_receiveAddtsRequests.push_back (request);
+
+}
+
+void
+DmgWifiScheduler::ManageAddtsRequests (void)
+{
+  NS_LOG_FUNCTION (this);
+  /* Manage the ADDTS requests received in the last DTI.
+   * Implementation of admission policies for IEEE 802.11ad.
+   * Channel access organization during the DTI.
+   */ 
 }
 
 uint32_t

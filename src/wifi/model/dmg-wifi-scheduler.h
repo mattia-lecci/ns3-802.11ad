@@ -33,6 +33,14 @@ namespace ns3 {
 
 class DmgApWifiMac;
 
+typedef struct {
+  uint8_t sourceAid;
+  DmgTspecElement dmgTspec;
+} AddtsRequest;
+
+typedef std::vector<AddtsRequest> AddtsRequestList;
+typedef AddtsRequestList::const_iterator AddtsRequestListCI;
+
 /**
  * \brief scheduling features for IEEE 802.11ad
  *
@@ -69,13 +77,17 @@ public:
    * \param address The MAC address of the source STA.
    * \param element The Dmg Tspec Element associated with the request.
    */
-  void ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element);
+  virtual void ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element);
   /**
    * Handle a DELTS request received at the PCP/AP.
    * \param address The MAC address of the requesting STA.
    * \param info The Dmg Allocation Info field associated with the request.
    */
-  void ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo info);
+  virtual void ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo info);
+  /**
+   * Manage the ADDTS requests received at the PCP/AP during the last DTI.
+   */
+  virtual void ManageAddtsRequests (void);
 
 protected:
   friend class DmgApWifiMac;
@@ -206,6 +218,9 @@ private:
   Time m_biStartTime;                          //!< The start time of the BI Interval.
   Time m_atiStartTime;                         //!< The start time of the ATI Interval.
   Time m_dtiStartTime;                         //!< The start time of the DTI Interval.
+
+  /* Allocation */
+  AddtsRequestList m_receiveAddtsRequests;     //!< The list containing the ADDTS requests received during the DTI.
 
 };
 
