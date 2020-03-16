@@ -40,8 +40,8 @@ TypeId
 DmgWifiScheduler::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::DmgWifiScheduler")
-    .SetParent<Object> ()
-    .SetGroupName ("Wifi")
+                      .SetParent<Object> ()
+                      .SetGroupName ("Wifi")
   ;
   return tid;
 }
@@ -82,10 +82,11 @@ void
 DmgWifiScheduler::DoInitialize (void)
 {
   NS_LOG_FUNCTION (this);
-  m_mac->TraceConnectWithoutContext ("ADDTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveAddtsRequest, this));
-  m_mac->TraceConnectWithoutContext ("BIStarted", MakeCallback (&DmgWifiScheduler::BeaconIntervalStarted, this));
-  m_mac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DmgWifiScheduler::DataTransferIntervalStarted, this));
-  m_mac->TraceConnectWithoutContext ("DELTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveDeltsRequest, this));
+  bool isConnected;
+  isConnected = m_mac->TraceConnectWithoutContext ("ADDTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveAddtsRequest, this));
+  isConnected = m_mac->TraceConnectWithoutContext ("BIStarted", MakeCallback (&DmgWifiScheduler::BeaconIntervalStarted, this));
+  isConnected = m_mac->TraceConnectWithoutContext ("DELTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveDeltsRequest, this));
+  NS_ASSERT_MSG (isConnected, "Connection to Trace failed.");
 }
 
 AllocationFieldList
@@ -101,17 +102,23 @@ DmgWifiScheduler::SetAllocationList (AllocationFieldList allocationList)
 }
 
 void 
-DmgWifiScheduler::BeaconIntervalStarted (Mac48Address address, Time bhiDuration, Time atiDuration)
+DmgWifiScheduler::BeaconIntervalStarted (Mac48Address address, Time biDuration, Time bhiDuration, Time atiDuration)
 {
   NS_LOG_DEBUG ("Beacon Interval started at " << Simulator::Now ());
   m_biStartTime = Simulator::Now ();
   m_accessPeriod = CHANNEL_ACCESS_BHI;
+  m_biDuration = biDuration;
   m_bhiDuration = bhiDuration;
   m_atiDuration = atiDuration;
+  m_dtiDuration = m_biDuration - m_bhiDuration;
   if (m_atiDuration.IsStrictlyPositive ())
     {
       Simulator::Schedule (m_bhiDuration - m_atiDuration - m_mac->GetMbifs (), 
                            &DmgWifiScheduler::AnnouncementTransmissionIntervalStarted, this);
+    }
+  else
+    {
+      Simulator::Schedule (m_bhiDuration, &DmgWifiScheduler::DataTransferIntervalStarted, this);
     }
 }
 
@@ -121,15 +128,15 @@ DmgWifiScheduler::AnnouncementTransmissionIntervalStarted (void)
   NS_LOG_DEBUG ("ATI started at " << Simulator::Now ());
   m_atiStartTime = Simulator::Now ();
   m_accessPeriod = CHANNEL_ACCESS_ATI;
+  Simulator::Schedule (m_atiDuration, &DmgWifiScheduler::DataTransferIntervalStarted, this);
 }
 
 void 
-DmgWifiScheduler::DataTransferIntervalStarted (Mac48Address address, Time dtiDuration)
+DmgWifiScheduler::DataTransferIntervalStarted (void)
 {
   NS_LOG_DEBUG ("DTI started at " << Simulator::Now ());
   m_dtiStartTime = Simulator::Now ();
   m_accessPeriod = CHANNEL_ACCESS_DTI;
-  m_dtiDuration = dtiDuration;
   Simulator::Schedule (m_dtiDuration, &DmgWifiScheduler::BeaconIntervalEnded, this);
 }
 

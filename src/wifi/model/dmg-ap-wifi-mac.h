@@ -483,7 +483,16 @@ private:
   std::map<uint16_t, WifiInformationElementMap> m_associatedStationsInfoByAid;
 
   /** Beacon Interval **/
-  TracedCallback<Mac48Address, Time, Time> m_biStarted;  //!< Trace Callback for starting new Beacon Interval.
+  TracedCallback<Mac48Address, Time, Time, Time> m_biStarted;  //!< Trace Callback for starting new Beacon Interval.
+  /**
+   * TracedCallback signature for the BI start.
+   *
+   * \param address The MAC address of the PCP/AP.
+   * \param biDuration The duration of the BI.
+   * \param bhiDuration The duration of the BHI.
+   * \param atiDuration The duration of the ATI.
+   */
+  typedef void (* BiStartedCallback)(Mac48Address address, Time biDuration, Time bhiDuration, Time atiDuration);
 
   /** Traffic Stream Allocation **/
   TracedCallback<Mac48Address, DmgTspecElement> m_addTsRequestReceived;   //!< DMG ADDTS Request received.

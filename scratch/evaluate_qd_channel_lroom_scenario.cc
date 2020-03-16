@@ -82,6 +82,7 @@ Ptr<DmgStaWifiMac> staWifiMac;
 Ptr<DmgWifiPhy> apWifiPhy;
 Ptr<DmgWifiPhy> staWifiPhy;
 Ptr<WifiRemoteStationManager> staRemoteStationManager;
+Ptr<DmgWifiScheduler> dmgScheduler;
 NetDeviceContainer staDevices;
 
 /*** Beamforming TxSS Schedulling ***/
@@ -514,6 +515,10 @@ main (int argc, char *argv[])
   apWifiPhy = StaticCast<DmgWifiPhy> (apWifiNetDevice->GetPhy ());
   staWifiPhy = StaticCast<DmgWifiPhy> (staWifiNetDevice->GetPhy ());
   staRemoteStationManager = StaticCast<WifiRemoteStationManager> (staWifiNetDevice->GetRemoteStationManager ());
+
+  /* Create DMG Scheduler and setup */
+  dmgScheduler = CreateObject<DmgWifiScheduler> ();
+  apWifiMac->SetScheduler (dmgScheduler);
 
   /** Connect Traces **/
   AsciiTraceHelper ascii;

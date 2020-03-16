@@ -62,17 +62,6 @@ public:
    */
   void SetMac (Ptr<DmgApWifiMac> mac);
   /**
-   * \param address The MAC address of the PCP/AP.
-   * \param bhiDuration The duration of the BHI interval.
-   * \param atiDuration The duration of the ATI interval.
-   */
-  void BeaconIntervalStarted (Mac48Address address, Time bhiDuration, Time atiDuration);
-  /**
-   * \param address The MAC address of the PCP/AP.
-   * \param atiDuration The duration of the DTI interval.
-   */
-  void DataTransferIntervalStarted (Mac48Address address, Time dtiDuration);
-  /**
    * Handle an ADDTS request received at the PCP/AP.
    * \param address The MAC address of the source STA.
    * \param element The Dmg Tspec Element associated with the request.
@@ -193,7 +182,25 @@ protected:
   AllocationFieldList m_allocationList;        //!< List of access period allocations in DTI.
 
 private:
+  /**
+   * Handle the start of the BI
+   * \param address The MAC address of the PCP/AP.
+   * \param biDuration The duration of the current BI interval.
+   * \param bhiDuration The duration of the current BHI interval.
+   * \param atiDuration The duration of the current ATI interval.
+   */
+  void BeaconIntervalStarted (Mac48Address address, Time biDuration, Time bhiDuration, Time atiDuration);
+  /**
+   * Handle the start of the DTI.
+   */
+  void DataTransferIntervalStarted (void);
+  /**
+   * Handle the end of the BI.
+   */
   void BeaconIntervalEnded (void);
+  /**
+   * Handle the start of the ATI.
+   */
   void AnnouncementTransmissionIntervalStarted (void);
   /**
    * Modify the scheduling parameters of an existing allocation.
@@ -212,6 +219,7 @@ private:
 
   /* Channel Access Period */
   ChannelAccessPeriod m_accessPeriod;          //!< The type of the current channel access period.
+  Time m_biDuration;                           //!< The length of the BI period.
   Time m_atiDuration;                          //!< The length of the ATI period.
   Time m_bhiDuration;                          //!< The length of the BHI period.
   Time m_dtiDuration;                          //!< The length of the DTI period.

@@ -153,7 +153,7 @@ DmgApWifiMac::GetTypeId (void)
     /* Beacon Interval Traces */
     .AddTraceSource ("BIStarted", "A new Beacon Interval has started.",
                      MakeTraceSourceAccessor (&DmgApWifiMac::m_biStarted),
-                     "ns3::Mac48Address::TracedCallback")
+                     "ns3::DmgApWifiMac::BiStartedCallback")
 
     /* DMG PCP/AP Clustering */
     .AddTraceSource ("JoinedCluster", "The PCP/AP joined a cluster.",
@@ -188,11 +188,6 @@ DmgApWifiMac::DmgApWifiMac ()
   : m_sswFbckEvent ()
 {
   NS_LOG_FUNCTION (this);
-  /* DMG Wifi Scheduler */
-  m_dmgScheduler = CreateObject<DmgWifiScheduler> ();
-  m_dmgScheduler->SetMac (this);
-  m_dmgScheduler->Initialize ();
-
   /* DMG Beacon DCF Manager */
   m_beaconDca = CreateObject<DmgBeaconDca> ();
   m_beaconDca->SetAifsn (0);
@@ -988,7 +983,7 @@ DmgApWifiMac::StartBeaconInterval (void)
   NS_LOG_INFO ("DMG AP Starting BI at " << Simulator::Now ());
 
   /* Invoke callback */
-  m_biStarted (GetAddress (), GetBHIDuration (), m_atiDuration);
+  m_biStarted (GetAddress (), m_beaconInterval, GetBHIDuration (), m_atiDuration);
 
   /* Timing variables */
   m_biStartTime = Simulator::Now ();
