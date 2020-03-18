@@ -86,7 +86,7 @@ DmgWifiScheduler::DoInitialize (void)
   isConnected = m_mac->TraceConnectWithoutContext ("ADDTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveAddtsRequest, this));
   isConnected = m_mac->TraceConnectWithoutContext ("BIStarted", MakeCallback (&DmgWifiScheduler::BeaconIntervalStarted, this));
   isConnected = m_mac->TraceConnectWithoutContext ("DELTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveDeltsRequest, this));
-  NS_ASSERT_MSG (isConnected, "Connection to Trace failed.");
+  NS_ASSERT_MSG (isConnected, "Connection to Traces failed.");
 }
 
 AllocationFieldList
@@ -104,7 +104,7 @@ DmgWifiScheduler::SetAllocationList (AllocationFieldList allocationList)
 void 
 DmgWifiScheduler::BeaconIntervalStarted (Mac48Address address, Time biDuration, Time bhiDuration, Time atiDuration)
 {
-  NS_LOG_DEBUG ("Beacon Interval started at " << Simulator::Now ());
+  NS_LOG_INFO ("Beacon Interval started at " << Simulator::Now ());
   m_biStartTime = Simulator::Now ();
   m_accessPeriod = CHANNEL_ACCESS_BHI;
   m_biDuration = biDuration;
@@ -125,7 +125,7 @@ DmgWifiScheduler::BeaconIntervalStarted (Mac48Address address, Time biDuration, 
 void
 DmgWifiScheduler::AnnouncementTransmissionIntervalStarted (void)
 {
-  NS_LOG_DEBUG ("ATI started at " << Simulator::Now ());
+  NS_LOG_INFO ("ATI started at " << Simulator::Now ());
   m_atiStartTime = Simulator::Now ();
   m_accessPeriod = CHANNEL_ACCESS_ATI;
   Simulator::Schedule (m_atiDuration, &DmgWifiScheduler::DataTransferIntervalStarted, this);
@@ -134,7 +134,7 @@ DmgWifiScheduler::AnnouncementTransmissionIntervalStarted (void)
 void 
 DmgWifiScheduler::DataTransferIntervalStarted (void)
 {
-  NS_LOG_DEBUG ("DTI started at " << Simulator::Now ());
+  NS_LOG_INFO ("DTI started at " << Simulator::Now ());
   m_dtiStartTime = Simulator::Now ();
   m_accessPeriod = CHANNEL_ACCESS_DTI;
   Simulator::Schedule (m_dtiDuration, &DmgWifiScheduler::BeaconIntervalEnded, this);
@@ -143,37 +143,50 @@ DmgWifiScheduler::DataTransferIntervalStarted (void)
 void
 DmgWifiScheduler::BeaconIntervalEnded (void)
 {
-  NS_LOG_DEBUG ("Beacon Interval ended at " << Simulator::Now ());
+  NS_LOG_INFO ("Beacon Interval ended at " << Simulator::Now ());
   /* Cleanup non-static allocations. */
   CleanupAllocations ();
   /* Do something with the ADDTS requests received in the last DTI (if any) */
   if (!m_receiveAddtsRequests.empty ())
-  {
-    /* At least one ADDTS request has been received */
-    ManageAddtsRequests (); 
-  }
+    {
+      /* At least one ADDTS request has been received */
+      ManageAddtsRequests (); 
+    }
 }
 
 void
 DmgWifiScheduler::ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo info)
 {
   NS_LOG_DEBUG ("Receive DELTS request from " << address);
-  AllocationField allocation;
   uint8_t stationAid = m_mac->GetStationAid (address);
-  for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end ();)
+  /* Check whether this allocation has been previously allocated */
+  AllocatedRequestMapI it = m_allocatedAddtsRequests.find (UniqueIdentifier (info.GetAllocationID (), 
+                                                                             stationAid, info.GetDestinationAid ()));
+  if (it != m_allocatedAddtsRequests.end ())
     {
-      allocation = (*iter);
-      if ((allocation.GetAllocationID () == info.GetAllocationID ()) &&
-          (allocation.GetSourceAid () == stationAid) &&
-          (allocation.GetDestinationAid () == info.GetDestinationAid ()))
+      /* Delete allocation from m_allocatedAddtsRequests and m_allocationList */
+      m_allocatedAddtsRequests.erase (it);
+      AllocationField allocation;
+      for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end ();)
         {
-          iter = m_allocationList.erase (iter);
-          break;
+          allocation = (*iter);
+          if ((allocation.GetAllocationID () == info.GetAllocationID ()) &&
+              (allocation.GetSourceAid () == stationAid) &&
+              (allocation.GetDestinationAid () == info.GetDestinationAid ()))
+            {
+              iter = m_allocationList.erase (iter);
+              break;
+            }
+          else
+            {
+              ++iter;
+            }
         }
-      else
-        {
-          ++iter;
-        }
+    }
+  else
+    {
+      /* The allocation does not exist */
+      NS_LOG_DEBUG ("Cannot find the allocation");
     }
 }
 
@@ -192,11 +205,23 @@ DmgWifiScheduler::ReceiveAddtsRequest (Mac48Address address, DmgTspecElement ele
 void
 DmgWifiScheduler::ManageAddtsRequests (void)
 {
-  NS_LOG_FUNCTION (this);
   /* Manage the ADDTS requests received in the last DTI.
    * Implementation of admission policies for IEEE 802.11ad.
    * Channel access organization during the DTI.
-   */ 
+   */
+  NS_LOG_FUNCTION (this);
+
+  AddtsRequest request;
+  DmgTspecElement dmgTspec;
+  /* Cycle over the list of received ADDTS requests; remainingDtiTime is updated each time an allocation is accepted.
+   * Once all requests have been evaluated (accepted or rejected):
+   * allocate remainingDtiTime (if > 0) as CBAP with destination & source AID to Broadcast */
+  for (AddtsRequestListCI iter = m_receiveAddtsRequests.begin (); iter != m_receiveAddtsRequests.end (); iter++)
+    {
+      request = (*iter);
+      dmgTspec = request.dmgTspec;
+
+    }
 }
 
 uint32_t

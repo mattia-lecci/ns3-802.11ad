@@ -33,14 +33,6 @@ namespace ns3 {
 
 class DmgApWifiMac;
 
-typedef struct {
-  uint8_t sourceAid;
-  DmgTspecElement dmgTspec;
-} AddtsRequest;
-
-typedef std::vector<AddtsRequest> AddtsRequestList;
-typedef AddtsRequestList::const_iterator AddtsRequestListCI;
-
 /**
  * \brief scheduling features for IEEE 802.11ad
  *
@@ -228,7 +220,20 @@ private:
   Time m_dtiStartTime;                         //!< The start time of the DTI Interval.
 
   /* Allocation */
+  typedef struct {
+  uint8_t sourceAid;
+  DmgTspecElement dmgTspec;
+  } AddtsRequest;
+  typedef std::vector<AddtsRequest> AddtsRequestList;
+  typedef AddtsRequestList::const_iterator AddtsRequestListCI;
+
   AddtsRequestList m_receiveAddtsRequests;     //!< The list containing the ADDTS requests received during the DTI.
+
+  typedef std::tuple<AllocationID, uint8_t, uint8_t> UniqueIdentifier;
+  typedef std::map<UniqueIdentifier, AddtsRequest> AllocatedRequestMap;
+  typedef AllocatedRequestMap::iterator AllocatedRequestMapI;
+
+  AllocatedRequestMap m_allocatedAddtsRequests; //!< The map containing the allocated ADDTS requests with their original allocation parameters
 
 };
 
