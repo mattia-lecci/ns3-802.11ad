@@ -86,6 +86,12 @@ public:
    */
   virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info);
   /**
+   * \param minAllocation The minimum acceptable allocation in us for each allocation period.
+   * \param maxAllocation The desired allocation in us for each allocation period.
+   * \return The allocation duration for the allocation period.
+   */
+  virtual uint32_t GetAllocationDuration (uint32_t minAllocation, uint32_t maxAllocation);
+  /**
    * \return The TS Delay element to be included in the ADDTS response.
    */
   virtual TsDelayElement GetTsDelayElement (void);

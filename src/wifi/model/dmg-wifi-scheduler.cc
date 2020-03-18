@@ -153,20 +153,24 @@ void
 DmgWifiScheduler::BeaconIntervalEnded (void)
 {
   NS_LOG_INFO ("Beacon Interval ended at " << Simulator::Now ());
-  /* Cleanup non-static allocations. */
+  /* Cleanup non-static allocations */
   CleanupAllocations ();
   /* Do something with the ADDTS requests received in the last DTI (if any) */
   if (!m_receiveAddtsRequests.empty ())
     {
+      /* Remove Broadcast CBAP allocations */
+      // RemoveBroadcastCbapAllocations ();
       /* At least one ADDTS request has been received */
       ManageAddtsRequests (); 
     }
+  /* Add Broadcast CBAP allocations */
+  // AddBroadcastCbapAllocations ();
 }
 
 void
 DmgWifiScheduler::ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo info)
 {
-  NS_LOG_DEBUG ("Receive DELTS request from " << address);
+  NS_LOG_INFO ("Receive DELTS request from " << address);
   uint8_t stationAid = m_mac->GetStationAid (address);
   /* Check whether this allocation has been previously allocated */
   AllocatedRequestMapI it = m_allocatedAddtsRequests.find (UniqueIdentifier (info.GetAllocationID (), 
@@ -291,10 +295,35 @@ DmgWifiScheduler::ManageAddtsRequests (void)
   m_receiveAddtsRequests.clear (); 
 }
 
+uint32_t
+DmgWifiScheduler::GetAllocationDuration (uint32_t minAllocation, uint32_t maxAllocation)
+{
+  return (minAllocation + maxAllocation) / 2;
+}
+
 StatusCode
 DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info)
 {
+  if (dmgTspec.GetAllocationPeriod () != 0)
+    {
+      NS_FATAL_ERROR ("Multiple allocations are not supported by DmgWifiScheduler");
+    }
+    
   StatusCode status;
+  uint32_t allocDuration;
+  if (info.GetAllocationFormat () == ISOCHRONOUS)
+    {
+      allocDuration = GetAllocationDuration (dmgTspec.GetMinimumAllocation (), dmgTspec.GetMaximumAllocation ());
+    }
+  else if (info.GetAllocationFormat () == ASYNCHRONOUS)
+    {
+      /* for asynchronous allocations, the Maximum Allocation field is reserved (IEEE 802.11ad 8.4.2.136) */
+      allocDuration = dmgTspec.GetMinimumAllocation ();
+    }
+  else
+    {
+      NS_LOG_WARN ("Allocation Format not supported");
+    }      
   return status;
 }
 
