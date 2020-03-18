@@ -69,6 +69,26 @@ public:
    * Manage the ADDTS requests received at the PCP/AP during the last DTI.
    */
   virtual void ManageAddtsRequests (void);
+  /**
+   * Implement the policy that accept or reject a new ADDTS request.
+   * \param sourceAid The AID of the requesting STA.
+   * \param dmgTspec The DMG Tspec element of the ADDTS request.
+   * \param info The DMG Allocation Info element of the request.
+   * \return The Status Code to be included in the ADDTS response.
+   */
+  virtual StatusCode AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info);
+  /**
+   * Implement the policy that accept or reject a modification request.
+   * \param sourceAid The AID of the requesting STA.
+   * \param dmgTspec The DMG Tspec element of the ADDTS request.
+   * \param info The DMG Allocation Info element of the request.
+   * \return The Status Code to be included in the ADDTS response.
+   */
+  virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info);
+  /**
+   * \return The TS Delay element to be included in the ADDTS response.
+   */
+  virtual TsDelayElement GetTsDelayElement (void);
 
 protected:
   friend class DmgApWifiMac;
@@ -195,6 +215,13 @@ private:
    */
   void AnnouncementTransmissionIntervalStarted (void);
   /**
+   * Send ADDTS response to the source STA of the allocation
+   * \param address The MAC address of the source STA.
+   * \param status The status code of the ADDTS response.
+   * \param dmgTspec The DMG Tspec element associated.
+   */
+  void SendAddtsResponse (Mac48Address address, StatusCode status, DmgTspecElement dmgTspec);
+  /**
    * Modify the scheduling parameters of an existing allocation.
    * \param allocationId The unique identifier for the allocation.
    * \param sourceAid The AID of the source DMG STA.
@@ -222,6 +249,7 @@ private:
   /* Allocation */
   typedef struct {
   uint8_t sourceAid;
+  Mac48Address sourceAddr;
   DmgTspecElement dmgTspec;
   } AddtsRequest;
   typedef std::vector<AddtsRequest> AddtsRequestList;
@@ -229,6 +257,7 @@ private:
 
   AddtsRequestList m_receiveAddtsRequests;     //!< The list containing the ADDTS requests received during the DTI.
 
+  /* An allocation is uniquely identified by the tuple: Allocation Id, Source Aid, Destination Aid (802.11ad 10.4) */
   typedef std::tuple<AllocationID, uint8_t, uint8_t> UniqueIdentifier;
   typedef std::map<UniqueIdentifier, AddtsRequest> AllocatedRequestMap;
   typedef AllocatedRequestMap::iterator AllocatedRequestMapI;

@@ -62,6 +62,7 @@ DmgWifiScheduler::DoDispose ()
   NS_LOG_FUNCTION (this);
   m_mac = 0;
   m_receiveAddtsRequests.clear ();
+  m_allocatedAddtsRequests.clear ();
 }
 
 void 
@@ -99,6 +100,14 @@ void
 DmgWifiScheduler::SetAllocationList (AllocationFieldList allocationList)
 {
   m_allocationList = allocationList;
+}
+
+TsDelayElement
+DmgWifiScheduler::GetTsDelayElement (void)
+{
+  TsDelayElement element;
+  element.SetDelay (1);
+  return element;
 }
 
 void 
@@ -193,13 +202,41 @@ DmgWifiScheduler::ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo i
 void
 DmgWifiScheduler::ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element)
 {
-  NS_LOG_DEBUG ("Receive ADDTS request from " << address);
+  NS_LOG_INFO ("Receive ADDTS request from " << address);
   /* Store the ADDTS request received in the current DTI */
   AddtsRequest request;
   request.sourceAid = m_mac->GetStationAid (address);
+  request.sourceAddr = address;
   request.dmgTspec = element;
   m_receiveAddtsRequests.push_back (request);
+}
 
+void
+DmgWifiScheduler::SendAddtsResponse (Mac48Address address, StatusCode status, DmgTspecElement dmgTspec)
+{
+  NS_LOG_INFO ("Send ADDTS response to " << address);
+  TsDelayElement tsDelay;
+  switch (status.GetStatusCodeValue ())
+    {
+      case STATUS_CODE_SUCCESS:
+      case STATUS_CODE_FAILURE:
+      case STATUS_CODE_REJECTED_WITH_SUGGESTED_CHANGES:
+      case STATUS_CODE_REJECT_WITH_SCHEDULE:
+        break;
+      case STATUS_CODE_REJECTED_FOR_DELAY_PERIOD:
+        tsDelay = GetTsDelayElement ();
+        break;
+      case STATUS_CODE_PENDING_ADMITTING_FST_SESSION:
+      case STATUS_CODE_PERFORMING_FST_NOW:
+      case STATUS_CODE_PENDING_GAP_IN_BA_WINDOW:
+      case STATUS_CODE_DENIED_WITH_SUGGESTED_BAND_AND_CHANNEL:
+      case STATUS_CODE_DENIED_DUE_TO_SPECTRUM_MANAGEMENT:
+        break;
+      default: 
+        NS_FATAL_ERROR ("ADDTS response status code not supported");
+    }
+  /* Send ADDTS response to the source STA of the allocation */
+  m_mac->SendDmgAddTsResponse (address, status, tsDelay, dmgTspec);
 }
 
 void
@@ -211,17 +248,61 @@ DmgWifiScheduler::ManageAddtsRequests (void)
    */
   NS_LOG_FUNCTION (this);
 
-  AddtsRequest request;
   DmgTspecElement dmgTspec;
+  DmgAllocationInfo info;
+  StatusCode status;
+  UniqueIdentifier allocIdentifier;
+  AllocatedRequestMapI it;
   /* Cycle over the list of received ADDTS requests; remainingDtiTime is updated each time an allocation is accepted.
    * Once all requests have been evaluated (accepted or rejected):
    * allocate remainingDtiTime (if > 0) as CBAP with destination & source AID to Broadcast */
   for (AddtsRequestListCI iter = m_receiveAddtsRequests.begin (); iter != m_receiveAddtsRequests.end (); iter++)
     {
-      request = (*iter);
-      dmgTspec = request.dmgTspec;
-
+      dmgTspec = iter->dmgTspec;
+      info = dmgTspec.GetDmgAllocationInfo ();
+      allocIdentifier = UniqueIdentifier (info.GetAllocationID (), iter->sourceAid, info.GetDestinationAid ());
+      it = m_allocatedAddtsRequests.find (allocIdentifier);
+      if (it != m_allocatedAddtsRequests.end ())
+        {
+          /* Requesting modification of an existing allocation */
+          status = ModifyExistingAllocation (iter->sourceAid, dmgTspec, info);
+          if (status.IsSuccess ())
+            {
+              /* The modification request has been accepted
+               * Replace the accepted ADDTS request in the allocated requests */
+              m_allocatedAddtsRequests.at (it->first) = (*iter);
+            }
+        }
+      else
+        {
+          /* Requesting new allocation */
+          status = AddNewAllocation (iter->sourceAid, dmgTspec, info);
+          if (status.IsSuccess ())
+            {
+              /* The new request has been accepted
+               * Save the accepted ADDTS request among the allocated requests */
+              m_allocatedAddtsRequests.insert (std::make_pair (allocIdentifier, (*iter)));
+            }
+        }
+      SendAddtsResponse (iter->sourceAddr, status, dmgTspec);
+      /* Update remaining time and start time */  
     }
+  /* clear list of received ADDTS requests */
+  m_receiveAddtsRequests.clear (); 
+}
+
+StatusCode
+DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info)
+{
+  StatusCode status;
+  return status;
+}
+
+StatusCode
+DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info)
+{
+  StatusCode status;
+  return status;
 }
 
 uint32_t
