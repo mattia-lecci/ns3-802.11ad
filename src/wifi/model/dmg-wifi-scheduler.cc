@@ -42,6 +42,10 @@ DmgWifiScheduler::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::DmgWifiScheduler")
                       .SetParent<Object> ()
                       .SetGroupName ("Wifi")
+                      .AddAttribute ("BroadcastCbapDuration", "The duration of a Broadcast CBAP allocation."
+                       UintegerValue (2528),
+                       MakeUintegerAccessor (&DmgWifiScheduler::m_broadcastCbapDuration),
+                       MakeUintegerChecker<uint32_t> ())
   ;
   return tid;
 }
@@ -85,9 +89,11 @@ DmgWifiScheduler::DoInitialize (void)
   NS_LOG_FUNCTION (this);
   bool isConnected;
   isConnected = m_mac->TraceConnectWithoutContext ("ADDTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveAddtsRequest, this));
+  NS_ASSERT_MSG (isConnected, "Connection to Trace ADDTSReceived failed.");
   isConnected = m_mac->TraceConnectWithoutContext ("BIStarted", MakeCallback (&DmgWifiScheduler::BeaconIntervalStarted, this));
+  NS_ASSERT_MSG (isConnected, "Connection to Trace BIStarted failed.");
   isConnected = m_mac->TraceConnectWithoutContext ("DELTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveDeltsRequest, this));
-  NS_ASSERT_MSG (isConnected, "Connection to Traces failed.");
+  NS_ASSERT_MSG (isConnected, "Connection to Trace DELTSReceived failed.");
 }
 
 AllocationFieldList
@@ -308,7 +314,7 @@ DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec,
     {
       NS_FATAL_ERROR ("Multiple allocations are not supported by DmgWifiScheduler");
     }
-    
+
   StatusCode status;
   uint32_t allocDuration;
   if (info.GetAllocationFormat () == ISOCHRONOUS)

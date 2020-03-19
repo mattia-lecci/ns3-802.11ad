@@ -263,12 +263,14 @@ private:
 
   AddtsRequestList m_receiveAddtsRequests;     //!< The list containing the ADDTS requests received during the DTI.
 
-  /* An allocation is uniquely identified by the tuple: Allocation Id, Source Aid, Destination Aid (802.11ad 10.4) */
+  /* An allocation is uniquely identified by the tuple: Allocation Id, Source Aid, Destination Aid (802.11ad 10.4). */
   typedef std::tuple<AllocationID, uint8_t, uint8_t> UniqueIdentifier;
   typedef std::map<UniqueIdentifier, AddtsRequest> AllocatedRequestMap;
   typedef AllocatedRequestMap::iterator AllocatedRequestMapI;
 
-  AllocatedRequestMap m_allocatedAddtsRequests; //!< The map containing the allocated ADDTS requests with their original allocation parameters
+  AllocatedRequestMap m_allocatedAddtsRequests; //!< The map containing the allocated ADDTS requests with their original allocation parameters.
+
+  uint32_t m_broadcastCbapDuration;             //!< The duration of CBAP where source and destination AIDs are set to broadcast.
 
 };
 
