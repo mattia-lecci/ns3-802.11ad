@@ -42,10 +42,12 @@ DmgWifiScheduler::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::DmgWifiScheduler")
                       .SetParent<Object> ()
                       .SetGroupName ("Wifi")
-                      .AddAttribute ("BroadcastCbapDuration", "The duration of a Broadcast CBAP allocation."
-                       UintegerValue (2528),
-                       MakeUintegerAccessor (&DmgWifiScheduler::m_broadcastCbapDuration),
-                       MakeUintegerChecker<uint32_t> ())
+                      .AddConstructor<DmgWifiScheduler> ()
+
+                      .AddAttribute ("BroadcastCbapDuration", "The minimum duration of a broadcast CBAP in the DTI",
+                                     UintegerValue (2528),
+                                     MakeUintegerAccessor (&DmgWifiScheduler::m_broadcastCbapDuration),
+                                     MakeUintegerChecker<uint32_t> ())
   ;
   return tid;
 }
@@ -53,6 +55,7 @@ DmgWifiScheduler::GetTypeId (void)
 DmgWifiScheduler::DmgWifiScheduler ()
 {
   NS_LOG_FUNCTION (this);
+  m_broadcastCbapPresent = false;
 }
 
 DmgWifiScheduler::~DmgWifiScheduler ()
@@ -99,13 +102,23 @@ DmgWifiScheduler::DoInitialize (void)
 AllocationFieldList
 DmgWifiScheduler::GetAllocationList (void)
 {
-  return m_allocationList;
+  /* Return the global allocation list */
+  return m_globalAllocationList;
 }
 
 void
 DmgWifiScheduler::SetAllocationList (AllocationFieldList allocationList)
 {
-  m_allocationList = allocationList;
+  m_globalAllocationList = allocationList;
+}
+
+void
+DmgWifiScheduler::SetAllocationsAnnounced (void)
+{
+  for (AllocationFieldListI iter = m_addtsAllocationList.begin (); iter != m_addtsAllocationList.end (); ++iter)
+    {
+      iter->SetAllocationAnnounced (); 
+    }
 }
 
 TsDelayElement
@@ -164,13 +177,10 @@ DmgWifiScheduler::BeaconIntervalEnded (void)
   /* Do something with the ADDTS requests received in the last DTI (if any) */
   if (!m_receiveAddtsRequests.empty ())
     {
-      /* Remove Broadcast CBAP allocations */
-      // RemoveBroadcastCbapAllocations ();
       /* At least one ADDTS request has been received */
       ManageAddtsRequests (); 
     }
-  /* Add Broadcast CBAP allocations */
-  // AddBroadcastCbapAllocations ();
+  AddBroadcastCbap ();
 }
 
 void
@@ -186,14 +196,14 @@ DmgWifiScheduler::ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo i
       /* Delete allocation from m_allocatedAddtsRequests and m_allocationList */
       m_allocatedAddtsRequests.erase (it);
       AllocationField allocation;
-      for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end ();)
+      for (AllocationFieldListI iter = m_addtsAllocationList.begin (); iter != m_addtsAllocationList.end ();)
         {
           allocation = (*iter);
           if ((allocation.GetAllocationID () == info.GetAllocationID ()) &&
               (allocation.GetSourceAid () == stationAid) &&
               (allocation.GetDestinationAid () == info.GetDestinationAid ()))
             {
-              iter = m_allocationList.erase (iter);
+              iter = m_addtsAllocationList.erase (iter);
               break;
             }
           else
@@ -253,10 +263,12 @@ void
 DmgWifiScheduler::ManageAddtsRequests (void)
 {
   /* Manage the ADDTS requests received in the last DTI.
-   * Implementation of admission policies for IEEE 802.11ad.
    * Channel access organization during the DTI.
    */
   NS_LOG_FUNCTION (this);
+
+  /* Update start and remaining DTI time for the next request */
+  UpdateStartandRemainingTime ();
 
   DmgTspecElement dmgTspec;
   DmgAllocationInfo info;
@@ -301,15 +313,34 @@ DmgWifiScheduler::ManageAddtsRequests (void)
   m_receiveAddtsRequests.clear (); 
 }
 
+void
+DmgWifiScheduler::UpdateStartandRemainingTime (void)
+{
+  if (m_addtsAllocationList.empty ())
+    {
+      /* No existing allocations */
+      m_nextTiming.startTime = 0;
+      m_nextTiming.remainingDtiTime = m_dtiDuration.GetMicroSeconds ();
+    }
+  else
+    {
+      /* At least one allocation. Get last one */
+      AllocationField lastAllocation = m_addtsAllocationList.back ();
+      m_nextTiming.startTime = lastAllocation.GetAllocationStart () + lastAllocation.GetAllocationBlockDuration ();
+      m_nextTiming.remainingDtiTime = m_dtiDuration.GetMicroSeconds () - m_nextTiming.startTime;
+    }
+}
+
 uint32_t
 DmgWifiScheduler::GetAllocationDuration (uint32_t minAllocation, uint32_t maxAllocation)
 {
-  return (minAllocation + maxAllocation) / 2;
+  return ((minAllocation + maxAllocation) / 2);
 }
 
 StatusCode
 DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info)
 {
+  /* Implementation of an admission policy for newly received requests. */
   if (dmgTspec.GetAllocationPeriod () != 0)
     {
       NS_FATAL_ERROR ("Multiple allocations are not supported by DmgWifiScheduler");
@@ -329,15 +360,141 @@ DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec,
   else
     {
       NS_LOG_WARN ("Allocation Format not supported");
-    }      
+    }    
+
+  if (allocDuration <= (m_nextTiming.remainingDtiTime - m_broadcastCbapDuration)) // broadcast CBAP must be present
+    {
+      m_nextTiming.startTime = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
+                                                              sourceAid, info.GetDestinationAid (), m_nextTiming.startTime, allocDuration);
+      m_nextTiming.remainingDtiTime -= allocDuration;
+      status.SetSuccess ();
+    }
+  else if ((info.GetAllocationFormat () == ISOCHRONOUS) && // check Minimum Allocation for Isochronous request
+           (dmgTspec.GetMinimumAllocation () <= (m_nextTiming.remainingDtiTime - m_broadcastCbapDuration))) 
+    {
+      m_nextTiming.startTime = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
+                                                              sourceAid, info.GetDestinationAid (), m_nextTiming.startTime, dmgTspec.GetMinimumAllocation ());
+      m_nextTiming.remainingDtiTime -= dmgTspec.GetMinimumAllocation ();
+      status.SetSuccess ();
+    }
+  else
+    {
+      /* The ADDTS request is not accepted based on the current policy */
+      status.SetFailure (); 
+    }
+
   return status;
 }
 
 StatusCode
 DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info)
 {
+  /* Implementation of an admission policy for modification requests. */
+  if (dmgTspec.GetAllocationPeriod () != 0)
+    {
+      NS_FATAL_ERROR ("Multiple allocations are not supported by DmgWifiScheduler");
+    }
+
   StatusCode status;
-  return status;
+  uint32_t newDuration;
+  if (info.GetAllocationFormat () == ISOCHRONOUS)
+    {
+      newDuration = GetAllocationDuration (dmgTspec.GetMinimumAllocation (), dmgTspec.GetMaximumAllocation ());
+    }
+  else if (info.GetAllocationFormat () == ASYNCHRONOUS)
+    {
+      /* for asynchronous allocations, the Maximum Allocation field is reserved (IEEE 802.11ad 8.4.2.136) */
+      newDuration = dmgTspec.GetMinimumAllocation ();
+    }
+  else
+    {
+      NS_LOG_WARN ("Allocation Format not supported");
+    }
+
+  AllocationFieldListI allocation;
+  /* Retrieve the allocation for which a modification has been requested */
+  for (allocation = m_addtsAllocationList.begin (); allocation != m_addtsAllocationList.end ();)
+    {
+      if ((allocation->GetAllocationID () == info.GetAllocationID ()) &&
+          (allocation->GetSourceAid () == sourceAid) && (allocation->GetDestinationAid () == info.GetDestinationAid ()))
+        {
+          break;
+        }
+      else
+        {
+          ++allocation;
+        }
+    }
+
+  uint32_t currentDuration = allocation->GetAllocationBlockDuration ();
+  uint32_t timeDifference;
+  if (newDuration > currentDuration)
+    {
+      timeDifference = newDuration - currentDuration;
+      if (timeDifference <= (m_nextTiming.remainingDtiTime - m_broadcastCbapDuration))
+        {
+          allocation->SetAllocationBlockDuration (newDuration);
+          m_nextTiming.remainingDtiTime -= timeDifference;
+          status.SetSuccess ();
+          goto reorderList;
+        }
+      if ((info.GetAllocationFormat () == ISOCHRONOUS) && (dmgTspec.GetMinimumAllocation () > currentDuration))
+        {
+          timeDifference = dmgTspec.GetMinimumAllocation () - currentDuration;
+          if (timeDifference <= (m_nextTiming.remainingDtiTime - m_broadcastCbapDuration))
+            {
+              allocation->SetAllocationBlockDuration (dmgTspec.GetMinimumAllocation ());
+              m_nextTiming.remainingDtiTime -= timeDifference;
+              status.SetSuccess ();
+            }
+          goto reorderList;
+        }
+      status.SetFailure ();
+      goto doNothing; // The request is not accepted; maintaining old allocation duration
+    }
+  else
+    {
+      timeDifference = currentDuration - newDuration;
+      allocation->SetAllocationBlockDuration (newDuration);
+      m_nextTiming.remainingDtiTime += timeDifference;
+      status.SetSuccess ();
+    }
+    uint32_t newStartTime;
+  reorderList:  
+    newStartTime = allocation->GetAllocationStart () + allocation->GetAllocationBlockDuration ();
+    for (AllocationFieldListI iter = allocation; iter != m_addtsAllocationList.end (); ++iter)
+      {
+        iter->SetAllocationStart (newStartTime);   
+        newStartTime += iter->GetAllocationBlockDuration ();
+      }
+    m_nextTiming.startTime = newStartTime;
+    return status;
+  doNothing:
+    /* no need to update next start time */ 
+    return status;
+}
+
+void
+DmgWifiScheduler::AddBroadcastCbap (void)
+{
+  if (m_addtsAllocationList.empty ())
+    {
+      /* No allocations granted with an ADDTS request are present 
+       * The entire DTI is allocated as CBAP broadcast (CbapOnly field)
+       * The global allocation list is emptied
+       */
+      m_globalAllocationList.clear ();
+      return;
+    }
+  AddBroadcastCbapAllocations (); 
+}
+
+void 
+DmgWifiScheduler::AddBroadcastCbapAllocations (void)
+{
+  /* Check if at least one broadcast CBAP is present
+   */
+  NS_ASSERT_MSG (m_broadcastCbapPresent, "At least one broadcast CBAP is needed");
 }
 
 uint32_t
@@ -399,7 +556,7 @@ DmgWifiScheduler::AddAllocationPeriod (AllocationID allocationId, AllocationType
    * When scheduling two adjacent SPs, the PCP/AP should allocate the SPs separated by at least
    * aDMGPPMinListeningTime if one or more of the source or destination DMG STAs participate in both SPs.
    */
-  m_allocationList.push_back (field);
+  m_addtsAllocationList.push_back (field);
 
   return (allocationStart + blockDuration);
 }
@@ -432,7 +589,7 @@ DmgWifiScheduler::AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t d
   bfField.SetAsResponderTxss (isResponderTxss);
 
   field.SetBfControl (bfField);
-  m_allocationList.push_back (field);
+  m_addtsAllocationList.push_back (field);
 
   return (allocationStart + allocationDuration + 1000); // 1000 = 1 us protection period
 }
@@ -440,7 +597,8 @@ DmgWifiScheduler::AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t d
 uint32_t
 DmgWifiScheduler::GetAllocationListSize (void) const
 {
-  return m_allocationList.size ();
+  /* return size of the global allocation list */
+  return m_globalAllocationList.size ();
 }
 
 void
@@ -448,12 +606,19 @@ DmgWifiScheduler::CleanupAllocations (void)
 {
   NS_LOG_FUNCTION (this);
   AllocationField allocation;
-  for(AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end ();)
+  AllocatedRequestMapI it;
+  for (AllocationFieldListI iter = m_addtsAllocationList.begin (); iter != m_addtsAllocationList.end ();)
     {
       allocation = (*iter);
-      if (!allocation.IsPseudoStatic () && iter->IsAllocationAnnounced ())
+      if (!allocation.IsPseudoStatic () && allocation.IsAllocationAnnounced ())
         {
-          iter = m_allocationList.erase (iter);
+          it = m_allocatedAddtsRequests.find (UniqueIdentifier (allocation.GetAllocationID (),
+                                                                allocation.GetSourceAid (), allocation.GetDestinationAid ()));
+          if (it != m_allocatedAddtsRequests.end ())
+            {
+              m_allocatedAddtsRequests.erase (it);
+            }
+          iter = m_addtsAllocationList.erase (iter);
         }
       else
         {

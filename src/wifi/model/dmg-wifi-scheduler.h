@@ -92,9 +92,17 @@ public:
    */
   virtual uint32_t GetAllocationDuration (uint32_t minAllocation, uint32_t maxAllocation);
   /**
+   * Add broadcast CBAP allocations in the DTI.
+   */
+  virtual void AddBroadcastCbapAllocations (void);
+  /**
    * \return The TS Delay element to be included in the ADDTS response.
    */
   virtual TsDelayElement GetTsDelayElement (void);
+  /**
+   * Update start time and remaining DTI time for the next request to be evaluated.
+   */
+  virtual void UpdateStartandRemainingTime (void);
 
 protected:
   friend class DmgApWifiMac;
@@ -193,11 +201,16 @@ protected:
    * \return The size of the current Allocation list.
    */
   uint32_t GetAllocationListSize (void) const;
+  /**
+   * The allocations have been announced in the DTI. 
+   */
+  void SetAllocationsAnnounced (void);
 
   Ptr<DmgApWifiMac> m_mac;                     //!< Pointer to the MAC high of PCP/AP.
 
   /* Access Period Allocations */
-  AllocationFieldList m_allocationList;        //!< List of access period allocations in DTI.
+  AllocationFieldList m_globalAllocationList;  //!< Global list of access period allocations in DTI.
+  AllocationFieldList m_addtsAllocationList;   //!< List of requested (ADDTS received) access period allocations in DTI.
 
 private:
   /**
@@ -241,6 +254,10 @@ private:
    * Cleanup non-static allocations.
    */
   void CleanupAllocations (void);
+  /**
+   * Allocate entire DTI as CBAP if no requested allocations are granted.
+   */
+  void AddBroadcastCbap (void);
 
   /* Channel Access Period */
   ChannelAccessPeriod m_accessPeriod;          //!< The type of the current channel access period.
@@ -254,24 +271,28 @@ private:
 
   /* Allocation */
   typedef struct {
-  uint8_t sourceAid;
-  Mac48Address sourceAddr;
-  DmgTspecElement dmgTspec;
+    uint8_t sourceAid;
+    Mac48Address sourceAddr;
+    DmgTspecElement dmgTspec;
   } AddtsRequest;
   typedef std::vector<AddtsRequest> AddtsRequestList;
   typedef AddtsRequestList::const_iterator AddtsRequestListCI;
-
   AddtsRequestList m_receiveAddtsRequests;     //!< The list containing the ADDTS requests received during the DTI.
 
   /* An allocation is uniquely identified by the tuple: Allocation Id, Source Aid, Destination Aid (802.11ad 10.4). */
   typedef std::tuple<AllocationID, uint8_t, uint8_t> UniqueIdentifier;
   typedef std::map<UniqueIdentifier, AddtsRequest> AllocatedRequestMap;
   typedef AllocatedRequestMap::iterator AllocatedRequestMapI;
-
   AllocatedRequestMap m_allocatedAddtsRequests; //!< The map containing the allocated ADDTS requests with their original allocation parameters.
 
-  uint32_t m_broadcastCbapDuration;             //!< The duration of CBAP where source and destination AIDs are set to broadcast.
+  uint32_t m_broadcastCbapDuration;             //!< The duration of a CBAP where source and destination AIDs are set to broadcast.
+  bool m_broadcastCbapPresent;                  //!< Flag to ensure the presence of at least one broadcast CBAP in the DTI.
 
+  typedef struct {
+    uint32_t startTime;
+    uint32_t remainingDtiTime;
+  } NextAllocationTiming;
+  NextAllocationTiming m_nextTiming;            //!< Store the next start time and remaining DTI time.
 };
 
 } // namespace ns3
