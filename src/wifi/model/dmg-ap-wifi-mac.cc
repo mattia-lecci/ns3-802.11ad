@@ -1213,6 +1213,7 @@ DmgApWifiMac::StartDataTransmissionInterval (void)
   else
     {
       m_allocationList = m_dmgScheduler->GetAllocationList ();
+      m_dmgScheduler->SetAllocationsAnnounced ();
       AllocationField field;
       for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
         {
@@ -1290,7 +1291,6 @@ DmgApWifiMac::StartDataTransmissionInterval (void)
                                    field.GetAllocationID (), MicroSeconds (field.GetAllocationBlockDuration ()));
             }
         }
-      m_dmgScheduler->SetAllocationList (m_allocationList);
     }
 }
 
