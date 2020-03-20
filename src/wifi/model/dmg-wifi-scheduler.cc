@@ -467,14 +467,13 @@ DmgWifiScheduler::ModifyAllocation (AllocationID allocationId, uint8_t sourceAid
                                     uint32_t newStartTime, uint16_t newDuration)
 {
   NS_LOG_FUNCTION (this << +allocationId << +sourceAid << +destAid << newStartTime << newDuration);
-  for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
+  for (AllocationFieldListI iter = m_addtsAllocationList.begin (); iter != m_addtsAllocationList.end (); iter++)
     {
-      AllocationField field = (*iter);
-      if ((field.GetAllocationID () == allocationId) &&
-          (field.GetSourceAid () == sourceAid) && (field.GetDestinationAid () == destAid))
+      if ((iter->GetAllocationID () == allocationId) &&
+          (iter->GetSourceAid () == sourceAid) && (iter->GetDestinationAid () == destAid))
         {
-          field.SetAllocationStart (newStartTime);
-          field.SetAllocationBlockDuration (newDuration);
+          iter->SetAllocationStart (newStartTime);
+          iter->SetAllocationBlockDuration (newDuration);
           break;
         }
     }
