@@ -40,14 +40,19 @@ TypeId
 DmgWifiScheduler::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::DmgWifiScheduler")
-                      .SetParent<Object> ()
-                      .SetGroupName ("Wifi")
-                      .AddConstructor<DmgWifiScheduler> ()
+      .SetParent<Object> ()
+      .SetGroupName ("Wifi")
+      .AddConstructor<DmgWifiScheduler> ()
 
-                      .AddAttribute ("BroadcastCbapDuration", "The minimum duration of a broadcast CBAP in the DTI",
-                                     UintegerValue (2528),
-                                     MakeUintegerAccessor (&DmgWifiScheduler::m_broadcastCbapDuration),
-                                     MakeUintegerChecker<uint32_t> ())
+      .AddAttribute ("MinBroadcastCbapDuration", "The minimum duration of a broadcast CBAP in the DTI",
+                     UintegerValue (4096),
+                     MakeUintegerAccessor (&DmgWifiScheduler::m_minBroadcastCbapDuration),
+                     MakeUintegerChecker<uint32_t> ())
+      .AddAttribute ("InterAllocationDistance", "The time distance between two adjacent allocations "
+                     "This distance will be allocated as broadcast CBAP",
+                     UintegerValue (0),
+                     MakeUintegerAccessor (&DmgWifiScheduler::m_interAllocationDistance),
+                     MakeUintegerChecker<uint32_t> ())
   ;
   return tid;
 }

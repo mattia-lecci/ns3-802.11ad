@@ -293,7 +293,8 @@ private:
   typedef AllocatedRequestMap::iterator AllocatedRequestMapI;
   AllocatedRequestMap m_allocatedAddtsRequests; //!< The map containing the allocated ADDTS requests with their original allocation parameters.
 
-  uint32_t m_broadcastCbapDuration;             //!< The duration of a CBAP where source and destination AIDs are set to broadcast.
+  uint32_t m_minBroadcastCbapDuration;          //!< The minimum duration of a broadcast CBAP to be present in the DTI.
+  uint32_t m_interAllocationDistance;           //!< The distance between two allocations to be used as broadcast CBAP.
   bool m_isAddtsAccepted;                       //!< An ADDTS request received in the last DTI has been accepted.
   bool m_isNonStatic;                           //!< A non-static allocation has been served in the last DTI.
   bool m_isDeltsReceived;                       //!< A DELTS request has been received in the last DTI. 
