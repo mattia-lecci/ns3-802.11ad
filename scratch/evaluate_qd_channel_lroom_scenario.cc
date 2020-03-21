@@ -190,33 +190,60 @@ CongStateTrace (TcpSocketState::TcpCongState_t oldState, TcpSocketState::TcpCong
   NS_LOG_DEBUG ("Old State: " << oldState << ", New State: " << newState); 
 }
 
+DmgTspecElement
+GetDmgTspecElement (uint32_t minAllocation, uint32_t maxAllocation)
+{
+  DmgTspecElement element;
+  DmgAllocationInfo info;
+  info.SetAllocationID (1);
+  info.SetAllocationType (SERVICE_PERIOD_ALLOCATION);
+  info.SetAllocationFormat (ISOCHRONOUS);
+  info.SetAsPseudoStatic (true);
+  info.SetDestinationAid (AID_AP);
+  element.SetDmgAllocationInfo (info);
+  element.SetMinimumAllocation (minAllocation);
+  element.SetMaximumAllocation (maxAllocation);
+  element.SetMinimumDuration (minAllocation);
+  return element;
+} 
+
 void
-StationAssociated (Ptr<DmgWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
+StationAssociated (Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
 {
   if (!csv)
     {
       std::cout << "DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
                 << ", Association ID (AID) = " << aid << std::endl;
     }
-  appStartTime = Simulator::Now ();
-  if (applicationType == "onoff")
+    staWifiMac->CreateAllocation (GetDmgTspecElement (10000, 10000));
+}
+
+void
+ADDTSResponseReceived (Mac48Address address, StatusCode status, DmgTspecElement element)
+{
+  NS_LOG_DEBUG (address << " Received ADDTS response with status: " << status.IsSuccess ());
+  if (status.IsSuccess ())
     {
-      onoff->StartApplication ();
-      /* Connect to TCP traces */
-      if (socketType == "ns3::TcpSocketFactory")
+      appStartTime = Simulator::Now ();
+      if (applicationType == "onoff")
         {
-          onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
-          onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+          onoff->StartApplication ();
+          /* Connect to TCP traces */
+          if (socketType == "ns3::TcpSocketFactory")
+            {
+              onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+              onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+            }
         }
-    }
-  else
-    {
-      bulk->StartApplication ();
-      /* Connect to TCP traces */
-      if (socketType == "ns3::TcpSocketFactory")
+      else
         {
-          bulk->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
-          bulk->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+          bulk->StartApplication ();
+          /* Connect to TCP traces */
+          if (socketType == "ns3::TcpSocketFactory")
+            {
+              bulk->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+              bulk->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+            }
         }
     }
 }
@@ -543,6 +570,7 @@ main (int argc, char *argv[])
   parametersSta->wifiMac = staWifiMac;
   staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, staWifiMac));
   staWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, outputSlsPhase, parametersSta));
+  staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeCallback (&ADDTSResponseReceived));
   staWifiPhy->TraceConnectWithoutContext ("PhyTxEnd", MakeCallback (&PhyTxEnd));
   staRemoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeCallback (&MacTxDataFailed));
 
