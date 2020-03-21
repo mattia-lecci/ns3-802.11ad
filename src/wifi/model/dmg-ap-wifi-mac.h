@@ -157,7 +157,7 @@ public:
    * \param delayElem The TS Delay element.
    * \param elem The TSPEC element.
    */
-  void SendDmgAddTsResponse (Mac48Address to, StatusCode code, TsDelayElement &delayElem, DmgTspecElement &elem);
+  void SendDmgAddTsResponse (Mac48Address to, StatusCode code, TsDelayElement delayElem, DmgTspecElement elem);
   /**
    * Get list of dynamic allocation info in the SPRs received during polling period.
    * \return
@@ -184,6 +184,7 @@ public:
 
 protected:
   friend class DmgBeaconDca;
+  friend class DmgWifiScheduler;
   Time GetBTIRemainingTime (void) const;
   /**
    * Start monitoring Beacon SP for DMG Beacons.
@@ -209,6 +210,7 @@ protected:
    */
   Ptr<DmgCapabilities> GetDmgCapabilities (void) const;
 
+  void StartBeaconInterval (void);
   /**
    * Dmg Scheduler to be used by the PCP/AP.
    */
@@ -218,7 +220,6 @@ private:
   virtual void DoDispose (void);
   virtual void DoInitialize (void);
 
-  void StartBeaconInterval (void);
   void EndBeaconInterval (void);
   void StartBeaconTransmissionInterval (void);
   void StartAssociationBeamformTraining (void);

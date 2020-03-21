@@ -195,6 +195,7 @@ DmgWifiScheduler::BeaconIntervalEnded (void)
       /* Start and remaining DTI times are updated according to the allocated requests */
     }
   AddBroadcastCbap ();
+  m_mac->StartBeaconInterval ();
 }
 
 void

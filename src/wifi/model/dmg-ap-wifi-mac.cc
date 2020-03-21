@@ -524,6 +524,7 @@ DmgApWifiMac::ContinueBeamformingInDTI (void)
 void
 DmgApWifiMac::CalculateBTIVariables (void)
 {
+  NS_LOG_FUNCTION (this);
   /* Make DMG Beacon Template with minimum settings to calculate its duration */
   Ptr<Packet> packet = Create<Packet> ();
   ExtDMGBeacon beacon;
@@ -700,7 +701,7 @@ DmgApWifiMac::SendOneDMGBeacon (void)
 }
 
 void
-DmgApWifiMac::SendDmgAddTsResponse (Mac48Address to, StatusCode code, TsDelayElement &delayElem, DmgTspecElement &elem)
+DmgApWifiMac::SendDmgAddTsResponse (Mac48Address to, StatusCode code, TsDelayElement delayElem, DmgTspecElement elem)
 {
   NS_LOG_FUNCTION (this << to << code);
   WifiMacHeader hdr;
@@ -1011,7 +1012,8 @@ DmgApWifiMac::EndBeaconInterval (void)
   NS_LOG_FUNCTION (this);
   NS_LOG_INFO ("DMG AP Ending BI at " << Simulator::Now ());
   /* Start New Beacon Interval */
-  StartBeaconInterval ();
+  /* Start beacon interval from DmgWifiScheduler */
+  //StartBeaconInterval ();
 }
 
 void
