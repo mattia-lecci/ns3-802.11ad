@@ -61,6 +61,7 @@ DmgWifiScheduler::DmgWifiScheduler ()
 {
   NS_LOG_FUNCTION (this);
   m_isAddtsAccepted = false;
+  m_isAllocationModified = false;
   m_isNonStatic = false;
   m_isDeltsReceived = false;
 }
@@ -306,7 +307,7 @@ DmgWifiScheduler::ManageAddtsRequests (void)
               /* The modification request has been accepted
                * Replace the accepted ADDTS request in the allocated requests */
               m_allocatedAddtsRequests.at (it->first) = (*iter);
-              m_isAddtsAccepted = true;
+              m_isAllocationModified = true;
             }
         }
       else
@@ -509,12 +510,15 @@ DmgWifiScheduler::AddBroadcastCbap (void)
        * The global allocation list is emptied
        */
       m_globalAllocationList.clear ();
+      m_isNonStatic = false;
+      m_isDeltsReceived = false;
       return;
     }
-  if (m_isAddtsAccepted || m_isNonStatic || m_isDeltsReceived)
+  if (m_isAddtsAccepted || m_isAllocationModified || m_isNonStatic || m_isDeltsReceived)
     {
       AddBroadcastCbapAllocations (); 
       m_isAddtsAccepted = false;
+      m_isAllocationModified = false;
       m_isNonStatic = false;
       m_isDeltsReceived = false;
     }  
@@ -523,21 +527,24 @@ DmgWifiScheduler::AddBroadcastCbap (void)
 void 
 DmgWifiScheduler::AddBroadcastCbapAllocations (void)
 {
-  bool broadcastCbapPresent = false;
+  uint32_t totalBroadcastCbapTime = 0;
   /* Addts allocation list is copied to the Global allocation list */
   m_globalAllocationList = m_addtsAllocationList;
-  uint32_t startDuration, nextStart, remainingDti;
+  uint32_t start, nextStart;
   AllocationFieldListI iter = m_globalAllocationList.begin ();
   AllocationFieldListI nextIter = iter + 1;
   while (nextIter != m_globalAllocationList.end ())
     {
-      startDuration = iter->GetAllocationStart () + iter->GetAllocationBlockDuration ();
+      start = iter->GetAllocationStart () + iter->GetAllocationBlockDuration ();
       nextStart = nextIter->GetAllocationStart ();
-      if (startDuration != nextStart) // here the decision to place a broadcast CBAP among allocated requests
+      if ((m_schedulingTime.remainingDtiTime >= m_interAllocationDistance)
+          && (m_interAllocationDistance > 0)) // here the decision to place a broadcast CBAP among allocated requests
         {
-          iter = m_globalAllocationList.insert (nextIter, GetBroadcastCbapAllocation (true, startDuration, nextStart - startDuration));
+          iter = m_globalAllocationList.insert (nextIter, GetBroadcastCbapAllocation (true, start, m_interAllocationDistance));
+          nextIter->SetAllocationStart (nextStart + m_interAllocationDistance);
           nextIter = ++iter + 1;
-          broadcastCbapPresent = true;
+          totalBroadcastCbapTime += m_interAllocationDistance;
+          m_schedulingTime.remainingDtiTime -= m_interAllocationDistance;
         }
       else
         {
@@ -548,15 +555,15 @@ DmgWifiScheduler::AddBroadcastCbapAllocations (void)
   /* iter points to the last element of Global allocation list (i.e. last element of Addts allocation list)
    * Check the presence of remaining DTI time to be allocated as broadcast CBAP
    */
-  startDuration = iter->GetAllocationStart () + iter->GetAllocationBlockDuration ();
-  remainingDti = m_dtiDuration.GetMicroSeconds () - startDuration;
-  if (remainingDti > 0)
+  start = iter->GetAllocationStart () + iter->GetAllocationBlockDuration ();
+  if (m_schedulingTime.remainingDtiTime > 0)
     {
-      m_globalAllocationList.push_back (GetBroadcastCbapAllocation (true, startDuration, remainingDti));
-      broadcastCbapPresent = true;
+      m_globalAllocationList.push_back (GetBroadcastCbapAllocation (true, start, m_schedulingTime.remainingDtiTime));
+      totalBroadcastCbapTime += m_schedulingTime.remainingDtiTime;
     }
   /* Check if at least one broadcast CBAP is present */
-  NS_ASSERT_MSG (broadcastCbapPresent, "At least one broadcast CBAP is needed");
+  NS_ASSERT_MSG ((totalBroadcastCbapTime >= m_minBroadcastCbapDuration),
+                 "The overall broadcast CBAP time needed is " << m_minBroadcastCbapDuration);
 }
 
 AllocationField
