@@ -263,7 +263,7 @@ private:
    * \param blockDuration The duration of the allocation.
    * \return The broadcast CBAP allocation field.
    */
-  AllocationField GetBroadcastCbapAllocation (bool staticAllocation, uint32_t allocationStart, uint16_t blockDuration);
+  AllocationFieldList GetBroadcastCbapAllocation (bool staticAllocation, uint32_t allocationStart, uint32_t blockDuration);
   /**
    * Cleanup non-static allocations.
    */
@@ -311,6 +311,7 @@ private:
     uint32_t remainingDtiTime;
   } NextAllocationTiming;
   NextAllocationTiming m_schedulingTime;        //!< Store the next start time and remaining DTI time.
+  uint32_t m_guardTime;                         //!< The guard time between allocations in us.
 };
 
 } // namespace ns3

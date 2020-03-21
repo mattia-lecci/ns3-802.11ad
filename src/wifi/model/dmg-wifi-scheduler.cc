@@ -52,7 +52,7 @@ DmgWifiScheduler::GetTypeId (void)
                      "This distance will be allocated as broadcast CBAP",
                      UintegerValue (0),
                      MakeUintegerAccessor (&DmgWifiScheduler::m_interAllocationDistance),
-                     MakeUintegerChecker<uint32_t> ())
+                     MakeUintegerChecker<uint32_t> (0, 65535))
   ;
   return tid;
 }
@@ -64,6 +64,7 @@ DmgWifiScheduler::DmgWifiScheduler ()
   m_isAllocationModified = false;
   m_isNonStatic = false;
   m_isDeltsReceived = false;
+  m_guardTime = GUARD_TIME.GetMicroSeconds ();
 }
 
 DmgWifiScheduler::~DmgWifiScheduler ()
@@ -343,8 +344,8 @@ DmgWifiScheduler::UpdateStartandRemainingTime (void)
     {
       /* At least one allocation. Get last one */
       AllocationField lastAllocation = m_addtsAllocationList.back ();
-      m_schedulingTime.startTime = lastAllocation.GetAllocationStart () + lastAllocation.GetAllocationBlockDuration ();
-      m_schedulingTime.remainingDtiTime = m_dtiDuration.GetMicroSeconds () - m_schedulingTime.startTime;
+      m_schedulingTime.startTime = lastAllocation.GetAllocationStart () + lastAllocation.GetAllocationBlockDuration () + m_guardTime;
+      m_schedulingTime.remainingDtiTime = m_dtiDuration.GetMicroSeconds () - m_schedulingTime.startTime - m_guardTime;
     }
 }
 
@@ -353,7 +354,7 @@ DmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, Allocati
 {
   for (AllocationFieldListI nextAlloc = iter; nextAlloc != m_addtsAllocationList.end (); ++nextAlloc)
     {
-      nextAlloc->SetAllocationStart (nextAlloc->GetAllocationStart () - removedAlloc.GetAllocationBlockDuration ());
+      nextAlloc->SetAllocationStart (nextAlloc->GetAllocationStart () - removedAlloc.GetAllocationBlockDuration () - m_guardTime);
     }
 }
 
@@ -392,7 +393,7 @@ DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec,
     {
       m_schedulingTime.startTime = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
                                                                   sourceAid, info.GetDestinationAid (), m_schedulingTime.startTime, allocDuration);
-      m_schedulingTime.remainingDtiTime -= allocDuration;
+      m_schedulingTime.remainingDtiTime -= (allocDuration + m_guardTime);
       status.SetSuccess ();
     }
   else if ((info.GetAllocationFormat () == ISOCHRONOUS) && // check Minimum Allocation for Isochronous request
@@ -401,7 +402,7 @@ DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec,
       m_schedulingTime.startTime = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
                                                                   sourceAid, info.GetDestinationAid (), m_schedulingTime.startTime, 
                                                                   dmgTspec.GetMinimumAllocation ());
-      m_schedulingTime.remainingDtiTime -= dmgTspec.GetMinimumAllocation ();
+      m_schedulingTime.remainingDtiTime -= (dmgTspec.GetMinimumAllocation () + m_guardTime);
       status.SetSuccess ();
     }
   else
@@ -488,11 +489,11 @@ DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement d
     }
     uint32_t newStartTime;
   reorderList:  
-    newStartTime = allocation->GetAllocationStart () + allocation->GetAllocationBlockDuration ();
+    newStartTime = allocation->GetAllocationStart () + allocation->GetAllocationBlockDuration () + m_guardTime;
     for (AllocationFieldListI iter = ++allocation; iter != m_addtsAllocationList.end (); ++iter)
       {
         iter->SetAllocationStart (newStartTime);   
-        newStartTime += iter->GetAllocationBlockDuration ();
+        newStartTime += iter->GetAllocationBlockDuration () + m_guardTime;
       }
     m_schedulingTime.startTime = newStartTime;
     return status;
@@ -531,21 +532,24 @@ DmgWifiScheduler::AddBroadcastCbapAllocations (void)
   uint32_t totalBroadcastCbapTime = 0;
   /* Addts allocation list is copied to the Global allocation list */
   m_globalAllocationList = m_addtsAllocationList;
+  AllocationFieldList broadcastCbapList;
   uint32_t start, nextStart;
   AllocationFieldListI iter = m_globalAllocationList.begin ();
   AllocationFieldListI nextIter = iter + 1;
   while (nextIter != m_globalAllocationList.end ())
     {
-      start = iter->GetAllocationStart () + iter->GetAllocationBlockDuration ();
-      nextStart = nextIter->GetAllocationStart ();
+      start = iter->GetAllocationStart () + iter->GetAllocationBlockDuration () + m_guardTime;
+      nextStart = nextIter->GetAllocationStart () + m_guardTime;
       if ((m_schedulingTime.remainingDtiTime >= m_interAllocationDistance)
           && (m_interAllocationDistance > 0)) // here the decision to place a broadcast CBAP among allocated requests
         {
-          iter = m_globalAllocationList.insert (nextIter, GetBroadcastCbapAllocation (true, start, m_interAllocationDistance));
-          nextIter->SetAllocationStart (nextStart + m_interAllocationDistance);
-          nextIter = ++iter + 1;
+          broadcastCbapList = GetBroadcastCbapAllocation (true, start, m_interAllocationDistance);
+          iter = m_globalAllocationList.insert (nextIter, broadcastCbapList.begin (), broadcastCbapList.end ());
+          iter += broadcastCbapList.size ();
+          iter->SetAllocationStart (nextStart + m_interAllocationDistance);
+          nextIter = iter + 1;
           totalBroadcastCbapTime += m_interAllocationDistance;
-          m_schedulingTime.remainingDtiTime -= m_interAllocationDistance;
+          m_schedulingTime.remainingDtiTime -= (m_interAllocationDistance + m_guardTime);
         }
       else
         {
@@ -556,34 +560,52 @@ DmgWifiScheduler::AddBroadcastCbapAllocations (void)
   /* iter points to the last element of Global allocation list (i.e. last element of Addts allocation list)
    * Check the presence of remaining DTI time to be allocated as broadcast CBAP
    */
-  start = iter->GetAllocationStart () + iter->GetAllocationBlockDuration ();
-  if (m_schedulingTime.remainingDtiTime > 0)
+  start = iter->GetAllocationStart () + iter->GetAllocationBlockDuration () + m_guardTime;
+  if (m_schedulingTime.remainingDtiTime > m_guardTime)
     {
-      m_globalAllocationList.push_back (GetBroadcastCbapAllocation (true, start, m_schedulingTime.remainingDtiTime));
+      broadcastCbapList = GetBroadcastCbapAllocation (true, start, m_schedulingTime.remainingDtiTime - m_guardTime);
+      iter = m_globalAllocationList.insert (m_globalAllocationList.end (), broadcastCbapList.begin (), broadcastCbapList.end ());
+      iter += broadcastCbapList.size () - 1;
       totalBroadcastCbapTime += m_schedulingTime.remainingDtiTime;
     }
   /* Check if at least one broadcast CBAP is present */
   NS_ASSERT_MSG ((totalBroadcastCbapTime >= m_minBroadcastCbapDuration),
                  "The overall broadcast CBAP time needed is " << m_minBroadcastCbapDuration);
+  /* Check DTI fully allocated */
+  NS_ASSERT_MSG ((iter->GetAllocationStart () + iter->GetAllocationBlockDuration () + m_guardTime) == m_dtiDuration.GetMicroSeconds (),
+                 "The DTI is not totally allocated");
 }
 
-AllocationField
-DmgWifiScheduler::GetBroadcastCbapAllocation (bool staticAllocation, uint32_t allocationStart, uint16_t blockDuration)
+AllocationFieldList
+DmgWifiScheduler::GetBroadcastCbapAllocation (bool staticAllocation, uint32_t allocationStart, uint32_t blockDuration)
 {
+  uint16_t numberCbapBlocks = blockDuration / MAX_CBAP_BLOCK_DURATION;
+  uint16_t lastCbapLegnth = blockDuration % MAX_CBAP_BLOCK_DURATION;
+  AllocationFieldList list;
   AllocationField field;
-  /* Allocation Control Field */
   field.SetAllocationID (0);
   field.SetAllocationType (CBAP_ALLOCATION);
   field.SetAsPseudoStatic (staticAllocation);
-  /* Allocation Field */
   field.SetSourceAid (AID_BROADCAST);
   field.SetDestinationAid (AID_BROADCAST);
-  field.SetAllocationStart (allocationStart);
-  field.SetAllocationBlockDuration (blockDuration);
   field.SetAllocationBlockPeriod (0);
   field.SetNumberOfBlocks (1);
 
-  return field;
+  for (uint16_t i = 0; i < numberCbapBlocks; ++i)
+    {
+      field.SetAllocationStart (allocationStart);
+      field.SetAllocationBlockDuration (MAX_CBAP_BLOCK_DURATION);
+      allocationStart += MAX_CBAP_BLOCK_DURATION;
+      list.push_back (field);
+    }
+  if (lastCbapLegnth > 0)
+    {
+      field.SetAllocationStart (allocationStart);
+      field.SetAllocationBlockDuration (lastCbapLegnth);
+      list.push_back (field);
+    }
+
+  return list;
 }
 
 uint32_t
@@ -647,7 +669,7 @@ DmgWifiScheduler::AddAllocationPeriod (AllocationID allocationId, AllocationType
    */
   m_addtsAllocationList.push_back (field);
 
-  return (allocationStart + blockDuration);
+  return (allocationStart + blockDuration + m_guardTime);
 }
 
 uint32_t
