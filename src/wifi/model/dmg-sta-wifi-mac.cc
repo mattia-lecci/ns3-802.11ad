@@ -199,6 +199,9 @@ DmgStaWifiMac::GetTypeId (void)
                      "The BeamLink maintenance timer associated to a link has expired.",
                      MakeTraceSourceAccessor (&DmgStaWifiMac::m_beamLinkMaintenanceTimerExpired),
                      "ns3::DmgStaWifiMac::BeamLinkMaintenanceTimerExpiredTracedCallback")
+    .AddTraceSource ("ADDTSResponse", "Received an ADDTS response from PCP/AP.",
+                     MakeTraceSourceAccessor (&DmgStaWifiMac::m_addtsResponseReceived),
+                     "ns3::DmgStaWifiMac::AddtsResponseTracedCallback")
   ;
   return tid;
 }
@@ -2643,6 +2646,7 @@ DmgStaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               {
                 DmgAddTSResponseFrame frame;
                 packet->RemoveHeader (frame);
+                m_addtsResponseReceived (GetAddress (), frame.GetStatusCode (), frame.GetDmgTspec ());
                 /* Contain modified airtime allocation */
                 if (frame.GetStatusCode ().IsSuccess ())
                   {

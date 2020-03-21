@@ -629,6 +629,14 @@ private:
   RELAY_LINK_MAP m_relayLinkMap;                                //!< List to store information related to relay links.
   RELAY_LINK_INFO m_relayLinkInfo;                              //!< Information about the relay link being established.
 
+    /**
+   * TracedCallback signature for an ADDTS response received.
+   *
+   * \param address The MAC address of the station.
+   * \param transmissionLink The new transmission link.
+   */
+  typedef void (* AddtsResponseTracedCallback)(Mac48Address address, StatusCode status, DmgTspecElement dmgTspec);
+  TracedCallback<Mac48Address, StatusCode, DmgTspecElement> m_addtsResponseReceived;
   /**
    * TracedCallback signature for transmission link change event.
    *
