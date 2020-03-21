@@ -181,11 +181,17 @@ DmgWifiScheduler::BeaconIntervalEnded (void)
   NS_LOG_INFO ("Beacon Interval ended at " << Simulator::Now ());
   /* Cleanup non-static allocations */
   CleanupAllocations ();
+  /* Update start and remaining DTI times
+   * This update here takes into account the possible cleanup of non-static allocations
+   * and the possible reception of DELTS requests
+   */
+  UpdateStartandRemainingTime ();
   /* Do something with the ADDTS requests received in the last DTI (if any) */
   if (!m_receiveAddtsRequests.empty ())
     {
       /* At least one ADDTS request has been received */
-      ManageAddtsRequests (); 
+      ManageAddtsRequests ();
+      /* Start and remaining DTI times are updated according to the allocated requests */
     }
   AddBroadcastCbap ();
 }
@@ -210,7 +216,10 @@ DmgWifiScheduler::ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo i
               (allocation.GetSourceAid () == stationAid) &&
               (allocation.GetDestinationAid () == info.GetDestinationAid ()))
             {
+              m_isDeltsReceived = true;
               iter = m_addtsAllocationList.erase (iter);
+              /* Adjust the other allocations in addtsAllocationList */
+              AdjustExistingAllocations (iter, allocation);
               break;
             }
           else
@@ -274,9 +283,6 @@ DmgWifiScheduler::ManageAddtsRequests (void)
    */
   NS_LOG_FUNCTION (this);
 
-  /* Update start and remaining DTI time for the next request */
-  UpdateStartandRemainingTime ();
-
   DmgTspecElement dmgTspec;
   DmgAllocationInfo info;
   StatusCode status;
@@ -328,15 +334,24 @@ DmgWifiScheduler::UpdateStartandRemainingTime (void)
   if (m_addtsAllocationList.empty ())
     {
       /* No existing allocations */
-      m_nextTiming.startTime = 0;
-      m_nextTiming.remainingDtiTime = m_dtiDuration.GetMicroSeconds ();
+      m_schedulingTime.startTime = 0;
+      m_schedulingTime.remainingDtiTime = m_dtiDuration.GetMicroSeconds ();
     }
   else
     {
       /* At least one allocation. Get last one */
       AllocationField lastAllocation = m_addtsAllocationList.back ();
-      m_nextTiming.startTime = lastAllocation.GetAllocationStart () + lastAllocation.GetAllocationBlockDuration ();
-      m_nextTiming.remainingDtiTime = m_dtiDuration.GetMicroSeconds () - m_nextTiming.startTime;
+      m_schedulingTime.startTime = lastAllocation.GetAllocationStart () + lastAllocation.GetAllocationBlockDuration ();
+      m_schedulingTime.remainingDtiTime = m_dtiDuration.GetMicroSeconds () - m_schedulingTime.startTime;
+    }
+}
+
+void
+DmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, AllocationField removedAlloc)
+{
+  for (AllocationFieldListI nextAlloc = iter; nextAlloc != m_addtsAllocationList.end (); ++nextAlloc)
+    {
+      nextAlloc->SetAllocationStart (nextAlloc->GetAllocationStart () - removedAlloc.GetAllocationBlockDuration ());
     }
 }
 
@@ -371,19 +386,20 @@ DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec,
       NS_LOG_WARN ("Allocation Format not supported");
     }    
 
-  if (allocDuration <= (m_nextTiming.remainingDtiTime - m_broadcastCbapDuration)) // broadcast CBAP must be present
+  if (allocDuration <= (m_schedulingTime.remainingDtiTime - m_minBroadcastCbapDuration)) // broadcast CBAP must be present
     {
-      m_nextTiming.startTime = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
-                                                              sourceAid, info.GetDestinationAid (), m_nextTiming.startTime, allocDuration);
-      m_nextTiming.remainingDtiTime -= allocDuration;
+      m_schedulingTime.startTime = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
+                                                                  sourceAid, info.GetDestinationAid (), m_schedulingTime.startTime, allocDuration);
+      m_schedulingTime.remainingDtiTime -= allocDuration;
       status.SetSuccess ();
     }
   else if ((info.GetAllocationFormat () == ISOCHRONOUS) && // check Minimum Allocation for Isochronous request
-           (dmgTspec.GetMinimumAllocation () <= (m_nextTiming.remainingDtiTime - m_broadcastCbapDuration))) 
+           (dmgTspec.GetMinimumAllocation () <= (m_schedulingTime.remainingDtiTime - m_minBroadcastCbapDuration))) 
     {
-      m_nextTiming.startTime = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
-                                                              sourceAid, info.GetDestinationAid (), m_nextTiming.startTime, dmgTspec.GetMinimumAllocation ());
-      m_nextTiming.remainingDtiTime -= dmgTspec.GetMinimumAllocation ();
+      m_schedulingTime.startTime = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
+                                                                  sourceAid, info.GetDestinationAid (), m_schedulingTime.startTime, 
+                                                                  dmgTspec.GetMinimumAllocation ());
+      m_schedulingTime.remainingDtiTime -= dmgTspec.GetMinimumAllocation ();
       status.SetSuccess ();
     }
   else
@@ -440,20 +456,20 @@ DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement d
   if (newDuration > currentDuration)
     {
       timeDifference = newDuration - currentDuration;
-      if (timeDifference <= (m_nextTiming.remainingDtiTime - m_broadcastCbapDuration))
+      if (timeDifference <= (m_schedulingTime.remainingDtiTime - m_minBroadcastCbapDuration))
         {
           allocation->SetAllocationBlockDuration (newDuration);
-          m_nextTiming.remainingDtiTime -= timeDifference;
+          m_schedulingTime.remainingDtiTime -= timeDifference;
           status.SetSuccess ();
           goto reorderList;
         }
       if ((info.GetAllocationFormat () == ISOCHRONOUS) && (dmgTspec.GetMinimumAllocation () > currentDuration))
         {
           timeDifference = dmgTspec.GetMinimumAllocation () - currentDuration;
-          if (timeDifference <= (m_nextTiming.remainingDtiTime - m_broadcastCbapDuration))
+          if (timeDifference <= (m_schedulingTime.remainingDtiTime - m_minBroadcastCbapDuration))
             {
               allocation->SetAllocationBlockDuration (dmgTspec.GetMinimumAllocation ());
-              m_nextTiming.remainingDtiTime -= timeDifference;
+              m_schedulingTime.remainingDtiTime -= timeDifference;
               status.SetSuccess ();
             }
           goto reorderList;
@@ -465,18 +481,18 @@ DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement d
     {
       timeDifference = currentDuration - newDuration;
       allocation->SetAllocationBlockDuration (newDuration);
-      m_nextTiming.remainingDtiTime += timeDifference;
+      m_schedulingTime.remainingDtiTime += timeDifference;
       status.SetSuccess ();
     }
     uint32_t newStartTime;
   reorderList:  
     newStartTime = allocation->GetAllocationStart () + allocation->GetAllocationBlockDuration ();
-    for (AllocationFieldListI iter = allocation; iter != m_addtsAllocationList.end (); ++iter)
+    for (AllocationFieldListI iter = ++allocation; iter != m_addtsAllocationList.end (); ++iter)
       {
         iter->SetAllocationStart (newStartTime);   
         newStartTime += iter->GetAllocationBlockDuration ();
       }
-    m_nextTiming.startTime = newStartTime;
+    m_schedulingTime.startTime = newStartTime;
     return status;
   doNothing:
     /* no need to update next start time */ 
@@ -685,6 +701,7 @@ DmgWifiScheduler::CleanupAllocations (void)
               m_allocatedAddtsRequests.erase (it);
             }
           iter = m_addtsAllocationList.erase (iter);
+          AdjustExistingAllocations (iter, allocation);
         }
       else
         {

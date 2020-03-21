@@ -103,6 +103,12 @@ public:
    * Update start time and remaining DTI time for the next request to be evaluated.
    */
   virtual void UpdateStartandRemainingTime (void);
+  /**
+   * Adjust the existing allocations when an allocation is removed from the list.
+   * \param iter The iterator pointing to the next element in the addtsAllocationList.
+   * \param removedAlloc The removed allocation information.
+   */
+  virtual void AdjustExistingAllocations (AllocationFieldListI iter, AllocationField removedAlloc);
 
 protected:
   friend class DmgApWifiMac;
@@ -303,7 +309,7 @@ private:
     uint32_t startTime;
     uint32_t remainingDtiTime;
   } NextAllocationTiming;
-  NextAllocationTiming m_nextTiming;            //!< Store the next start time and remaining DTI time.
+  NextAllocationTiming m_schedulingTime;        //!< Store the next start time and remaining DTI time.
 };
 
 } // namespace ns3
