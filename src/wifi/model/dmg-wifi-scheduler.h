@@ -251,6 +251,14 @@ private:
   void ModifyAllocation (AllocationID allocationId, uint8_t sourceAid, uint8_t destAid, 
                          uint32_t newStartTime, uint16_t newDuration);
   /**
+   * Creates a broadcast CBAP allocation field.
+   * \param staticAllocation Is the allocation static.
+   * \param allocationStart The starting time of the allocation.
+   * \param blockDuration The duration of the allocation.
+   * \return The broadcast CBAP allocation field.
+   */
+  AllocationField GetBroadcastCbapAllocation (bool staticAllocation, uint32_t allocationStart, uint16_t blockDuration);
+  /**
    * Cleanup non-static allocations.
    */
   void CleanupAllocations (void);
@@ -286,7 +294,9 @@ private:
   AllocatedRequestMap m_allocatedAddtsRequests; //!< The map containing the allocated ADDTS requests with their original allocation parameters.
 
   uint32_t m_broadcastCbapDuration;             //!< The duration of a CBAP where source and destination AIDs are set to broadcast.
-  bool m_broadcastCbapPresent;                  //!< Flag to ensure the presence of at least one broadcast CBAP in the DTI.
+  bool m_isAddtsAccepted;                       //!< An ADDTS request received in the last DTI has been accepted.
+  bool m_isNonStatic;                           //!< A non-static allocation has been served in the last DTI.
+  bool m_isDeltsReceived;                       //!< A DELTS request has been received in the last DTI. 
 
   typedef struct {
     uint32_t startTime;

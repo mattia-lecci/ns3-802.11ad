@@ -55,7 +55,9 @@ DmgWifiScheduler::GetTypeId (void)
 DmgWifiScheduler::DmgWifiScheduler ()
 {
   NS_LOG_FUNCTION (this);
-  m_broadcastCbapPresent = false;
+  m_isAddtsAccepted = false;
+  m_isNonStatic = false;
+  m_isDeltsReceived = false;
 }
 
 DmgWifiScheduler::~DmgWifiScheduler ()
@@ -293,6 +295,7 @@ DmgWifiScheduler::ManageAddtsRequests (void)
               /* The modification request has been accepted
                * Replace the accepted ADDTS request in the allocated requests */
               m_allocatedAddtsRequests.at (it->first) = (*iter);
+              m_isAddtsAccepted = true;
             }
         }
       else
@@ -304,6 +307,7 @@ DmgWifiScheduler::ManageAddtsRequests (void)
               /* The new request has been accepted
                * Save the accepted ADDTS request among the allocated requests */
               m_allocatedAddtsRequests.insert (std::make_pair (allocIdentifier, (*iter)));
+              m_isAddtsAccepted = true;
             }
         }
       SendAddtsResponse (iter->sourceAddr, status, dmgTspec);
@@ -486,15 +490,71 @@ DmgWifiScheduler::AddBroadcastCbap (void)
       m_globalAllocationList.clear ();
       return;
     }
-  AddBroadcastCbapAllocations (); 
+  if (m_isAddtsAccepted || m_isNonStatic || m_isDeltsReceived)
+    {
+      AddBroadcastCbapAllocations (); 
+      m_isAddtsAccepted = false;
+      m_isNonStatic = false;
+      m_isDeltsReceived = false;
+    }  
 }
 
 void 
 DmgWifiScheduler::AddBroadcastCbapAllocations (void)
 {
-  /* Check if at least one broadcast CBAP is present
+  bool broadcastCbapPresent = false;
+  /* Addts allocation list is copied to the Global allocation list */
+  m_globalAllocationList = m_addtsAllocationList;
+  uint32_t startDuration, nextStart, remainingDti;
+  AllocationFieldListI iter = m_globalAllocationList.begin ();
+  AllocationFieldListI nextIter = iter + 1;
+  while (nextIter != m_globalAllocationList.end ())
+    {
+      startDuration = iter->GetAllocationStart () + iter->GetAllocationBlockDuration ();
+      nextStart = nextIter->GetAllocationStart ();
+      if (startDuration != nextStart) // here the decision to place a broadcast CBAP among allocated requests
+        {
+          iter = m_globalAllocationList.insert (nextIter, GetBroadcastCbapAllocation (true, startDuration, nextStart - startDuration));
+          nextIter = ++iter + 1;
+          broadcastCbapPresent = true;
+        }
+      else
+        {
+          ++iter;
+          ++nextIter;
+        }
+    }
+  /* iter points to the last element of Global allocation list (i.e. last element of Addts allocation list)
+   * Check the presence of remaining DTI time to be allocated as broadcast CBAP
    */
-  NS_ASSERT_MSG (m_broadcastCbapPresent, "At least one broadcast CBAP is needed");
+  startDuration = iter->GetAllocationStart () + iter->GetAllocationBlockDuration ();
+  remainingDti = m_dtiDuration.GetMicroSeconds () - startDuration;
+  if (remainingDti > 0)
+    {
+      m_globalAllocationList.push_back (GetBroadcastCbapAllocation (true, startDuration, remainingDti));
+      broadcastCbapPresent = true;
+    }
+  /* Check if at least one broadcast CBAP is present */
+  NS_ASSERT_MSG (broadcastCbapPresent, "At least one broadcast CBAP is needed");
+}
+
+AllocationField
+DmgWifiScheduler::GetBroadcastCbapAllocation (bool staticAllocation, uint32_t allocationStart, uint16_t blockDuration)
+{
+  AllocationField field;
+  /* Allocation Control Field */
+  field.SetAllocationID (0);
+  field.SetAllocationType (CBAP_ALLOCATION);
+  field.SetAsPseudoStatic (staticAllocation);
+  /* Allocation Field */
+  field.SetSourceAid (AID_BROADCAST);
+  field.SetDestinationAid (AID_BROADCAST);
+  field.SetAllocationStart (allocationStart);
+  field.SetAllocationBlockDuration (blockDuration);
+  field.SetAllocationBlockPeriod (0);
+  field.SetNumberOfBlocks (1);
+
+  return field;
 }
 
 uint32_t
@@ -612,6 +672,7 @@ DmgWifiScheduler::CleanupAllocations (void)
       allocation = (*iter);
       if (!allocation.IsPseudoStatic () && allocation.IsAllocationAnnounced ())
         {
+          m_isNonStatic = true;
           it = m_allocatedAddtsRequests.find (UniqueIdentifier (allocation.GetAllocationID (),
                                                                 allocation.GetSourceAid (), allocation.GetDestinationAid ()));
           if (it != m_allocatedAddtsRequests.end ())
