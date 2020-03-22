@@ -104,6 +104,8 @@ DmgWifiScheduler::DoInitialize (void)
   NS_ASSERT_MSG (isConnected, "Connection to Trace ADDTSReceived failed.");
   isConnected = m_mac->TraceConnectWithoutContext ("BIStarted", MakeCallback (&DmgWifiScheduler::BeaconIntervalStarted, this));
   NS_ASSERT_MSG (isConnected, "Connection to Trace BIStarted failed.");
+  isConnected = m_mac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DmgWifiScheduler::DataTransferIntervalStarted, this));
+  NS_ASSERT_MSG (isConnected, "Connection to Trace DTIStarted failed.");
   isConnected = m_mac->TraceConnectWithoutContext ("DELTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveDeltsRequest, this));
   NS_ASSERT_MSG (isConnected, "Connection to Trace DELTSReceived failed.");
 }
@@ -147,16 +149,13 @@ DmgWifiScheduler::BeaconIntervalStarted (Mac48Address address, Time biDuration, 
   m_biDuration = biDuration;
   m_bhiDuration = bhiDuration;
   m_atiDuration = atiDuration;
-  m_dtiDuration = m_biDuration - m_bhiDuration;
+
   if (m_atiDuration.IsStrictlyPositive ())
     {
       Simulator::Schedule (m_bhiDuration - m_atiDuration - m_mac->GetMbifs (), 
                            &DmgWifiScheduler::AnnouncementTransmissionIntervalStarted, this);
     }
-  else
-    {
-      Simulator::Schedule (m_bhiDuration, &DmgWifiScheduler::DataTransferIntervalStarted, this);
-    }
+  Simulator::Schedule (m_biDuration, &DmgWifiScheduler::BeaconIntervalEnded, this);
 }
 
 void
@@ -165,16 +164,15 @@ DmgWifiScheduler::AnnouncementTransmissionIntervalStarted (void)
   NS_LOG_INFO ("ATI started at " << Simulator::Now ());
   m_atiStartTime = Simulator::Now ();
   m_accessPeriod = CHANNEL_ACCESS_ATI;
-  Simulator::Schedule (m_atiDuration, &DmgWifiScheduler::DataTransferIntervalStarted, this);
 }
 
 void 
-DmgWifiScheduler::DataTransferIntervalStarted (void)
+DmgWifiScheduler::DataTransferIntervalStarted (Mac48Address address, Time dtiDuration)
 {
   NS_LOG_INFO ("DTI started at " << Simulator::Now ());
   m_dtiStartTime = Simulator::Now ();
+  m_dtiDuration = dtiDuration;
   m_accessPeriod = CHANNEL_ACCESS_DTI;
-  Simulator::Schedule (m_dtiDuration, &DmgWifiScheduler::BeaconIntervalEnded, this);
 }
 
 void

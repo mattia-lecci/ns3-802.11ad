@@ -229,8 +229,10 @@ private:
   void BeaconIntervalStarted (Mac48Address address, Time biDuration, Time bhiDuration, Time atiDuration);
   /**
    * Handle the start of the DTI.
+   * \param address The MAC address of the PCP/AP.
+   * \param dtiDuration The duration of the current DTI.
    */
-  void DataTransferIntervalStarted (void);
+  void DataTransferIntervalStarted (Mac48Address address, Time dtiDuration);
   /**
    * Handle the end of the BI.
    */

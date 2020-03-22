@@ -983,15 +983,17 @@ DmgApWifiMac::StartBeaconInterval (void)
   NS_LOG_FUNCTION (this);
   NS_LOG_INFO ("DMG AP Starting BI at " << Simulator::Now ());
 
-  /* Invoke callback */
-  m_biStarted (GetAddress (), m_beaconInterval, GetBHIDuration (), m_atiDuration);
-
   /* Timing variables */
   m_biStartTime = Simulator::Now ();
 
   /* Schedule the end of the Beacon Interval */
   Simulator::Schedule (m_beaconInterval, &DmgApWifiMac::EndBeaconInterval, this);
   NS_LOG_DEBUG ("Next BI will start at " << Simulator::Now () + m_beaconInterval);
+
+  /* Timing variables */
+  CalculateBTIVariables ();
+  /* Invoke callback */
+  m_biStarted (GetAddress (), m_beaconInterval, GetBHIDuration (), m_atiDuration);
 
 //  if (m_enableDecentralizedClustering)
 //    {
@@ -1063,8 +1065,6 @@ DmgApWifiMac::StartBeaconTransmissionInterval (void)
   /* Start DMG Beaconing */
   m_codebook->StartBTIAccessPeriod ();
 
-  /* Timing variables */
-  CalculateBTIVariables ();
   m_btiStarted = Simulator::Now ();
   m_beaconEvent = Simulator::ScheduleNow (&DmgApWifiMac::SendOneDMGBeacon, this);
 }
