@@ -387,6 +387,7 @@ DmgWifiScheduler::GetAllocationDuration (uint32_t minAllocation, uint32_t maxAll
 StatusCode
 DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info)
 {
+  NS_LOG_FUNCTION (this);
   /* Implementation of an admission policy for newly received requests. */
   if (dmgTspec.GetAllocationPeriod () != 0)
     {
@@ -437,6 +438,7 @@ DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec,
 StatusCode
 DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info)
 {
+  NS_LOG_FUNCTION (this);
   /* Implementation of an admission policy for modification requests. */
   if (dmgTspec.GetAllocationPeriod () != 0)
     {
@@ -525,8 +527,10 @@ DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement d
 void
 DmgWifiScheduler::AddBroadcastCbap (void)
 {
+  NS_LOG_FUNCTION (this);
   if (m_addtsAllocationList.empty ())
     {
+      NS_LOG_DEBUG ("No Addts allocations. Entire DTI as CBAP");
       /* No allocations granted with an ADDTS request are present 
        * The entire DTI is allocated as CBAP broadcast (CbapOnly field)
        * The global allocation list is emptied
@@ -549,6 +553,7 @@ DmgWifiScheduler::AddBroadcastCbap (void)
 void 
 DmgWifiScheduler::AddBroadcastCbapAllocations (void)
 {
+  NS_LOG_FUNCTION (this);
   uint32_t totalBroadcastCbapTime = 0;
   /* Addts allocation list is copied to the Global allocation list */
   m_globalAllocationList = m_addtsAllocationList;
