@@ -92,6 +92,10 @@ void
 DmgWifiScheduler::Initialize (void)
 {
   NS_LOG_FUNCTION (this);
+  /* Creates an ESE of MAX permitted size to be used for 
+   * calculation of the BTI duration
+   */
+  CreateFullExtentdedScheduleElement ();
   DoInitialize ();
 }
 
@@ -108,6 +112,24 @@ DmgWifiScheduler::DoInitialize (void)
   NS_ASSERT_MSG (isConnected, "Connection to Trace DTIStarted failed.");
   isConnected = m_mac->TraceConnectWithoutContext ("DELTSReceived", MakeCallback (&DmgWifiScheduler::ReceiveDeltsRequest, this));
   NS_ASSERT_MSG (isConnected, "Connection to Trace DELTSReceived failed.");
+}
+
+void
+DmgWifiScheduler::CreateFullExtentdedScheduleElement (void)
+{
+  m_fullEse = Create<ExtendedScheduleElement> ();
+  uint16_t maxLength = 17;
+  AllocationField field;
+  for (uint16_t i = 0; i < maxLength; ++i)
+  {
+    m_fullEse->AddAllocationField (field);
+  }
+}
+
+Ptr<ExtendedScheduleElement>
+DmgWifiScheduler::GetFullExtendedScheduleElement (void)
+{
+  return m_fullEse;
 }
 
 AllocationFieldList

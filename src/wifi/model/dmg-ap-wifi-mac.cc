@@ -556,7 +556,8 @@ DmgApWifiMac::CalculateBTIVariables (void)
     }
   if (m_scheduleElement)
     {
-      beacon.AddWifiInformationElement (GetExtendedScheduleElement ());
+      /* TEMPORARY FIX: GET A DUMMY FULL EXTENDED SCHEDULE ELEMENT */
+      beacon.AddWifiInformationElement (m_dmgScheduler->GetFullExtendedScheduleElement ());
     }
   packet->AddHeader (beacon);
 
@@ -810,6 +811,13 @@ DmgApWifiMac::FrameTxOk (const WifiMacHeader &hdr)
         {
           NS_LOG_DEBUG ("DMG PCP/AP completed the transmission of the last DMG Beacon at " << Simulator::Now ());
           Time startTime = m_nextDmgBeaconDelay + GetMbifs ();
+          /* TEMPORARY FIX: BECAUSE WE CALCULATE A BTI DURATION HIGHER THAN THE ACTUAL ONE */
+          Time btiRemaining = GetBTIRemainingTime () + GetMbifs ();
+          if (btiRemaining > startTime)
+          {
+            startTime = btiRemaining;
+          }
+          /* END OF TEMPORARY FIX */
           NS_ASSERT_MSG (Simulator::Now () + startTime == Simulator::Now () + GetBTIRemainingTime () + GetMbifs (),
                          "Beacon Transmission Interval exceeding expected duration");
           /* Schedule A-BFT access period */

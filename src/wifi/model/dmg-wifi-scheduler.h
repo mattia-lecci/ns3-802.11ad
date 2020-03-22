@@ -196,11 +196,15 @@ protected:
   uint32_t AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, 
                                              uint16_t allocationDuration, bool isInitiatorTxss, bool isResponderTxss);
   /**
+   * \return The full extended schedule element.
+   */
+  Ptr<ExtendedScheduleElement> GetFullExtendedScheduleElement (void);
+  /**
    * \return The current Allocation list.
    */
   AllocationFieldList GetAllocationList (void);
   /**
-   * \return The current Allocation list.
+   * \param The new Allocation list.
    */
   void SetAllocationList (AllocationFieldList allocationList);
   /**
@@ -219,6 +223,10 @@ protected:
   AllocationFieldList m_addtsAllocationList;   //!< List of requested (ADDTS received) access period allocations in DTI.
 
 private:
+  /**
+   * Creates a dummy ESE with maximum size.
+   */
+  void CreateFullExtentdedScheduleElement (void);
   /**
    * Handle the start of the BI
    * \param address The MAC address of the PCP/AP.
@@ -314,6 +322,7 @@ private:
   } NextAllocationTiming;
   NextAllocationTiming m_schedulingTime;        //!< Store the next start time and remaining DTI time.
   uint32_t m_guardTime;                         //!< The guard time between allocations in us.
+  Ptr<ExtendedScheduleElement> m_fullEse;       //!< Full ESE for calculation of BTI duration.
 };
 
 } // namespace ns3
