@@ -216,6 +216,8 @@ StationAssociated (Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t
                 << ", Association ID (AID) = " << aid << std::endl;
     }
     staWifiMac->CreateAllocation (GetDmgTspecElement (10000, 10000));
+    // staWifiMac->CreateAllocation (GetDmgTspecElement (10000, 20000));
+    // Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (10000, 10000));
 }
 
 void
@@ -351,6 +353,12 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
+
+  //LogComponentEnable ("DmgWifiScheduler", LOG_LEVEL_ALL);
+  //LogComponentEnable ("DmgApWifiMac", LOG_LEVEL_ALL);
+  //LogComponentEnable ("DmgWifiMac", LOG_LEVEL_ALL);
+  //LogComponentEnable ("EdcaTxopN", LOG_LEVEL_ALL);
+  //LogComponentEnable ("MacLow", LOG_LEVEL_ALL);
 
   /*** Configure TCP Options ***/
   /* Select TCP variant */

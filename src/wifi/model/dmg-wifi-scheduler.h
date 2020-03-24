@@ -39,7 +39,7 @@ class DmgApWifiMac;
  * This class provides the implementation of scheduling features related to
  * IEEE 802.11ad. In particular, this class organizes the medium access 
  * according to the availability of contention-free access periods (SPs)
- * and contention-based access periods (CBAPs) as foresee by 802.11ad amendment.
+ * and contention-based access periods (CBAPs) as provided by 802.11ad amendment.
  */
 class DmgWifiScheduler : public Object
 {
@@ -70,7 +70,7 @@ public:
    */
   virtual void ManageAddtsRequests (void);
   /**
-   * Implement the policy that accept or reject a new ADDTS request.
+   * Implement the policy that accept, reject a new ADDTS request.
    * \param sourceAid The AID of the requesting STA.
    * \param dmgTspec The DMG Tspec element of the ADDTS request.
    * \param info The DMG Allocation Info element of the request.
@@ -78,7 +78,7 @@ public:
    */
   virtual StatusCode AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info);
   /**
-   * Implement the policy that accept or reject a modification request.
+   * Implement the policy that accept, reject a modification request.
    * \param sourceAid The AID of the requesting STA.
    * \param dmgTspec The DMG Tspec element of the ADDTS request.
    * \param info The DMG Allocation Info element of the request.
@@ -102,7 +102,7 @@ public:
   /**
    * Update start time and remaining DTI time for the next request to be evaluated.
    */
-  virtual void UpdateStartandRemainingTime (void);
+  virtual void UpdateStartAndRemainingTime (void);
   /**
    * Adjust the existing allocations when an allocation is removed from the list.
    * \param iter The iterator pointing to the next element in the addtsAllocationList.
@@ -118,9 +118,9 @@ protected:
   /**
    * Allocate CBAP period to be announced in DMG Beacon or Announce Frame.
    * \param staticAllocation Is the allocation static.
-   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
-   * \param blockDuration The duration of the allocation period.
-   * \return The start of the next allocation period.
+   * \param allocationStart The start time in microseconds of the allocation relative to the beginning of DTI.
+   * \param blockDuration The duration of the allocation period in microseconds.
+   * \return The start time in microseconds of the next allocation period.
    */
   uint32_t AllocateCbapPeriod (bool staticAllocation, uint32_t allocationStart, uint16_t blockDuration);
   /**
@@ -131,9 +131,9 @@ protected:
    * \param staticAllocation Is the allocation static.
    * \param sourceAid The AID of the source DMG STA.
    * \param destAid The AID of the destination DMG STA.
-   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
-   * \param blockDuration The duration of the allocation period.
-   * \return The start of the next allocation period.
+   * \param allocationStart The start time in microseconds of the allocation relative to the beginning of DTI.
+   * \param blockDuration The duration of the allocation period in microseconds.
+   * \return The start time in microseconds of the next allocation period.
    */
   uint32_t AllocateSingleContiguousBlock (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
                                           uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, uint16_t blockDuration);
@@ -145,10 +145,10 @@ protected:
    * \param staticAllocation Is the allocation static.
    * \param sourceAid The AID of the source DMG STA.
    * \param destAid The AID of the destination DMG STA.
-   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
-   * \param blockDuration The duration of the allocation period.
+   * \param allocationStart The start time in microseconds of the allocation relative to the beginning of DTI.
+   * \param blockDuration The duration of the allocation period in microseconds.
    * \param blocks The number of blocks making up the allocation.
-   * \return The start of the next allocation period.
+   * \return The start time in microseconds of the next allocation period.
    */
   uint32_t AllocateMultipleContiguousBlocks (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
                                              uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, uint16_t blockDuration, uint8_t blocks);
@@ -158,7 +158,7 @@ protected:
    * \param sourceAid The AID of the source DMG STA.
    * \param destAid The AID of the destination DMG STA.
    */
-  void AllocateDTIAsServicePeriod (AllocationID allocationId, uint8_t sourceAid, uint8_t destAid);
+  void AllocateDtiAsServicePeriod (AllocationID allocationId, uint8_t sourceAid, uint8_t destAid);
   /**
    * Add a new allocation period to be announced in DMG Beacon or Announce Frame.
    * \param allocationId The unique identifier for the allocation.
@@ -166,10 +166,10 @@ protected:
    * \param staticAllocation Is the allocation static.
    * \param sourceAid The AID of the source DMG STA.
    * \param destAid The AID of the destination DMG STA.
-   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
-   * \param blockDuration The duration of the allocation period.
+   * \param allocationStart The start time in microseconds of the allocation relative to the beginning of DTI.
+   * \param blockDuration The duration of the allocation period in microseconds.
    * \param blocks The number of blocks making up the allocation.
-   * \return The start time of the following allocation period.
+   * \return The start time in microseconds of the following allocation period.
    */
   uint32_t AddAllocationPeriod (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
                                 uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, uint16_t blockDuration,
@@ -178,20 +178,20 @@ protected:
    * Allocate SP allocation for Beamforming training.
    * \param sourceAid The AID of the source DMG STA.
    * \param destAid The AID of the destination DMG STA.
-   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
+   * \param allocationStart The start time in microseconds of the allocation relative to the beginning of DTI.
    * \param isTxss Is the Beamforming TxSS or RxSS.
-   * \return The start of the next allocation period.
+   * \return The start time in microseconds of the next allocation period.
    */
   uint32_t AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, bool isTxss);
   /**
    * Allocate SP allocation for Beamforming training.
    * \param srcAid The AID of the source DMG STA.
    * \param dstAid The AID of the destination DMG STA.
-   * \param allocationStart The start time of the allocation relative to the beginning of DTI.
-   * \param allocationDuration The duration of the beamforming allocation.
+   * \param allocationStart The start time in miccroseconds of the allocation relative to the beginning of DTI.
+   * \param allocationDuration The duration of the beamforming allocation in microseconds.
    * \param isInitiatorTxss Is the Initiator Beamforming TxSS or RxSS.
    * \param isResponderTxss Is the Responder Beamforming TxSS or RxSS.
-   * \return The start of the next allocation period.
+   * \return The start time in microseconds of the next allocation period.
    */
   uint32_t AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, 
                                              uint16_t allocationDuration, bool isInitiatorTxss, bool isResponderTxss);
@@ -284,14 +284,11 @@ private:
   void AddBroadcastCbap (void);
 
   /* Channel Access Period */
-  ChannelAccessPeriod m_accessPeriod;          //!< The type of the current channel access period.
+  ChannelAccessPeriod m_currentAccessPeriod;   //!< The type of the current channel access period.
   Time m_biDuration;                           //!< The length of the BI period.
   Time m_atiDuration;                          //!< The length of the ATI period.
-  Time m_bhiDuration;                          //!< The length of the BHI period.
   Time m_dtiDuration;                          //!< The length of the DTI period.
-  Time m_biStartTime;                          //!< The start time of the BI Interval.
-  Time m_atiStartTime;                         //!< The start time of the ATI Interval.
-  Time m_dtiStartTime;                         //!< The start time of the DTI Interval.
+  Time m_currentAccessPeriodStartTime;         //!< The start time of the current channel acess period.
 
   /* Allocation */
   typedef struct {
@@ -301,13 +298,13 @@ private:
   } AddtsRequest;
   typedef std::vector<AddtsRequest> AddtsRequestList;
   typedef AddtsRequestList::const_iterator AddtsRequestListCI;
-  AddtsRequestList m_receiveAddtsRequests;     //!< The list containing the ADDTS requests received during the DTI.
+  AddtsRequestList m_receivedAddtsRequests;    //!< The list containing the ADDTS requests received during the DTI.
 
-  /* An allocation is uniquely identified by the tuple: Allocation Id, Source Aid, Destination Aid (802.11ad 10.4). */
+  /* An allocation is uniquely identified by the tuple: Allocation ID, Source AID, Destination AID (802.11ad 10.4). */
   typedef std::tuple<AllocationID, uint8_t, uint8_t> UniqueIdentifier;
   typedef std::map<UniqueIdentifier, AddtsRequest> AllocatedRequestMap;
   typedef AllocatedRequestMap::iterator AllocatedRequestMapI;
-  AllocatedRequestMap m_allocatedAddtsRequests; //!< The map containing the allocated ADDTS requests with their original allocation parameters.
+  AllocatedRequestMap m_allocatedAddtsRequestMap; //!< The map containing the allocated ADDTS requests with their original allocation parameters.
 
   uint32_t m_minBroadcastCbapDuration;          //!< The minimum duration of a broadcast CBAP to be present in the DTI.
   uint32_t m_interAllocationDistance;           //!< The distance between two allocations to be used as broadcast CBAP.
@@ -316,11 +313,8 @@ private:
   bool m_isNonStatic;                           //!< A non-static allocation has been served in the last DTI.
   bool m_isDeltsReceived;                       //!< A DELTS request has been received in the last DTI. 
 
-  typedef struct {
-    uint32_t startTime;
-    uint32_t remainingDtiTime;
-  } NextAllocationTiming;
-  NextAllocationTiming m_schedulingTime;        //!< Store the next start time and remaining DTI time.
+  uint32_t m_allocationStartTime;               //!< The start time for the next allocation in the DTI.
+  uint32_t m_remainingDtiTime;                  //!< The remaining time that can be allocated in the DTI.
   uint32_t m_guardTime;                         //!< The guard time between allocations in us.
   Ptr<ExtendedScheduleElement> m_fullEse;       //!< Full ESE for calculation of BTI duration.
 };

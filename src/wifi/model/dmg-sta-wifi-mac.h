@@ -629,7 +629,7 @@ private:
   RELAY_LINK_MAP m_relayLinkMap;                                //!< List to store information related to relay links.
   RELAY_LINK_INFO m_relayLinkInfo;                              //!< Information about the relay link being established.
 
-    /**
+  /**
    * TracedCallback signature for an ADDTS response received.
    *
    * \param address The MAC address of the station.

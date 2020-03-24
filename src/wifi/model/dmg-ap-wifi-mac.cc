@@ -702,7 +702,7 @@ DmgApWifiMac::SendOneDMGBeacon (void)
 }
 
 void
-DmgApWifiMac::SendDmgAddTsResponse (Mac48Address to, StatusCode code, TsDelayElement delayElem, DmgTspecElement elem)
+DmgApWifiMac::SendDmgAddTsResponse (Mac48Address to, StatusCode code, TsDelayElement &delayElem, DmgTspecElement &elem)
 {
   NS_LOG_FUNCTION (this << to << code);
   WifiMacHeader hdr;
@@ -1023,7 +1023,6 @@ DmgApWifiMac::EndBeaconInterval (void)
   NS_LOG_INFO ("DMG AP Ending BI at " << Simulator::Now ());
   /* Start New Beacon Interval */
   /* Start beacon interval from DmgWifiScheduler */
-  //StartBeaconInterval ();
 }
 
 void

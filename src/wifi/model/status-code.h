@@ -25,6 +25,7 @@
 
 namespace ns3 {
 
+/* IEEE 802.11ad 8.4.1.9 */
 enum StatusCodeValue
 {
   STATUS_CODE_SUCCESS = 0,
