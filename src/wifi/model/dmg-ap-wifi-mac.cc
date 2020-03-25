@@ -1222,6 +1222,14 @@ DmgApWifiMac::StartDataTransmissionInterval (void)
   else
     {
       m_allocationList = m_dmgScheduler->GetAllocationList ();
+      for (AllocationFieldListI it = m_allocationList.begin (); it != m_allocationList.end (); ++it)
+        {
+          NS_LOG_DEBUG ("AP, Allocation Id: " << +it->GetAllocationID () << "\n"
+                         << "AP, Source AID: " << +it->GetSourceAid () << "\n"
+                         << "AP, Destination AID: " << +it->GetDestinationAid () << "\n" 
+                         << "AP, Start: " << it->GetAllocationStart () << "\n"
+                         << "AP, Duration: " << it->GetAllocationBlockDuration () << "\n");
+        }
       m_dmgScheduler->SetAllocationsAnnounced ();
       AllocationField field;
       for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)

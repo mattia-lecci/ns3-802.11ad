@@ -72,6 +72,7 @@ Ptr<PacketSink> packetSink;
 Ptr<OnOffApplication> onoff;
 Ptr<BulkSendApplication> bulk;
 Time appStartTime = Seconds (0);
+bool appStarted = false;
 
 /* Network Nodes */
 Ptr<WifiNetDevice> apWifiNetDevice;
@@ -217,35 +218,30 @@ StationAssociated (Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t
     }
     staWifiMac->CreateAllocation (GetDmgTspecElement (10000, 10000));
     // staWifiMac->CreateAllocation (GetDmgTspecElement (10000, 20000));
-    // Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (10000, 10000));
+    Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (10000, 10000));
 }
 
 void
 ADDTSResponseReceived (Mac48Address address, StatusCode status, DmgTspecElement element)
 {
   NS_LOG_DEBUG (address << " Received ADDTS response with status: " << status.IsSuccess ());
-  if (status.IsSuccess ())
+  if (status.IsSuccess () && !appStarted)
     {
       appStartTime = Simulator::Now ();
+      appStarted = true;
       if (applicationType == "onoff")
         {
           onoff->StartApplication ();
-          /* Connect to TCP traces */
-          if (socketType == "ns3::TcpSocketFactory")
-            {
-              onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
-              onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
-            }
         }
       else
         {
           bulk->StartApplication ();
-          /* Connect to TCP traces */
-          if (socketType == "ns3::TcpSocketFactory")
-            {
-              bulk->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
-              bulk->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
-            }
+        }
+      /* Connect to TCP traces */
+      if (socketType == "ns3::TcpSocketFactory")
+        {
+          onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+          onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
         }
     }
 }
