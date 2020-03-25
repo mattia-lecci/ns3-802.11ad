@@ -3285,7 +3285,7 @@ DmgStaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                   /* Record SC MCS range */
                   AddMcsSupport (from, 5, dmgCapabilities->GetMaximumScTxMcs ());
                   /* Record OFDM MCS range */
-                  if (dmgCapabilities->GetMaximumOfdmTxMcs () != 0)
+                  if (dmgCapabilities->GetMaximumOfdmTxMcs () != 0 && m_supportOFDM)
                     {
                       AddMcsSupport (from, 13, dmgCapabilities->GetMaximumOfdmTxMcs ());
                     }
