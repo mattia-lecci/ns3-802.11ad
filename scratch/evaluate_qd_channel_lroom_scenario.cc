@@ -350,12 +350,7 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
 
-  //LogComponentEnable ("DmgWifiScheduler", LOG_LEVEL_ALL);
-  //LogComponentEnable ("DmgApWifiMac", LOG_LEVEL_ALL);
-  //LogComponentEnable ("DmgWifiMac", LOG_LEVEL_ALL);
-  //LogComponentEnable ("EdcaTxopN", LOG_LEVEL_ALL);
-  //LogComponentEnable ("MacLow", LOG_LEVEL_ALL);
-
+  LogComponentEnable ("Mobility", LOG_LEVEL_ALL);
   /*** Configure TCP Options ***/
   /* Select TCP variant */
   std::map<std::string, std::string>::const_iterator iter = tcpVariants.find (tcpVariant);
@@ -387,8 +382,13 @@ main (int argc, char *argv[])
   /* Turn on logging */
   if (verbose)
     {
-      wifi.EnableLogComponents ();
-      LogComponentEnable ("Mobility", LOG_LEVEL_ALL);
+      //wifi.EnableLogComponents ();
+      LogComponentEnable ("DmgWifiScheduler", LOG_LEVEL_ALL);
+      //LogComponentEnable ("DmgApWifiMac", LOG_LEVEL_ALL);
+      //LogComponentEnable ("DmgWifiMac", LOG_LEVEL_ALL);
+      //LogComponentEnable ("EdcaTxopN", LOG_LEVEL_ALL);
+      //LogComponentEnable ("DcaTxop", LOG_LEVEL_ALL);
+      //LogComponentEnable ("MacLow", LOG_LEVEL_ALL);
     }
 
   /**** Setup Ray-Tracing Channel ****/

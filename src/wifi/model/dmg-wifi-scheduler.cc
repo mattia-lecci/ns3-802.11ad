@@ -386,7 +386,7 @@ DmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, Allocati
 uint32_t
 DmgWifiScheduler::GetAllocationDuration (uint32_t minAllocation, uint32_t maxAllocation)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this << minAllocation << maxAllocation);
   return ((minAllocation + maxAllocation) / 2);
 }
 
