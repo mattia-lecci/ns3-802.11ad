@@ -216,9 +216,9 @@ StationAssociated (Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t
       std::cout << "DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
                 << ", Association ID (AID) = " << aid << std::endl;
     }
-    staWifiMac->CreateAllocation (GetDmgTspecElement (10000, 10000));
+    staWifiMac->CreateAllocation (GetDmgTspecElement (1000, 1000));
     // staWifiMac->CreateAllocation (GetDmgTspecElement (10000, 20000));
-    Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (10000, 10000));
+    Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (1000, 3000));
 }
 
 void

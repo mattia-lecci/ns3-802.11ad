@@ -592,12 +592,12 @@ DmgWifiScheduler::AddBroadcastCbapAllocations (void)
    * Check the presence of remaining DTI time to be allocated as broadcast CBAP
    */
   start = iter->GetAllocationStart () + iter->GetAllocationBlockDuration () + m_guardTime;
-  if (m_remainingDtiTime > m_guardTime)
+  if (m_remainingDtiTime > 0)
     {
-      broadcastCbapList = GetBroadcastCbapAllocation (true, start, m_remainingDtiTime - m_guardTime);
+      broadcastCbapList = GetBroadcastCbapAllocation (true, start, m_remainingDtiTime);
       iter = m_globalAllocationList.insert (m_globalAllocationList.end (), broadcastCbapList.begin (), broadcastCbapList.end ());
       iter += broadcastCbapList.size () - 1;
-      totalBroadcastCbapTime += m_remainingDtiTime - m_guardTime;
+      totalBroadcastCbapTime += m_remainingDtiTime;
     }
   /* Check if at least one broadcast CBAP is present */
   NS_ASSERT_MSG ((totalBroadcastCbapTime >= m_minBroadcastCbapDuration),
@@ -629,14 +629,14 @@ DmgWifiScheduler::GetBroadcastCbapAllocation (bool staticAllocation, uint32_t al
   for (uint16_t i = 0; i < numberCbapBlocks; ++i)
     {
       field.SetAllocationStart (allocationStart);
-      field.SetAllocationBlockDuration (MAX_CBAP_BLOCK_DURATION);
-      allocationStart += MAX_CBAP_BLOCK_DURATION;
+      field.SetAllocationBlockDuration (MAX_CBAP_BLOCK_DURATION - m_guardTime);
+      allocationStart += (MAX_CBAP_BLOCK_DURATION);
       list.push_back (field);
     }
-  if (lastCbapLength > 0)
+  if (lastCbapLength > m_guardTime) // guard time before the end of DTI
     {
       field.SetAllocationStart (allocationStart);
-      field.SetAllocationBlockDuration (lastCbapLength);
+      field.SetAllocationBlockDuration (lastCbapLength - m_guardTime);
       list.push_back (field);
     }
 
