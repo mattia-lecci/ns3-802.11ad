@@ -52,7 +52,7 @@ DmgWifiScheduler::GetTypeId (void)
                      "This distance will be allocated as broadcast CBAP",
                      UintegerValue (0),
                      MakeUintegerAccessor (&DmgWifiScheduler::m_interAllocationDistance),
-                     MakeUintegerChecker<uint32_t> (0, 65535))
+                     MakeUintegerChecker<uint32_t> (10, 65535))
   ;
   return tid;
 }
@@ -563,20 +563,20 @@ DmgWifiScheduler::AddBroadcastCbapAllocations (void)
   /* Addts allocation list is copied to the allocation list */
   m_allocationList = m_addtsAllocationList;
   AllocationFieldList broadcastCbapList;
-  uint32_t start, nextStart;
+  uint32_t start;
   AllocationFieldListI iter = m_allocationList.begin ();
   AllocationFieldListI nextIter = iter + 1;
   while (nextIter != m_allocationList.end ())
     {
       start = iter->GetAllocationStart () + iter->GetAllocationBlockDuration () + m_guardTime;
-      nextStart = nextIter->GetAllocationStart () + m_guardTime;
       if ((m_remainingDtiTime >= m_interAllocationDistance)
           && (m_interAllocationDistance > 0)) // here the decision to place a broadcast CBAP among allocated requests
         {
-          broadcastCbapList = GetBroadcastCbapAllocation (true, start, m_interAllocationDistance);
+          broadcastCbapList = GetBroadcastCbapAllocation (true, start, m_interAllocationDistance + m_guardTime);
           iter = m_allocationList.insert (nextIter, broadcastCbapList.begin (), broadcastCbapList.end ());
+          start = iter->GetAllocationStart () + iter->GetAllocationBlockDuration () + m_guardTime;
           iter += broadcastCbapList.size ();
-          iter->SetAllocationStart (nextStart + m_interAllocationDistance);
+          iter->SetAllocationStart (start);
           nextIter = iter + 1;
           totalBroadcastCbapTime += m_interAllocationDistance;
           m_remainingDtiTime -= (m_interAllocationDistance + m_guardTime);
@@ -597,6 +597,14 @@ DmgWifiScheduler::AddBroadcastCbapAllocations (void)
       iter = m_allocationList.insert (m_allocationList.end (), broadcastCbapList.begin (), broadcastCbapList.end ());
       iter += broadcastCbapList.size () - 1;
       totalBroadcastCbapTime += m_remainingDtiTime;
+    }
+  /* Print the allocation list for debugging */
+  for (AllocationFieldListI it = m_allocationList.begin (); it != m_allocationList.end (); ++it)
+    {
+      NS_LOG_DEBUG ("Alloc Id=" << +it->GetAllocationID () << ", Source AID=" << +it->GetSourceAid ()
+                    << ", Destination AID: " << +it->GetDestinationAid () 
+                    << ", Alloc Start: " << it->GetAllocationStart ()
+                    << ", Alloc Duration: " << it->GetAllocationBlockDuration ());
     }
   /* Check if at least one broadcast CBAP is present */
   NS_ASSERT_MSG ((totalBroadcastCbapTime >= m_minBroadcastCbapDuration),

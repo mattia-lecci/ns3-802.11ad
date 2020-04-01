@@ -219,8 +219,9 @@ StationAssociated (Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t
       std::cout << "DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
                 << ", Association ID (AID) = " << aid << std::endl;
     }
-    staWifiMac->CreateAllocation (GetDmgTspecElement (1, false, 3000, 3000));
-    //staWifiMac->CreateAllocation (GetDmgTspecElement (2, true, 20000, 20000));
+    staWifiMac->CreateAllocation (GetDmgTspecElement (1, true, 10000, 10000));
+    //staWifiMac->CreateAllocation (GetDmgTspecElement (2, true, 10000, 10000));
+    //staWifiMac->CreateAllocation (GetDmgTspecElement (3, true, 10000, 10000));
     //Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (1, true, 30000, 30000));
     //Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (3, true, 20000, 20000));
     //Simulator::Schedule (Seconds (1.5), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (4, true, MAX_SP_BLOCK_DURATION, MAX_SP_BLOCK_DURATION));
@@ -308,6 +309,7 @@ main (int argc, char *argv[])
   bool verbose = false;                         /* Print Logging Information. */
   double simulationTime = 10;                   /* Simulation time in seconds. */
   bool pcapTracing = false;                     /* PCAP Tracing is enabled or not. */
+  uint32_t interAllocDistance = 0;              /* Duration of a broadcast CBAP between two ADDTS allocations */
   std::map<std::string, std::string> tcpVariants; /* List of the tcp Variants */
   uint16_t ac = 0;                              /* Select AC_BE as default AC */
   /*https://www.nsnam.org/doxygen/wifi-multi-tos_8cc_source.html */
@@ -347,6 +349,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("ac", "0: AC_BE, 1: AC_BK, 2: AC_VI, 3: AC_VO", ac);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
+  cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations", interAllocDistance);
   cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
   cmd.Parse (argc, argv);
 
@@ -460,7 +463,8 @@ main (int argc, char *argv[])
   wifi.SetCodebook ("ns3::CodebookParametric",
                     "FileName", StringValue ("DmgFiles/Codebook/CODEBOOK_URA_AP_" + arrayConfig + "x.txt"));
   /* Set the Scheduler for the DMG AP */
-  wifi.SetDmgScheduler ("ns3::DmgWifiScheduler");
+  wifi.SetDmgScheduler ("ns3::DmgWifiScheduler",
+                        "InterAllocationDistance", UintegerValue (interAllocDistance));
 
   /* Create Wifi Network Devices (WifiNetDevice) */
   NetDeviceContainer apDevice;
