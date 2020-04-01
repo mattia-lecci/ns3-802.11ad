@@ -148,11 +148,12 @@ protected:
    */
   virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info);
   /**
-   * Adjust the existing allocations when an allocation is removed from the list.
+   * Adjust the existing allocations when an allocation is removed or modified.
    * \param iter The iterator pointing to the next element in the addtsAllocationList.
-   * \param removedAlloc The removed allocation information.
+   * \param duration The duration of the time to manage.
+   * \param isToAdd Whether the duration is to be added or subtracted.
    */
-  virtual void AdjustExistingAllocations (AllocationFieldListI iter, AllocationField removedAlloc);
+  virtual void AdjustExistingAllocations (AllocationFieldListI iter, uint32_t duration, bool isToAdd);
   /**
    * \return The TS Delay element to be included in the ADDTS response.
    */

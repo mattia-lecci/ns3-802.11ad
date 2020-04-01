@@ -135,14 +135,12 @@ DmgWifiScheduler::GetFullExtendedScheduleElement (void)
 AllocationFieldList
 DmgWifiScheduler::GetAllocationList (void)
 {
-  NS_LOG_FUNCTION (this);
   return m_allocationList;
 }
 
 void
 DmgWifiScheduler::SetAllocationList (AllocationFieldList allocationList)
 {
-  NS_LOG_FUNCTION (this);
   m_allocationList = allocationList;
 }
 
@@ -242,7 +240,7 @@ DmgWifiScheduler::ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo i
               m_isDeltsReceived = true;
               iter = m_addtsAllocationList.erase (iter);
               /* Adjust the other allocations in addtsAllocationList */
-              AdjustExistingAllocations (iter, allocation);
+              AdjustExistingAllocations (iter, allocation.GetAllocationBlockDuration () + m_guardTime, false);
               break;
             }
           else
@@ -371,13 +369,23 @@ DmgWifiScheduler::UpdateStartAndRemainingTime (void)
 }
 
 void
-DmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, AllocationField removedAlloc)
+DmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, uint32_t duration, bool isToAdd)
 {
-  NS_LOG_FUNCTION (this);
-  for (AllocationFieldListI nextAlloc = iter; nextAlloc != m_addtsAllocationList.end (); ++nextAlloc)
+  NS_LOG_FUNCTION (this << duration << isToAdd);
+  if (isToAdd)
     {
-      nextAlloc->SetAllocationStart (nextAlloc->GetAllocationStart () - removedAlloc.GetAllocationBlockDuration () - m_guardTime);
+      for (AllocationFieldListI nextAlloc = iter; nextAlloc != m_addtsAllocationList.end (); ++nextAlloc)
+        {
+          nextAlloc->SetAllocationStart (nextAlloc->GetAllocationStart () + duration);
+        }
     }
+  else
+    {
+      for (AllocationFieldListI nextAlloc = iter; nextAlloc != m_addtsAllocationList.end (); ++nextAlloc)
+        {
+          nextAlloc->SetAllocationStart (nextAlloc->GetAllocationStart () - duration);
+        }
+    } 
 }
 
 uint32_t
@@ -480,6 +488,7 @@ DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement d
     }
 
   uint32_t currentDuration = allocation->GetAllocationBlockDuration ();
+  NS_LOG_DEBUG ("Current duration=" << currentDuration << ", New Duration=" << newDuration);
   uint32_t timeDifference;
   if (newDuration > currentDuration)
     {
@@ -487,9 +496,10 @@ DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement d
       if (timeDifference <= (m_remainingDtiTime - m_minBroadcastCbapDuration))
         {
           allocation->SetAllocationBlockDuration (newDuration);
-          m_remainingDtiTime -= timeDifference;
           status.SetSuccess ();
-          goto reorderList;
+          AdjustExistingAllocations (++allocation, timeDifference, true);
+          UpdateStartAndRemainingTime ();
+          return status;
         }
       if ((info.GetAllocationFormat () == ISOCHRONOUS) && (dmgTspec.GetMinimumAllocation () > currentDuration))
         {
@@ -497,34 +507,26 @@ DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement d
           if (timeDifference <= (m_remainingDtiTime - m_minBroadcastCbapDuration))
             {
               allocation->SetAllocationBlockDuration (dmgTspec.GetMinimumAllocation ());
-              m_remainingDtiTime -= timeDifference;
               status.SetSuccess ();
+              AdjustExistingAllocations (++allocation, timeDifference, true);
+              UpdateStartAndRemainingTime ();
+              return status;
             }
-          goto reorderList;
         }
+      /* The request cannot be accepted; maintaining old allocation duration */
+      /* No need to update allocation start time and remaining DTI time */
       status.SetFailure ();
-      goto doNothing; // The request is not accepted; maintaining old allocation duration
     }
   else
     {
       timeDifference = currentDuration - newDuration;
       allocation->SetAllocationBlockDuration (newDuration);
-      m_remainingDtiTime += timeDifference;
       status.SetSuccess ();
+      AdjustExistingAllocations (++allocation, timeDifference, false);
+      UpdateStartAndRemainingTime ();
     }
-    uint32_t newStartTime;
-  reorderList:  
-    newStartTime = allocation->GetAllocationStart () + allocation->GetAllocationBlockDuration () + m_guardTime;
-    for (AllocationFieldListI iter = ++allocation; iter != m_addtsAllocationList.end (); ++iter)
-      {
-        iter->SetAllocationStart (newStartTime);   
-        newStartTime += iter->GetAllocationBlockDuration () + m_guardTime;
-      }
-    m_allocationStartTime = newStartTime;
-    return status;
-  doNothing:
-    /* no need to update next start time */ 
-    return status;
+
+  return status;
 }
 
 void
@@ -763,7 +765,7 @@ DmgWifiScheduler::CleanupAllocations (void)
               m_allocatedAddtsRequestMap.erase (it);
             }
           iter = m_addtsAllocationList.erase (iter);
-          AdjustExistingAllocations (iter, allocation);
+          AdjustExistingAllocations (iter, allocation.GetAllocationBlockDuration () + m_guardTime, false);
         }
       else
         {
