@@ -21,6 +21,7 @@
 #include "dmg-wifi-helper.h"
 #include "ns3/propagation-loss-model.h"
 #include "ns3/propagation-delay-model.h"
+#include "ns3/dmg-ap-wifi-mac.h"
 #include "ns3/dmg-wifi-phy.h"
 #include "ns3/dmg-wifi-mac.h"
 #include "ns3/names.h"
@@ -249,6 +250,28 @@ void DmgWifiHelper::SetCodebook (std::string name,
   m_codeBook.Set (n7, v7);
 }
 
+void DmgWifiHelper::SetDmgScheduler (std::string name,
+         std::string n0, const AttributeValue &v0,
+         std::string n1, const AttributeValue &v1,
+         std::string n2, const AttributeValue &v2,
+         std::string n3, const AttributeValue &v3,
+         std::string n4, const AttributeValue &v4,
+         std::string n5, const AttributeValue &v5,
+         std::string n6, const AttributeValue &v6,
+         std::string n7, const AttributeValue &v7)
+{
+  m_dmgScheduler = ObjectFactory ();
+  m_dmgScheduler.SetTypeId (name);
+  m_dmgScheduler.Set (n0, v0);
+  m_dmgScheduler.Set (n1, v1);
+  m_dmgScheduler.Set (n2, v2);
+  m_dmgScheduler.Set (n3, v3);
+  m_dmgScheduler.Set (n4, v4);
+  m_dmgScheduler.Set (n5, v5);
+  m_dmgScheduler.Set (n6, v6);
+  m_dmgScheduler.Set (n7, v7);
+}
+
 NetDeviceContainer
 DmgWifiHelper::Install (const SpectrumDmgWifiPhyHelper &phyHelper,
                         const DmgWifiMacHelper &macHelper,
@@ -264,6 +287,14 @@ DmgWifiHelper::Install (const SpectrumDmgWifiPhyHelper &phyHelper,
       Ptr<DmgWifiMac> mac = StaticCast<DmgWifiMac> (macHelper.Create ());
       Ptr<SpectrumDmgWifiPhy> phy = StaticCast<SpectrumDmgWifiPhy> (phyHelper.Create (node, device));
       Ptr<Codebook> codebook = m_codeBook.Create<Codebook> ();
+      Ptr<DmgApWifiMac> ap = DynamicCast<DmgApWifiMac> (mac); // safe downcast
+      if (ap)
+        {
+          Ptr<DmgWifiScheduler> scheduler = m_dmgScheduler.Create<DmgWifiScheduler> ();
+          ap->SetScheduler (scheduler);
+          scheduler->SetMac (ap);
+          scheduler->Initialize ();
+        }
       mac->SetAddress (Mac48Address::Allocate ());
       mac->ConfigureStandard (m_standard);
       mac->SetCodebook (codebook);

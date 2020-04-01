@@ -225,8 +225,6 @@ DmgApWifiMac::SetScheduler (Ptr<DmgWifiScheduler> dmgScheduler)
 {
   NS_LOG_FUNCTION (this);
   m_dmgScheduler = dmgScheduler;
-  m_dmgScheduler->SetMac (this);
-  m_dmgScheduler->Initialize ();
 }
 
 Ptr<DmgWifiScheduler>

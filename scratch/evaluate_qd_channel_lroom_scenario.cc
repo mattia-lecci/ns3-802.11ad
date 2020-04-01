@@ -220,10 +220,10 @@ StationAssociated (Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t
                 << ", Association ID (AID) = " << aid << std::endl;
     }
     staWifiMac->CreateAllocation (GetDmgTspecElement (1, false, 3000, 3000));
-    staWifiMac->CreateAllocation (GetDmgTspecElement (2, true, 20000, 20000));
-    Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (1, true, 30000, 30000));
-    Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (3, true, 20000, 20000));
-    Simulator::Schedule (Seconds (1.5), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (4, true, MAX_SP_BLOCK_DURATION, MAX_SP_BLOCK_DURATION));
+    //staWifiMac->CreateAllocation (GetDmgTspecElement (2, true, 20000, 20000));
+    //Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (1, true, 30000, 30000));
+    //Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (3, true, 20000, 20000));
+    //Simulator::Schedule (Seconds (1.5), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (4, true, MAX_SP_BLOCK_DURATION, MAX_SP_BLOCK_DURATION));
 }
 
 void
@@ -459,6 +459,8 @@ main (int argc, char *argv[])
   /* Set Parametric Codebook for the DMG AP */
   wifi.SetCodebook ("ns3::CodebookParametric",
                     "FileName", StringValue ("DmgFiles/Codebook/CODEBOOK_URA_AP_" + arrayConfig + "x.txt"));
+  /* Set the Scheduler for the DMG AP */
+  wifi.SetDmgScheduler ("ns3::DmgWifiScheduler");
 
   /* Create Wifi Network Devices (WifiNetDevice) */
   NetDeviceContainer apDevice;
@@ -552,10 +554,6 @@ main (int argc, char *argv[])
   apWifiPhy = StaticCast<DmgWifiPhy> (apWifiNetDevice->GetPhy ());
   staWifiPhy = StaticCast<DmgWifiPhy> (staWifiNetDevice->GetPhy ());
   staRemoteStationManager = StaticCast<WifiRemoteStationManager> (staWifiNetDevice->GetRemoteStationManager ());
-
-  /* Create DMG Scheduler and setup */
-  dmgScheduler = CreateObject<DmgWifiScheduler> ();
-  apWifiMac->SetScheduler (dmgScheduler);
 
   /** Connect Traces **/
   AsciiTraceHelper ascii;
