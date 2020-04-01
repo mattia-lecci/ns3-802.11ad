@@ -1021,8 +1021,10 @@ DmgApWifiMac::EndBeaconInterval (void)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_INFO ("DMG AP Ending BI at " << Simulator::Now ());
+  /* Signal the end of the BI to DmgWifiScheduler */
+  m_dmgScheduler->BeaconIntervalEnded ();
   /* Start New Beacon Interval */
-  /* Start beacon interval from DmgWifiScheduler */
+  StartBeaconInterval ();
 }
 
 void

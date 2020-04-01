@@ -633,7 +633,8 @@ private:
    * TracedCallback signature for an ADDTS response received.
    *
    * \param address The MAC address of the station.
-   * \param transmissionLink The new transmission link.
+   * \param status The status code of the ADDTS response.
+   * \param dmgTspec The DMG Tspec element associated with the ADDTS response.
    */
   typedef void (* AddtsResponseTracedCallback)(Mac48Address address, StatusCode status, DmgTspecElement dmgTspec);
   TracedCallback<Mac48Address, StatusCode, DmgTspecElement> m_addtsResponseReceived;

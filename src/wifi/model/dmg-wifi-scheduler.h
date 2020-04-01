@@ -54,68 +54,6 @@ public:
    */
   void SetMac (Ptr<DmgApWifiMac> mac);
   /**
-   * Handle an ADDTS request received at the PCP/AP.
-   * \param address The MAC address of the source STA.
-   * \param element The Dmg Tspec Element associated with the request.
-   */
-  virtual void ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element);
-  /**
-   * Handle a DELTS request received at the PCP/AP.
-   * \param address The MAC address of the requesting STA.
-   * \param info The Dmg Allocation Info field associated with the request.
-   */
-  virtual void ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo info);
-  /**
-   * Manage the ADDTS requests received at the PCP/AP during the last DTI.
-   */
-  virtual void ManageAddtsRequests (void);
-  /**
-   * Implement the policy that accept, reject a new ADDTS request.
-   * \param sourceAid The AID of the requesting STA.
-   * \param dmgTspec The DMG Tspec element of the ADDTS request.
-   * \param info The DMG Allocation Info element of the request.
-   * \return The Status Code to be included in the ADDTS response.
-   */
-  virtual StatusCode AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info);
-  /**
-   * Implement the policy that accept, reject a modification request.
-   * \param sourceAid The AID of the requesting STA.
-   * \param dmgTspec The DMG Tspec element of the ADDTS request.
-   * \param info The DMG Allocation Info element of the request.
-   * \return The Status Code to be included in the ADDTS response.
-   */
-  virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info);
-  /**
-   * \param minAllocation The minimum acceptable allocation in us for each allocation period.
-   * \param maxAllocation The desired allocation in us for each allocation period.
-   * \return The allocation duration for the allocation period.
-   */
-  virtual uint32_t GetAllocationDuration (uint32_t minAllocation, uint32_t maxAllocation);
-  /**
-   * Add broadcast CBAP allocations in the DTI.
-   */
-  virtual void AddBroadcastCbapAllocations (void);
-  /**
-   * \return The TS Delay element to be included in the ADDTS response.
-   */
-  virtual TsDelayElement GetTsDelayElement (void);
-  /**
-   * Update start time and remaining DTI time for the next request to be evaluated.
-   */
-  virtual void UpdateStartAndRemainingTime (void);
-  /**
-   * Adjust the existing allocations when an allocation is removed from the list.
-   * \param iter The iterator pointing to the next element in the addtsAllocationList.
-   * \param removedAlloc The removed allocation information.
-   */
-  virtual void AdjustExistingAllocations (AllocationFieldListI iter, AllocationField removedAlloc);
-
-protected:
-  friend class DmgApWifiMac;
-
-  virtual void DoDispose (void);
-  virtual void DoInitialize (void);
-  /**
    * Allocate CBAP period to be announced in DMG Beacon or Announce Frame.
    * \param staticAllocation Is the allocation static.
    * \param allocationStart The start time in microseconds of the allocation relative to the beginning of DTI.
@@ -153,6 +91,81 @@ protected:
   uint32_t AllocateMultipleContiguousBlocks (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
                                              uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, uint16_t blockDuration, uint8_t blocks);
   /**
+   * Allocate SP allocation for Beamforming training.
+   * \param sourceAid The AID of the source DMG STA.
+   * \param destAid The AID of the destination DMG STA.
+   * \param allocationStart The start time in microseconds of the allocation relative to the beginning of DTI.
+   * \param isTxss Is the Beamforming TxSS or RxSS.
+   * \return The start time in microseconds of the next allocation period.
+   */
+  uint32_t AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, bool isTxss);
+
+protected:
+  friend class DmgApWifiMac;
+
+  virtual void DoDispose (void);
+  virtual void DoInitialize (void);
+  /**
+   * Handle the end of the BI.
+   */
+  void BeaconIntervalEnded (void);
+  /**
+   * Handle an ADDTS request received at the PCP/AP.
+   * \param address The MAC address of the source STA.
+   * \param element The Dmg Tspec Element associated with the request.
+   */
+  virtual void ReceiveAddtsRequest (Mac48Address address, DmgTspecElement element);
+  /**
+   * Handle a DELTS request received at the PCP/AP.
+   * \param address The MAC address of the requesting STA.
+   * \param info The Dmg Allocation Info field associated with the request.
+   */
+  virtual void ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo info);
+  /**
+   * Manage the ADDTS requests received at the PCP/AP during the last DTI.
+   */
+  virtual void ManageAddtsRequests (void);
+  /**
+   * \param minAllocation The minimum acceptable allocation in us for each allocation period.
+   * \param maxAllocation The desired allocation in us for each allocation period.
+   * \return The allocation duration for the allocation period.
+   */
+  virtual uint32_t GetAllocationDuration (uint32_t minAllocation, uint32_t maxAllocation);
+  /**
+   * Implement the policy that accept, reject a new ADDTS request.
+   * \param sourceAid The AID of the requesting STA.
+   * \param dmgTspec The DMG Tspec element of the ADDTS request.
+   * \param info The DMG Allocation Info element of the request.
+   * \return The Status Code to be included in the ADDTS response.
+   */
+  virtual StatusCode AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info);
+  /**
+   * Implement the policy that accept, reject a modification request.
+   * \param sourceAid The AID of the requesting STA.
+   * \param dmgTspec The DMG Tspec element of the ADDTS request.
+   * \param info The DMG Allocation Info element of the request.
+   * \return The Status Code to be included in the ADDTS response.
+   */
+  virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info);
+  /**
+   * Adjust the existing allocations when an allocation is removed from the list.
+   * \param iter The iterator pointing to the next element in the addtsAllocationList.
+   * \param removedAlloc The removed allocation information.
+   */
+  virtual void AdjustExistingAllocations (AllocationFieldListI iter, AllocationField removedAlloc);
+  /**
+   * \return The TS Delay element to be included in the ADDTS response.
+   */
+  virtual TsDelayElement GetTsDelayElement (void);
+  /**
+   * Update start time and remaining DTI time for the next request to be evaluated.
+   */
+  virtual void UpdateStartAndRemainingTime (void);
+  /**
+   * Add broadcast CBAP allocations in the DTI.
+   */
+  virtual void AddBroadcastCbapAllocations (void);
+  /**
    * Allocate maximum part of DTI as an SP.
    * \param allocationId The unique identifier for the allocation.
    * \param sourceAid The AID of the source DMG STA.
@@ -174,15 +187,6 @@ protected:
   uint32_t AddAllocationPeriod (AllocationID allocationId, AllocationType allocationType, bool staticAllocation,
                                 uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, uint16_t blockDuration,
                                 uint16_t blockPeriod, uint8_t blocks);
-  /**
-   * Allocate SP allocation for Beamforming training.
-   * \param sourceAid The AID of the source DMG STA.
-   * \param destAid The AID of the destination DMG STA.
-   * \param allocationStart The start time in microseconds of the allocation relative to the beginning of DTI.
-   * \param isTxss Is the Beamforming TxSS or RxSS.
-   * \return The start time in microseconds of the next allocation period.
-   */
-  uint32_t AllocateBeamformingServicePeriod (uint8_t sourceAid, uint8_t destAid, uint32_t allocationStart, bool isTxss);
   /**
    * Allocate SP allocation for Beamforming training.
    * \param srcAid The AID of the source DMG STA.
@@ -219,7 +223,7 @@ protected:
   Ptr<DmgApWifiMac> m_mac;                     //!< Pointer to the MAC high of PCP/AP.
 
   /* Access Period Allocations */
-  AllocationFieldList m_globalAllocationList;  //!< Global list of access period allocations in DTI.
+  AllocationFieldList m_allocationList;  //!< >List of access period allocations in DTI which includes broadcast CBAP allocations.
   AllocationFieldList m_addtsAllocationList;   //!< List of requested (ADDTS received) access period allocations in DTI.
 
 private:
@@ -241,10 +245,6 @@ private:
    * \param dtiDuration The duration of the current DTI.
    */
   void DataTransferIntervalStarted (Mac48Address address, Time dtiDuration);
-  /**
-   * Handle the end of the BI.
-   */
-  void BeaconIntervalEnded (void);
   /**
    * Handle the start of the ATI.
    */
@@ -310,7 +310,7 @@ private:
   uint32_t m_interAllocationDistance;           //!< The distance between two allocations to be used as broadcast CBAP.
   bool m_isAddtsAccepted;                       //!< An ADDTS request received in the last DTI has been accepted.
   bool m_isAllocationModified;                  //!< An allocation has been successfully modified.
-  bool m_isNonStatic;                           //!< A non-static allocation has been served in the last DTI.
+  bool m_isNonStaticRemoved;                    //!< A non-static allocation has been served in the last DTI.
   bool m_isDeltsReceived;                       //!< A DELTS request has been received in the last DTI. 
 
   uint32_t m_allocationStartTime;               //!< The start time for the next allocation in the DTI.

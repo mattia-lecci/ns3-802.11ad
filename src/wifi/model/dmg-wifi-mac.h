@@ -238,7 +238,6 @@ public:
 
 protected:
   friend class MacLow;
-  friend class DmgWifiScheduler;
 
   virtual void DoDispose (void);
   virtual void DoInitialize (void);

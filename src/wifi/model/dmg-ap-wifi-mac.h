@@ -185,6 +185,7 @@ public:
 protected:
   friend class DmgBeaconDca;
   friend class DmgWifiScheduler;
+
   Time GetBTIRemainingTime (void) const;
   /**
    * Start monitoring Beacon SP for DMG Beacons.
@@ -209,8 +210,6 @@ protected:
    * \return the DMG capabilities the PCP/AP supports.
    */
   Ptr<DmgCapabilities> GetDmgCapabilities (void) const;
-
-  void StartBeaconInterval (void);
   /**
    * Dmg Scheduler to be used by the PCP/AP.
    */
@@ -220,6 +219,7 @@ private:
   virtual void DoDispose (void);
   virtual void DoInitialize (void);
 
+  void StartBeaconInterval (void);
   void EndBeaconInterval (void);
   void StartBeaconTransmissionInterval (void);
   void StartAssociationBeamformTraining (void);
