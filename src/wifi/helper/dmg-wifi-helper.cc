@@ -191,6 +191,15 @@ DmgWifiHelper::Install (const DmgWifiPhyHelper &phyHelper,
       Ptr<DmgWifiMac> mac = StaticCast<DmgWifiMac> (macHelper.Create ());
       Ptr<DmgWifiPhy> phy = StaticCast<DmgWifiPhy> (phyHelper.Create (node, device));
       Ptr<Codebook> codebook = m_codeBook.Create<Codebook> ();
+      Ptr<DmgApWifiMac> ap = DynamicCast<DmgApWifiMac> (mac); // safe downcast
+      /* Add scheduler if this node is PCP/AP */ 
+      if (ap)
+        {
+          Ptr<DmgWifiScheduler> scheduler = m_dmgScheduler.Create<DmgWifiScheduler> ();
+          ap->SetScheduler (scheduler);
+          scheduler->SetMac (ap);
+          scheduler->Initialize ();
+        }
       mac->SetAddress (Mac48Address::Allocate ());
       mac->ConfigureStandard (m_standard);
       mac->SetCodebook (codebook);
@@ -288,6 +297,7 @@ DmgWifiHelper::Install (const SpectrumDmgWifiPhyHelper &phyHelper,
       Ptr<SpectrumDmgWifiPhy> phy = StaticCast<SpectrumDmgWifiPhy> (phyHelper.Create (node, device));
       Ptr<Codebook> codebook = m_codeBook.Create<Codebook> ();
       Ptr<DmgApWifiMac> ap = DynamicCast<DmgApWifiMac> (mac); // safe downcast
+      /* Add scheduler if this node is PCP/AP */ 
       if (ap)
         {
           Ptr<DmgWifiScheduler> scheduler = m_dmgScheduler.Create<DmgWifiScheduler> ();
