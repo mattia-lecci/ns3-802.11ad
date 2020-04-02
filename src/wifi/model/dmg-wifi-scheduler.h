@@ -122,9 +122,12 @@ protected:
    */
   virtual void ReceiveDeltsRequest (Mac48Address address, DmgAllocationInfo info);
   /**
-   * Manage the ADDTS requests received at the PCP/AP during the last DTI.
+   * Manage the ADDTS request received at the PCP/AP.
+   * \param sourceAid The AID of the station that sent the ADDTS request.
+   * \param sourceAddr The MAC address of the station that sent the ADDTS request.
+   * \param dmgTspec The DMG Tspec element associated with the ADDTS request.
    */
-  virtual void ManageAddtsRequests (void);
+  virtual void ManageAddtsRequests (uint8_t sourceAid, Mac48Address &sourceAddr, DmgTspecElement &dmgTspec);
   /**
    * \param minAllocation The minimum acceptable allocation in us for each allocation period.
    * \param maxAllocation The desired allocation in us for each allocation period.
@@ -138,7 +141,7 @@ protected:
    * \param info The DMG Allocation Info element of the request.
    * \return The Status Code to be included in the ADDTS response.
    */
-  virtual StatusCode AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info);
+  virtual StatusCode AddNewAllocation (uint8_t sourceAid, DmgTspecElement &dmgTspec, DmgAllocationInfo &info);
   /**
    * Implement the policy that accept, reject a modification request.
    * \param sourceAid The AID of the requesting STA.
@@ -146,7 +149,7 @@ protected:
    * \param info The DMG Allocation Info element of the request.
    * \return The Status Code to be included in the ADDTS response.
    */
-  virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info);
+  virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement &dmgTspec, DmgAllocationInfo &info);
   /**
    * Adjust the existing allocations when an allocation is removed or modified.
    * \param iter The iterator pointing to the next element in the addtsAllocationList.
@@ -297,9 +300,6 @@ private:
     Mac48Address sourceAddr;
     DmgTspecElement dmgTspec;
   } AddtsRequest;
-  typedef std::vector<AddtsRequest> AddtsRequestList;
-  typedef AddtsRequestList::const_iterator AddtsRequestListCI;
-  AddtsRequestList m_receivedAddtsRequests;    //!< The list containing the ADDTS requests received during the DTI.
 
   /* An allocation is uniquely identified by the tuple: Allocation ID, Source AID, Destination AID (802.11ad 10.4). */
   typedef std::tuple<AllocationID, uint8_t, uint8_t> UniqueIdentifier;

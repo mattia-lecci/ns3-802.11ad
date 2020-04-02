@@ -77,8 +77,9 @@ DmgWifiScheduler::DoDispose ()
 {
   NS_LOG_FUNCTION (this);
   m_mac = 0;
-  m_receivedAddtsRequests.clear ();
   m_allocatedAddtsRequestMap.clear ();
+  m_addtsAllocationList.clear ();
+  m_allocationList.clear ();
 }
 
 void 
@@ -158,6 +159,7 @@ TsDelayElement
 DmgWifiScheduler::GetTsDelayElement (void)
 {
   NS_LOG_FUNCTION (this);
+  /* TODO: Send a TS delay element based on the presence of non-static allocation (if any) */
   TsDelayElement element;
   element.SetDelay (1);
   return element;
@@ -202,17 +204,7 @@ DmgWifiScheduler::BeaconIntervalEnded (void)
   NS_LOG_INFO ("Beacon Interval ended at " << Simulator::Now ());
   /* Cleanup non-static allocations */
   CleanupAllocations ();
-  /* Update start and remaining DTI times
-   * This update here takes into account the possible cleanup of non-static allocations
-   * and the possible reception of DELTS requests
-   */
-  UpdateStartAndRemainingTime ();
-  /* Do something with the ADDTS requests received in the last DTI (if any) */
-  if (!m_receivedAddtsRequests.empty ())
-    {
-      /* At least one ADDTS request has been received */
-      ManageAddtsRequests ();
-    }
+  /* Allocate broadcast CBAPs */
   AddBroadcastCbap ();
 }
 
@@ -262,12 +254,10 @@ DmgWifiScheduler::ReceiveAddtsRequest (Mac48Address address, DmgTspecElement ele
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_INFO ("Received ADDTS request from " << address);
-  /* Store the ADDTS request received in the current DTI */
-  AddtsRequest request;
-  request.sourceAid = m_mac->GetStationAid (address);
-  request.sourceAddr = address;
-  request.dmgTspec = element;
-  m_receivedAddtsRequests.push_back (request);
+  /* Update start and remaining DTI for the new ADDTS request to evaluate */
+  UpdateStartAndRemainingTime ();
+  /* Evaluate ADDTS request as soon as it is received */
+  ManageAddtsRequests (m_mac->GetStationAid (address), address, element);
 }
 
 void
@@ -300,53 +290,44 @@ DmgWifiScheduler::SendAddtsResponse (Mac48Address address, StatusCode status, Dm
 }
 
 void
-DmgWifiScheduler::ManageAddtsRequests (void)
+DmgWifiScheduler::ManageAddtsRequests (uint8_t sourceAid, Mac48Address &sourceAddr, DmgTspecElement &dmgTspec)
 {
   NS_LOG_FUNCTION (this);
 
-  DmgTspecElement dmgTspec;
-  DmgAllocationInfo info;
   StatusCode status;
-  UniqueIdentifier allocIdentifier;
-  AllocatedRequestMapI it;
-  /* Loop over the list of received ADDTS requests; remainingDtiTime is updated each time an allocation is accepted.
-   * Once all requests have been evaluated (accepted or rejected):
-   * allocate remainingDtiTime (if > 0) as CBAP with destination & source AID to Broadcast */
-  for (AddtsRequestListCI iter = m_receivedAddtsRequests.begin (); iter != m_receivedAddtsRequests.end (); iter++)
+  AddtsRequest request;
+  request.sourceAid = sourceAid;
+  request.sourceAddr = sourceAddr;
+  request.dmgTspec = dmgTspec;
+  DmgAllocationInfo info = dmgTspec.GetDmgAllocationInfo ();
+  UniqueIdentifier allocIdentifier = UniqueIdentifier (info.GetAllocationID (), sourceAid, info.GetDestinationAid ());
+  AllocatedRequestMapI it = m_allocatedAddtsRequestMap.find (allocIdentifier);
+
+  if (it != m_allocatedAddtsRequestMap.end ())
     {
-      dmgTspec = iter->dmgTspec;
-      info = dmgTspec.GetDmgAllocationInfo ();
-      allocIdentifier = UniqueIdentifier (info.GetAllocationID (), iter->sourceAid, info.GetDestinationAid ());
-      it = m_allocatedAddtsRequestMap.find (allocIdentifier);
-      if (it != m_allocatedAddtsRequestMap.end ())
+      /* Requesting modification of an existing allocation */
+      status = ModifyExistingAllocation (sourceAid, dmgTspec, info);
+      if (status.IsSuccess ())
         {
-          /* Requesting modification of an existing allocation */
-          status = ModifyExistingAllocation (iter->sourceAid, dmgTspec, info);
-          if (status.IsSuccess ())
-            {
-              /* The modification request has been accepted
-               * Replace the accepted ADDTS request in the allocated requests */
-              m_allocatedAddtsRequestMap.at (it->first) = (*iter);
-              m_isAllocationModified = true;
-            }
+          /* The modification request has been accepted
+           * Replace the accepted ADDTS request in the allocated requests */
+          m_allocatedAddtsRequestMap.at (it->first) = request;
+          m_isAllocationModified = true;
         }
-      else
-        {
-          /* Requesting new allocation */
-          status = AddNewAllocation (iter->sourceAid, dmgTspec, info);
-          if (status.IsSuccess ())
-            {
-              /* The new request has been accepted
-               * Save the accepted ADDTS request among the allocated requests */
-              m_allocatedAddtsRequestMap.insert (std::make_pair (allocIdentifier, (*iter)));
-              m_isAddtsAccepted = true;
-            }
-        }
-      SendAddtsResponse (iter->sourceAddr, status, dmgTspec);
-      /* Update remaining time and start time */  
     }
-  /* clear list of received ADDTS requests */
-  m_receivedAddtsRequests.clear (); 
+  else
+    {
+      /* Requesting new allocation */
+      status = AddNewAllocation (sourceAid, dmgTspec, info);
+      if (status.IsSuccess ())
+        {
+          /* The new request has been accepted
+           * Save the accepted ADDTS request among the allocated requests */
+          m_allocatedAddtsRequestMap.insert (std::make_pair (allocIdentifier, request));
+          m_isAddtsAccepted = true;
+        }
+    }
+  SendAddtsResponse (sourceAddr, status, dmgTspec);   
 }
 
 void
@@ -396,7 +377,7 @@ DmgWifiScheduler::GetAllocationDuration (uint32_t minAllocation, uint32_t maxAll
 }
 
 StatusCode
-DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info)
+DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement &dmgTspec, DmgAllocationInfo &info)
 {
   NS_LOG_FUNCTION (this);
   /* Implementation of an admission policy for newly received requests. */
@@ -447,7 +428,7 @@ DmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec,
 }
 
 StatusCode
-DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement dmgTspec, DmgAllocationInfo info)
+DmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement &dmgTspec, DmgAllocationInfo &info)
 {
   NS_LOG_FUNCTION (this);
   /* Implementation of an admission policy for modification requests. */
@@ -547,6 +528,11 @@ DmgWifiScheduler::AddBroadcastCbap (void)
     }
   if (m_isAddtsAccepted || m_isAllocationModified || m_isNonStaticRemoved || m_isDeltsReceived)
     {
+      /* Update start and remaining DTI times
+       * This update here takes into account the possible cleanup of non-static allocations
+       * and the possible reception of DELTS requests
+       */
+      UpdateStartAndRemainingTime ();
       AddBroadcastCbapAllocations (); 
       m_isAddtsAccepted = false;
       m_isAllocationModified = false;
