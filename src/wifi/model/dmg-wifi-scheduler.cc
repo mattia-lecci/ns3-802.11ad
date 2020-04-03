@@ -327,7 +327,15 @@ DmgWifiScheduler::ManageAddtsRequests (uint8_t sourceAid, Mac48Address &sourceAd
           m_isAddtsAccepted = true;
         }
     }
-  SendAddtsResponse (sourceAddr, status, dmgTspec);   
+  if (sourceAid != AID_AP)
+    {
+      SendAddtsResponse (sourceAddr, status, dmgTspec);
+    }
+  /* Send ADDTS response to dest STA if success */
+  if (status.IsSuccess () && info.GetDestinationAid () != AID_AP)
+    {
+      SendAddtsResponse (m_mac->GetStationAddress (info.GetDestinationAid ()), status, dmgTspec);
+    }   
 }
 
 void
