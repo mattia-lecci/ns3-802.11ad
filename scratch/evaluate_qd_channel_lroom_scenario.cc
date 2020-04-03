@@ -392,6 +392,7 @@ main (int argc, char *argv[])
     {
       //wifi.EnableLogComponents ();
       LogComponentEnable ("Mobility", LOG_LEVEL_ALL);
+      LogComponentEnable ("BasicDmgWifiScheduler", LOG_LEVEL_ALL);
       LogComponentEnable ("DmgWifiScheduler", LOG_LEVEL_ALL);
       //LogComponentEnable ("DmgApWifiMac", LOG_LEVEL_ALL);
       //LogComponentEnable ("DmgWifiMac", LOG_LEVEL_ALL);
@@ -463,7 +464,7 @@ main (int argc, char *argv[])
   wifi.SetCodebook ("ns3::CodebookParametric",
                     "FileName", StringValue ("DmgFiles/Codebook/CODEBOOK_URA_AP_" + arrayConfig + "x.txt"));
   /* Set the Scheduler for the DMG AP */
-  wifi.SetDmgScheduler ("ns3::DmgWifiScheduler",
+  wifi.SetDmgScheduler ("ns3::BasicDmgWifiScheduler",
                         "InterAllocationDistance", UintegerValue (interAllocDistance));
 
   /* Create Wifi Network Devices (WifiNetDevice) */
