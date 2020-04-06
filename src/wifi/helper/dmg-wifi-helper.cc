@@ -189,15 +189,15 @@ DmgWifiHelper::Install (const DmgWifiPhyHelper &phyHelper,
       Ptr<WifiNetDevice> device = CreateObject<WifiNetDevice> ();
       Ptr<WifiRemoteStationManager> manager = m_stationManager.Create<WifiRemoteStationManager> ();
       Ptr<DmgWifiMac> mac = StaticCast<DmgWifiMac> (macHelper.Create ());
+      Ptr<DmgApWifiMac> apMac = DynamicCast<DmgApWifiMac> (mac); // safe downcast
       Ptr<DmgWifiPhy> phy = StaticCast<DmgWifiPhy> (phyHelper.Create (node, device));
       Ptr<Codebook> codebook = m_codeBook.Create<Codebook> ();
-      Ptr<DmgApWifiMac> ap = DynamicCast<DmgApWifiMac> (mac); // safe downcast
       /* Add scheduler if this node is PCP/AP */ 
-      if (ap)
+      if (apMac)
         {
           Ptr<DmgWifiScheduler> scheduler = m_dmgScheduler.Create<DmgWifiScheduler> ();
-          ap->SetScheduler (scheduler);
-          scheduler->SetMac (ap);
+          apMac->SetScheduler (scheduler);
+          scheduler->SetMac (apMac);
           scheduler->Initialize ();
         }
       mac->SetAddress (Mac48Address::Allocate ());
@@ -294,15 +294,15 @@ DmgWifiHelper::Install (const SpectrumDmgWifiPhyHelper &phyHelper,
       Ptr<WifiNetDevice> device = CreateObject<WifiNetDevice> ();
       Ptr<WifiRemoteStationManager> manager = m_stationManager.Create<WifiRemoteStationManager> ();
       Ptr<DmgWifiMac> mac = StaticCast<DmgWifiMac> (macHelper.Create ());
+      Ptr<DmgApWifiMac> apMac = DynamicCast<DmgApWifiMac> (mac); // safe downcast
       Ptr<SpectrumDmgWifiPhy> phy = StaticCast<SpectrumDmgWifiPhy> (phyHelper.Create (node, device));
       Ptr<Codebook> codebook = m_codeBook.Create<Codebook> ();
-      Ptr<DmgApWifiMac> ap = DynamicCast<DmgApWifiMac> (mac); // safe downcast
       /* Add scheduler if this node is PCP/AP */ 
-      if (ap)
+      if (apMac)
         {
           Ptr<DmgWifiScheduler> scheduler = m_dmgScheduler.Create<DmgWifiScheduler> ();
-          ap->SetScheduler (scheduler);
-          scheduler->SetMac (ap);
+          apMac->SetScheduler (scheduler);
+          scheduler->SetMac (apMac);
           scheduler->Initialize ();
         }
       mac->SetAddress (Mac48Address::Allocate ());
