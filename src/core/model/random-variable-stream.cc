@@ -805,7 +805,10 @@ LogNormalRandomVariable::LogNormalRandomVariable ()
   // attributes
   NS_LOG_FUNCTION (this);
 }
-
+LogNormalRandomVariable::~LogNormalRandomVariable ()
+{
+  NS_LOG_FUNCTION (this);
+}
 double 
 LogNormalRandomVariable::GetMu (void) const
 {
