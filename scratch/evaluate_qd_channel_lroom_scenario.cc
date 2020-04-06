@@ -195,8 +195,8 @@ DmgTspecElement
 GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation)
 {
   /* Simple assert for the moment */
-  NS_ASSERT_MSG (minAllocation <= MAX_SP_BLOCK_DURATION, "Exceeding Max SP block duration");
-  NS_ASSERT_MSG (maxAllocation <= MAX_SP_BLOCK_DURATION, "Exceeding Max SP block duration");
+  NS_ASSERT_MSG (minAllocation <= maxAllocation, "Minimum Allocation cannot be greater than Maximum Allocation");
+  NS_ASSERT_MSG (maxAllocation <= MAX_SP_BLOCK_DURATION, "Maximum Allocation exceeds Max SP block duration");
   DmgTspecElement element;
   DmgAllocationInfo info;
   info.SetAllocationID (allocId);
@@ -219,12 +219,8 @@ StationAssociated (Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t
       std::cout << "DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
                 << ", Association ID (AID) = " << aid << std::endl;
     }
-    staWifiMac->CreateAllocation (GetDmgTspecElement (1, true, 10000, 10000));
-    //staWifiMac->CreateAllocation (GetDmgTspecElement (2, true, 10000, 10000));
-    //staWifiMac->CreateAllocation (GetDmgTspecElement (3, true, 10000, 10000));
-    //Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (1, true, 30000, 30000));
-    //Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (3, true, 20000, 20000));
-    //Simulator::Schedule (Seconds (1.5), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (4, true, MAX_SP_BLOCK_DURATION, MAX_SP_BLOCK_DURATION));
+    staWifiMac->CreateAllocation (GetDmgTspecElement (1, true, 1000, 1000));
+    Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (1, true, 10000, 10000));
 }
 
 void
@@ -358,7 +354,6 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
 
-  LogComponentEnable ("Mobility", LOG_LEVEL_ALL);
   /*** Configure TCP Options ***/
   /* Select TCP variant */
   std::map<std::string, std::string>::const_iterator iter = tcpVariants.find (tcpVariant);
@@ -390,15 +385,8 @@ main (int argc, char *argv[])
   /* Turn on logging */
   if (verbose)
     {
-      //wifi.EnableLogComponents ();
+      wifi.EnableLogComponents ();
       LogComponentEnable ("Mobility", LOG_LEVEL_ALL);
-      LogComponentEnable ("BasicDmgWifiScheduler", LOG_LEVEL_ALL);
-      LogComponentEnable ("DmgWifiScheduler", LOG_LEVEL_ALL);
-      //LogComponentEnable ("DmgApWifiMac", LOG_LEVEL_ALL);
-      //LogComponentEnable ("DmgWifiMac", LOG_LEVEL_ALL);
-      //LogComponentEnable ("EdcaTxopN", LOG_LEVEL_ALL);
-      //LogComponentEnable ("DcaTxop", LOG_LEVEL_ALL);
-      //LogComponentEnable ("MacLow", LOG_LEVEL_ALL);
     }
 
   /**** Setup Ray-Tracing Channel ****/
