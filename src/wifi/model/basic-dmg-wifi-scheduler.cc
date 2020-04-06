@@ -119,7 +119,7 @@ BasicDmgWifiScheduler::GetAllocationDuration (uint32_t minAllocation, uint32_t m
 }
 
 StatusCode
-BasicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement &dmgTspec, DmgAllocationInfo &info)
+BasicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info)
 {
   NS_LOG_FUNCTION (this);
   /* Implementation of an admission policy for newly received requests. */
@@ -170,7 +170,7 @@ BasicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, DmgTspecElement &dmg
 }
 
 StatusCode
-BasicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement &dmgTspec, DmgAllocationInfo &info)
+BasicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info)
 {
   NS_LOG_FUNCTION (this);
   /* Implementation of an admission policy for modification requests. */

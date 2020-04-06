@@ -58,7 +58,7 @@ protected:
    * \param info The DMG Allocation Info element of the request.
    * \return The Status Code to be included in the ADDTS response.
    */
-  virtual StatusCode AddNewAllocation (uint8_t sourceAid, DmgTspecElement &dmgTspec, DmgAllocationInfo &info);
+  virtual StatusCode AddNewAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info);
   /**
    * Implement the policy that accept, reject a modification request.
    * \param sourceAid The AID of the requesting STA.
@@ -66,7 +66,7 @@ protected:
    * \param info The DMG Allocation Info element of the request.
    * \return The Status Code to be included in the ADDTS response.
    */
-  virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement &dmgTspec, DmgAllocationInfo &info);
+  virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info);
   /**
    * Adjust the existing allocations when an allocation is removed or modified.
    * \param iter The iterator pointing to the next element in the addtsAllocationList.

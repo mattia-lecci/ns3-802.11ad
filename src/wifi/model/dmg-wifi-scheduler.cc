@@ -280,7 +280,7 @@ DmgWifiScheduler::SendAddtsResponse (Mac48Address address, StatusCode status, Dm
 }
 
 void
-DmgWifiScheduler::ManageAddtsRequests (uint8_t sourceAid, Mac48Address &sourceAddr, DmgTspecElement &dmgTspec)
+DmgWifiScheduler::ManageAddtsRequests (uint8_t sourceAid, const Mac48Address &sourceAddr, const DmgTspecElement &dmgTspec)
 {
   NS_LOG_FUNCTION (this);
 

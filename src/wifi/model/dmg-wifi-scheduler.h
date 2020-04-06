@@ -127,7 +127,7 @@ protected:
    * \param sourceAddr The MAC address of the station that sent the ADDTS request.
    * \param dmgTspec The DMG Tspec element associated with the ADDTS request.
    */
-  virtual void ManageAddtsRequests (uint8_t sourceAid, Mac48Address &sourceAddr, DmgTspecElement &dmgTspec);
+  virtual void ManageAddtsRequests (uint8_t sourceAid, const Mac48Address &sourceAddr, const DmgTspecElement &dmgTspec);
   /**
    * \param minAllocation The minimum acceptable allocation in us for each allocation period.
    * \param maxAllocation The desired allocation in us for each allocation period.
@@ -141,7 +141,7 @@ protected:
    * \param info The DMG Allocation Info element of the request.
    * \return The Status Code to be included in the ADDTS response.
    */
-  virtual StatusCode AddNewAllocation (uint8_t sourceAid, DmgTspecElement &dmgTspec, DmgAllocationInfo &info) = 0;
+  virtual StatusCode AddNewAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info) = 0;
   /**
    * Implement the policy that accept, reject a modification request.
    * \param sourceAid The AID of the requesting STA.
@@ -149,7 +149,7 @@ protected:
    * \param info The DMG Allocation Info element of the request.
    * \return The Status Code to be included in the ADDTS response.
    */
-  virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, DmgTspecElement &dmgTspec, DmgAllocationInfo &info) = 0;
+  virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info) = 0;
   /**
    * Adjust the existing allocations when an allocation is removed or modified.
    * \param iter The iterator pointing to the next element in the addtsAllocationList.
