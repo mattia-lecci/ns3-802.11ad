@@ -385,8 +385,9 @@ main (int argc, char *argv[])
   /* Turn on logging */
   if (verbose)
     {
-      wifi.EnableLogComponents ();
       LogComponentEnable ("Mobility", LOG_LEVEL_ALL);
+      wifi.EnableDmgMacLogComponents ();
+      wifi.EnableDmgPhyLogComponents ();
     }
 
   /**** Setup Ray-Tracing Channel ****/

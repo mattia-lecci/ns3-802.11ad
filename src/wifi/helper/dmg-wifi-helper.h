@@ -411,6 +411,15 @@ public:
                               const DmgWifiMacHelper &mac, std::string nodeName) const;
   //TR--
 
+  /**
+   * Enable DMG log components at the MAC layer with one statement
+   */
+  void EnableDmgMacLogComponents (void);
+  /**
+   * Enable DMG log components at the PHY layer with one statement
+   */
+  void EnableDmgPhyLogComponents (void);
+
 private:
   ObjectFactory m_codeBook;
   ObjectFactory m_dmgScheduler;

@@ -341,6 +341,35 @@ DmgWifiHelper::Install (const SpectrumDmgWifiPhyHelper &phy,
   return Install (phy, mac, NodeContainer (node));
 }
 
+void
+DmgWifiHelper::EnableDmgMacLogComponents (void)
+{
+  LogComponentEnable ("MacLow", LOG_LEVEL_ALL);
+  LogComponentEnable ("EdcaTxopN", LOG_LEVEL_ALL);
+  LogComponentEnable ("DcaTxop", LOG_LEVEL_ALL);
+  LogComponentEnable ("RegularWifiMac", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgWifiMac", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgApWifiMac", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgStaWifiMac", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgWifiScheduler", LOG_LEVEL_ALL);
+  LogComponentEnable ("WifiRemoteStationManager", LOG_LEVEL_ALL);
+}
+
+void
+DmgWifiHelper::EnableDmgPhyLogComponents (void)
+{
+  LogComponentEnable ("SpectrumDmgWifiPhy", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgWifiPhy", LOG_LEVEL_ALL);
+  LogComponentEnable ("WifiPhy", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgErrorModel", LOG_LEVEL_ALL);
+  LogComponentEnable ("SensitivityModel60GHz", LOG_LEVEL_ALL);
+  LogComponentEnable ("QdPropagationDelay", LOG_LEVEL_ALL);
+  LogComponentEnable ("QdPropagationLossModel", LOG_LEVEL_ALL);
+  LogComponentEnable ("MultiModelSpectrumChannel", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgWifiChannel", LOG_LEVEL_ALL);
+  LogComponentEnable ("InterferenceHelper", LOG_LEVEL_ALL);
+}
+
 SpectrumDmgWifiPhyHelper::SpectrumDmgWifiPhyHelper ()
   : m_channel (0)
 {
