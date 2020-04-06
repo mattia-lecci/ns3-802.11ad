@@ -222,7 +222,7 @@ protected:
   /**
    * \param The new Allocation list.
    */
-  void SetAllocationList (AllocationFieldList allocationList);
+  void SetAllocationList (const AllocationFieldList &allocationList);
   /**
    * \return The size of the current Allocation list.
    */
@@ -300,7 +300,7 @@ private:
    * \param status The status code of the ADDTS response.
    * \param dmgTspec The DMG Tspec element associated.
    */
-  void SendAddtsResponse (const Mac48Address &address, const StatusCode &status, DmgTspecElement dmgTspec);
+  void SendAddtsResponse (const Mac48Address &address, const StatusCode &status, DmgTspecElement &dmgTspec);
   /**
    * Modify the scheduling parameters of an existing allocation.
    * \param allocationId The unique identifier for the allocation.

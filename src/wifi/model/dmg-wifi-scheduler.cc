@@ -130,7 +130,7 @@ DmgWifiScheduler::GetAllocationList (void)
 }
 
 void
-DmgWifiScheduler::SetAllocationList (AllocationFieldList allocationList)
+DmgWifiScheduler::SetAllocationList (const AllocationFieldList &allocationList)
 {
   m_allocationList = allocationList;
 }
@@ -251,7 +251,7 @@ DmgWifiScheduler::ReceiveAddtsRequest (Mac48Address address, DmgTspecElement ele
 }
 
 void
-DmgWifiScheduler::SendAddtsResponse (const Mac48Address &address, const StatusCode &status, DmgTspecElement dmgTspec)
+DmgWifiScheduler::SendAddtsResponse (const Mac48Address &address, const StatusCode &status, DmgTspecElement &dmgTspec)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_INFO ("Send ADDTS response to " << address);
@@ -320,12 +320,12 @@ DmgWifiScheduler::ManageAddtsRequests (uint8_t sourceAid, const Mac48Address &so
   /* Send ADDTS response to source STA */
   if (sourceAid != AID_AP)
     {
-      SendAddtsResponse (sourceAddr, status, dmgTspec);
+      SendAddtsResponse (sourceAddr, status, request.dmgTspec);
     }
   /* Send ADDTS response to destination STA */
   if (info.GetDestinationAid () != AID_AP)
     {
-      SendAddtsResponse (m_mac->GetStationAddress (info.GetDestinationAid ()), status, dmgTspec);
+      SendAddtsResponse (m_mac->GetStationAddress (info.GetDestinationAid ()), status, request.dmgTspec);
     }   
 }
 
