@@ -1142,16 +1142,17 @@ DmgWifiPhy::DoConfigureStandard (void)
   m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS7 ());
   m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS8 ());
   m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS9 ());
-  m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS9_1 ());
+  // m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS9_1 ());
   m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS10 ());
   m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS11 ());
   m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS12 ());
-  m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS12_1 ());
+  /* m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS12_1 ());
   m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS12_2 ());
   m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS12_3 ());
   m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS12_4 ());
   m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS12_5 ());
   m_deviceRateSet.push_back (DmgWifiPhy::GetDMG_MCS12_6 ());
+  */
 
   /* OFDM-PHY */
   if (m_supportOFDM)

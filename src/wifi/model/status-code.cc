@@ -44,6 +44,12 @@ StatusCode::IsSuccess (void) const
   return (m_code == 0);
 }
 
+void
+StatusCode::SetStatusCodeValue (StatusCodeValue value)
+{
+  m_code = value;
+}
+
 StatusCodeValue
 StatusCode::GetStatusCodeValue (void) const
 {

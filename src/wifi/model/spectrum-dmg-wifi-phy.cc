@@ -70,7 +70,7 @@ TypeId
 SpectrumDmgWifiPhy::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::SpectrumDmgWifiPhy")
-    .SetParent<WifiPhy> ()
+    .SetParent<DmgWifiPhy> ()
     .SetGroupName ("Wifi")
     .AddConstructor<SpectrumDmgWifiPhy> ()
     .AddAttribute ("DisableWifiReception", "Prevent Wi-Fi frame sync from ever happening",

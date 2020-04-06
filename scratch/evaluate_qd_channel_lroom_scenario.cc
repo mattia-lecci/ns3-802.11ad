@@ -72,6 +72,7 @@ Ptr<PacketSink> packetSink;
 Ptr<OnOffApplication> onoff;
 Ptr<BulkSendApplication> bulk;
 Time appStartTime = Seconds (0);
+bool appStarted = false;
 
 /* Network Nodes */
 Ptr<WifiNetDevice> apWifiNetDevice;
@@ -82,6 +83,7 @@ Ptr<DmgStaWifiMac> staWifiMac;
 Ptr<DmgWifiPhy> apWifiPhy;
 Ptr<DmgWifiPhy> staWifiPhy;
 Ptr<WifiRemoteStationManager> staRemoteStationManager;
+Ptr<DmgWifiScheduler> dmgScheduler;
 NetDeviceContainer staDevices;
 
 /*** Beamforming TxSS Schedulling ***/
@@ -189,33 +191,59 @@ CongStateTrace (TcpSocketState::TcpCongState_t oldState, TcpSocketState::TcpCong
   NS_LOG_DEBUG ("Old State: " << oldState << ", New State: " << newState); 
 }
 
+DmgTspecElement
+GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation)
+{
+  /* Simple assert for the moment */
+  NS_ASSERT_MSG (minAllocation <= maxAllocation, "Minimum Allocation cannot be greater than Maximum Allocation");
+  NS_ASSERT_MSG (maxAllocation <= MAX_SP_BLOCK_DURATION, "Maximum Allocation exceeds Max SP block duration");
+  DmgTspecElement element;
+  DmgAllocationInfo info;
+  info.SetAllocationID (allocId);
+  info.SetAllocationType (SERVICE_PERIOD_ALLOCATION);
+  info.SetAllocationFormat (ISOCHRONOUS);
+  info.SetAsPseudoStatic (isPseudoStatic);
+  info.SetDestinationAid (AID_AP);
+  element.SetDmgAllocationInfo (info);
+  element.SetMinimumAllocation (minAllocation);
+  element.SetMaximumAllocation (maxAllocation);
+  element.SetMinimumDuration (minAllocation);
+  return element;
+} 
+
 void
-StationAssociated (Ptr<DmgWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
+StationAssociated (Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
 {
   if (!csv)
     {
       std::cout << "DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
                 << ", Association ID (AID) = " << aid << std::endl;
     }
-  appStartTime = Simulator::Now ();
-  if (applicationType == "onoff")
+    staWifiMac->CreateAllocation (GetDmgTspecElement (1, true, 1000, 1000));
+    Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (1, true, 10000, 10000));
+}
+
+void
+ADDTSResponseReceived (Mac48Address address, StatusCode status, DmgTspecElement element)
+{
+  NS_LOG_DEBUG (address << " Received ADDTS response with status: " << status.IsSuccess ());
+  if (status.IsSuccess () && !appStarted)
     {
-      onoff->StartApplication ();
+      appStartTime = Simulator::Now ();
+      appStarted = true;
+      if (applicationType == "onoff")
+        {
+          onoff->StartApplication ();
+        }
+      else
+        {
+          bulk->StartApplication ();
+        }
       /* Connect to TCP traces */
       if (socketType == "ns3::TcpSocketFactory")
         {
           onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
           onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
-        }
-    }
-  else
-    {
-      bulk->StartApplication ();
-      /* Connect to TCP traces */
-      if (socketType == "ns3::TcpSocketFactory")
-        {
-          bulk->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
-          bulk->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
         }
     }
 }
@@ -277,6 +305,7 @@ main (int argc, char *argv[])
   bool verbose = false;                         /* Print Logging Information. */
   double simulationTime = 10;                   /* Simulation time in seconds. */
   bool pcapTracing = false;                     /* PCAP Tracing is enabled or not. */
+  uint32_t interAllocDistance = 0;              /* Duration of a broadcast CBAP between two ADDTS allocations */
   std::map<std::string, std::string> tcpVariants; /* List of the tcp Variants */
   uint16_t ac = 0;                              /* Select AC_BE as default AC */
   /*https://www.nsnam.org/doxygen/wifi-multi-tos_8cc_source.html */
@@ -316,6 +345,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("ac", "0: AC_BE, 1: AC_BK, 2: AC_VI, 3: AC_VO", ac);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
+  cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations", interAllocDistance);
   cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
   cmd.Parse (argc, argv);
 
@@ -355,8 +385,9 @@ main (int argc, char *argv[])
   /* Turn on logging */
   if (verbose)
     {
-      wifi.EnableLogComponents ();
       LogComponentEnable ("Mobility", LOG_LEVEL_ALL);
+      wifi.EnableDmgMacLogComponents ();
+      wifi.EnableDmgPhyLogComponents ();
     }
 
   /**** Setup Ray-Tracing Channel ****/
@@ -386,6 +417,9 @@ main (int argc, char *argv[])
   /* Sensitivity model includes implementation loss and noise figure */
   spectrumWifiPhy.Set ("CcaMode1Threshold", DoubleValue (-79));
   spectrumWifiPhy.Set ("EnergyDetectionThreshold", DoubleValue (-79 + 3));
+  /* Custom error rate model for IEEE 802.11ad */
+  spectrumWifiPhy.SetErrorRateModel ("ns3::DmgErrorModel",
+                                     "FileName", StringValue ("DmgFiles/ErrorModel/LookupTable_1458.txt"));
   /* Set default algorithm for all nodes to be constant rate */
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "ControlMode", StringValue (phyMode),
                                 "DataMode", StringValue (phyMode));
@@ -418,6 +452,9 @@ main (int argc, char *argv[])
   /* Set Parametric Codebook for the DMG AP */
   wifi.SetCodebook ("ns3::CodebookParametric",
                     "FileName", StringValue ("DmgFiles/Codebook/CODEBOOK_URA_AP_" + arrayConfig + "x.txt"));
+  /* Set the Scheduler for the DMG AP */
+  wifi.SetDmgScheduler ("ns3::BasicDmgWifiScheduler",
+                        "InterAllocationDistance", UintegerValue (interAllocDistance));
 
   /* Create Wifi Network Devices (WifiNetDevice) */
   NetDeviceContainer apDevice;
@@ -535,6 +572,7 @@ main (int argc, char *argv[])
   parametersSta->wifiMac = staWifiMac;
   staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, staWifiMac));
   staWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, outputSlsPhase, parametersSta));
+  staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeCallback (&ADDTSResponseReceived));
   staWifiPhy->TraceConnectWithoutContext ("PhyTxEnd", MakeCallback (&PhyTxEnd));
   staRemoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeCallback (&MacTxDataFailed));
 

@@ -1052,6 +1052,8 @@ private:
 };
 
 typedef std::vector<AllocationField> AllocationFieldList;
+typedef AllocationFieldList::iterator AllocationFieldListI;
+typedef AllocationFieldList::const_iterator AllocationFieldListCI;
 
 /**
  * \ingroup wifi

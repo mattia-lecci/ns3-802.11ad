@@ -199,6 +199,9 @@ DmgStaWifiMac::GetTypeId (void)
                      "The BeamLink maintenance timer associated to a link has expired.",
                      MakeTraceSourceAccessor (&DmgStaWifiMac::m_beamLinkMaintenanceTimerExpired),
                      "ns3::DmgStaWifiMac::BeamLinkMaintenanceTimerExpiredTracedCallback")
+    .AddTraceSource ("ADDTSResponse", "Received an ADDTS response from PCP/AP.",
+                     MakeTraceSourceAccessor (&DmgStaWifiMac::m_addtsResponseReceived),
+                     "ns3::DmgStaWifiMac::AddtsResponseTracedCallback")
   ;
   return tid;
 }
@@ -1203,7 +1206,7 @@ DmgStaWifiMac::StartDataTransmissionInterval (void)
       else
         {
           AllocationField field;
-          for (AllocationFieldList::iterator iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
+          for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
             {
               field = (*iter);
               if (field.GetAllocationType () == SERVICE_PERIOD_ALLOCATION)
@@ -2643,6 +2646,7 @@ DmgStaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               {
                 DmgAddTSResponseFrame frame;
                 packet->RemoveHeader (frame);
+                m_addtsResponseReceived (GetAddress (), frame.GetStatusCode (), frame.GetDmgTspec ());
                 /* Contain modified airtime allocation */
                 if (frame.GetStatusCode ().IsSuccess ())
                   {
@@ -3136,6 +3140,15 @@ DmgStaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
               if (scheduleElement != 0)
                 {
                   m_allocationList = scheduleElement->GetAllocationFieldList ();
+                  /* Printing allocation list at STA */
+                  for (AllocationFieldListI it = m_allocationList.begin (); it != m_allocationList.end (); ++it)
+                  {
+                    NS_LOG_DEBUG ("Allocation Id: " << +it->GetAllocationID () << "\n"
+                                  << "Source AID: " << +it->GetSourceAid () << "\n"
+                                  << "Destination AID: " << +it->GetDestinationAid () << "\n" 
+                                  << "Start: " << it->GetAllocationStart () << "\n"
+                                  << "Duration: " << it->GetAllocationBlockDuration () << "\n");
+                  }
                 }
             }
 
@@ -3272,7 +3285,7 @@ DmgStaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                   /* Record SC MCS range */
                   AddMcsSupport (from, 5, dmgCapabilities->GetMaximumScTxMcs ());
                   /* Record OFDM MCS range */
-                  if (dmgCapabilities->GetMaximumOfdmTxMcs () != 0)
+                  if (dmgCapabilities->GetMaximumOfdmTxMcs () != 0 && m_supportOFDM)
                     {
                       AddMcsSupport (from, 13, dmgCapabilities->GetMaximumOfdmTxMcs ());
                     }

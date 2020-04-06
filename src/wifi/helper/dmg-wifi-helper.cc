@@ -21,6 +21,7 @@
 #include "dmg-wifi-helper.h"
 #include "ns3/propagation-loss-model.h"
 #include "ns3/propagation-delay-model.h"
+#include "ns3/dmg-ap-wifi-mac.h"
 #include "ns3/dmg-wifi-phy.h"
 #include "ns3/dmg-wifi-mac.h"
 #include "ns3/names.h"
@@ -188,8 +189,17 @@ DmgWifiHelper::Install (const DmgWifiPhyHelper &phyHelper,
       Ptr<WifiNetDevice> device = CreateObject<WifiNetDevice> ();
       Ptr<WifiRemoteStationManager> manager = m_stationManager.Create<WifiRemoteStationManager> ();
       Ptr<DmgWifiMac> mac = StaticCast<DmgWifiMac> (macHelper.Create ());
+      Ptr<DmgApWifiMac> apMac = DynamicCast<DmgApWifiMac> (mac); // safe downcast
       Ptr<DmgWifiPhy> phy = StaticCast<DmgWifiPhy> (phyHelper.Create (node, device));
       Ptr<Codebook> codebook = m_codeBook.Create<Codebook> ();
+      /* Add scheduler if this node is PCP/AP */ 
+      if (apMac)
+        {
+          Ptr<DmgWifiScheduler> scheduler = m_dmgScheduler.Create<DmgWifiScheduler> ();
+          apMac->SetScheduler (scheduler);
+          scheduler->SetMac (apMac);
+          scheduler->Initialize ();
+        }
       mac->SetAddress (Mac48Address::Allocate ());
       mac->ConfigureStandard (m_standard);
       mac->SetCodebook (codebook);
@@ -249,6 +259,28 @@ void DmgWifiHelper::SetCodebook (std::string name,
   m_codeBook.Set (n7, v7);
 }
 
+void DmgWifiHelper::SetDmgScheduler (std::string name,
+         std::string n0, const AttributeValue &v0,
+         std::string n1, const AttributeValue &v1,
+         std::string n2, const AttributeValue &v2,
+         std::string n3, const AttributeValue &v3,
+         std::string n4, const AttributeValue &v4,
+         std::string n5, const AttributeValue &v5,
+         std::string n6, const AttributeValue &v6,
+         std::string n7, const AttributeValue &v7)
+{
+  m_dmgScheduler = ObjectFactory ();
+  m_dmgScheduler.SetTypeId (name);
+  m_dmgScheduler.Set (n0, v0);
+  m_dmgScheduler.Set (n1, v1);
+  m_dmgScheduler.Set (n2, v2);
+  m_dmgScheduler.Set (n3, v3);
+  m_dmgScheduler.Set (n4, v4);
+  m_dmgScheduler.Set (n5, v5);
+  m_dmgScheduler.Set (n6, v6);
+  m_dmgScheduler.Set (n7, v7);
+}
+
 NetDeviceContainer
 DmgWifiHelper::Install (const SpectrumDmgWifiPhyHelper &phyHelper,
                         const DmgWifiMacHelper &macHelper,
@@ -262,8 +294,17 @@ DmgWifiHelper::Install (const SpectrumDmgWifiPhyHelper &phyHelper,
       Ptr<WifiNetDevice> device = CreateObject<WifiNetDevice> ();
       Ptr<WifiRemoteStationManager> manager = m_stationManager.Create<WifiRemoteStationManager> ();
       Ptr<DmgWifiMac> mac = StaticCast<DmgWifiMac> (macHelper.Create ());
+      Ptr<DmgApWifiMac> apMac = DynamicCast<DmgApWifiMac> (mac); // safe downcast
       Ptr<SpectrumDmgWifiPhy> phy = StaticCast<SpectrumDmgWifiPhy> (phyHelper.Create (node, device));
       Ptr<Codebook> codebook = m_codeBook.Create<Codebook> ();
+      /* Add scheduler if this node is PCP/AP */ 
+      if (apMac)
+        {
+          Ptr<DmgWifiScheduler> scheduler = m_dmgScheduler.Create<DmgWifiScheduler> ();
+          apMac->SetScheduler (scheduler);
+          scheduler->SetMac (apMac);
+          scheduler->Initialize ();
+        }
       mac->SetAddress (Mac48Address::Allocate ());
       mac->ConfigureStandard (m_standard);
       mac->SetCodebook (codebook);
@@ -298,6 +339,35 @@ DmgWifiHelper::Install (const SpectrumDmgWifiPhyHelper &phy,
 {
   Ptr<Node> node = Names::Find<Node> (nodeName);
   return Install (phy, mac, NodeContainer (node));
+}
+
+void
+DmgWifiHelper::EnableDmgMacLogComponents (void)
+{
+  LogComponentEnable ("MacLow", LOG_LEVEL_ALL);
+  LogComponentEnable ("EdcaTxopN", LOG_LEVEL_ALL);
+  LogComponentEnable ("DcaTxop", LOG_LEVEL_ALL);
+  LogComponentEnable ("RegularWifiMac", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgWifiMac", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgApWifiMac", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgStaWifiMac", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgWifiScheduler", LOG_LEVEL_ALL);
+  LogComponentEnable ("WifiRemoteStationManager", LOG_LEVEL_ALL);
+}
+
+void
+DmgWifiHelper::EnableDmgPhyLogComponents (void)
+{
+  LogComponentEnable ("SpectrumDmgWifiPhy", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgWifiPhy", LOG_LEVEL_ALL);
+  LogComponentEnable ("WifiPhy", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgErrorModel", LOG_LEVEL_ALL);
+  LogComponentEnable ("SensitivityModel60GHz", LOG_LEVEL_ALL);
+  LogComponentEnable ("QdPropagationDelay", LOG_LEVEL_ALL);
+  LogComponentEnable ("QdPropagationLossModel", LOG_LEVEL_ALL);
+  LogComponentEnable ("MultiModelSpectrumChannel", LOG_LEVEL_ALL);
+  LogComponentEnable ("DmgWifiChannel", LOG_LEVEL_ALL);
+  LogComponentEnable ("InterferenceHelper", LOG_LEVEL_ALL);
 }
 
 SpectrumDmgWifiPhyHelper::SpectrumDmgWifiPhyHelper ()

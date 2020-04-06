@@ -297,6 +297,7 @@ DmgWifiMac::GetSprFrameDuration (void) const
 void
 DmgWifiMac::AddMcsSupport (Mac48Address address, uint32_t initialMcs, uint32_t lastMcs)
 {
+  NS_LOG_FUNCTION (this << address << initialMcs << lastMcs);
   for (uint32_t j = initialMcs; j <= lastMcs; j++)
     {
       m_stationManager->AddSupportedMode (address, m_phy->GetMode (j));

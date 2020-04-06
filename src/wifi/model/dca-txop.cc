@@ -461,11 +461,11 @@ DcaTxop::NotifyAccessGranted (void)
                     ", to=" << m_currentHdr.GetAddr1 () <<
                     ", seq=" << m_currentHdr.GetSequenceControl ());
     }
-  MacLowTransmissionParameters params;
+
   if (m_stationManager->HasDmgSupported ())
     {
-      params.SetAsBoundedTransmission ();
-      params.SetMaximumTransmissionDuration (m_allocationDuration);
+      m_currentParams.SetAsBoundedTransmission ();
+      m_currentParams.SetMaximumTransmissionDuration (m_allocationDuration);
     }
   m_currentParams.DisableOverrideDurationId ();
   if (m_currentHdr.GetAddr1 ().IsGroup () || m_currentHdr.IsActionNoAck ())
