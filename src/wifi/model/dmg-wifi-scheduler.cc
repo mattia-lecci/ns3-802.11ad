@@ -251,7 +251,7 @@ DmgWifiScheduler::ReceiveAddtsRequest (Mac48Address address, DmgTspecElement ele
 }
 
 void
-DmgWifiScheduler::SendAddtsResponse (Mac48Address address, StatusCode status, DmgTspecElement dmgTspec)
+DmgWifiScheduler::SendAddtsResponse (const Mac48Address &address, const StatusCode &status, DmgTspecElement dmgTspec)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_INFO ("Send ADDTS response to " << address);
