@@ -261,8 +261,8 @@ protected:
 
   uint32_t m_allocationStartTime;               //!< The start time for the next allocation in the DTI.
   uint32_t m_remainingDtiTime;                  //!< The remaining time that can be allocated in the DTI.
-  uint32_t m_guardTime;                         //!< The guard time between allocations in us.
   Ptr<ExtendedScheduleElement> m_fullEse;       //!< Full ESE for calculation of BTI duration.
+  static const uint32_t m_guardTime = 10;       //!< The guard time between allocations in us.
 
   /* Channel Access Period */
   ChannelAccessPeriod m_currentAccessPeriod;   //!< The type of the current channel access period.
