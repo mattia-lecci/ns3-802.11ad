@@ -103,6 +103,35 @@ bool csv = false;                         /* Enable CSV output. */
 /* Tracing */
 Ptr<QdPropagationLossModel> lossModelRaytracing;                         //!< Q-D Channel Tracing Model.
 
+std::vector<std::string>
+SplitString (const std::string &str, char delimiter)
+{
+  std::stringstream ss (str);
+  std::string token;
+  std::vector<std::string> container;
+
+  while (std::getline (ss, token, delimiter))
+    {
+      container.push_back (token);
+    }
+  return container;
+}
+
+void
+EnableMyTraces (std::vector<std::string> &logComponents, Time tLogStart, Time tLogEnd)
+{
+  for (size_t i = 0; i < logComponents.size (); ++i)
+    {
+      const char* component = logComponents.at (i).c_str ();
+      if (strlen(component) > 0)
+        {
+          NS_LOG_UNCOND ("Logging component " << component);
+          Simulator::Schedule (tLogStart, &LogComponentEnable, component, LOG_LEVEL_ALL);
+          Simulator::Schedule (tLogEnd, &LogComponentDisable, component, LOG_LEVEL_ALL);
+        }
+    }
+}
+
 struct Parameters : public SimpleRefCount<Parameters>
 {
   uint32_t srcNodeID;
@@ -305,12 +334,15 @@ main (int argc, char *argv[])
   bool verbose = false;                         /* Print Logging Information. */
   double simulationTime = 10;                   /* Simulation time in seconds. */
   bool pcapTracing = false;                     /* PCAP Tracing is enabled or not. */
-  uint32_t interAllocDistance = 0;              /* Duration of a broadcast CBAP between two ADDTS allocations */
+  uint32_t interAllocDistance = 10;              /* Duration of a broadcast CBAP between two ADDTS allocations */
   std::map<std::string, std::string> tcpVariants; /* List of the tcp Variants */
   uint16_t ac = 0;                              /* Select AC_BE as default AC */
   /*https://www.nsnam.org/doxygen/wifi-multi-tos_8cc_source.html */
   std::vector<uint8_t> tosValues = {0x70, 0x28, 0xb8, 0xc0}; /* AC_BE, AC_BK, AC_VI, AC_VO */
   std::string arrayConfig = "28";               /* Phased antenna array configuration*/
+  std::string logComponentsStr = "";            /* Components to be logged from tLogStart to tLogEnd separated by ':' */
+  double tLogStart = 0.0;                       /* Log start [s] */
+  double tLogEnd = simulationTime;              /* Log end [s] */
 
   /** TCP Variants **/
   tcpVariants.insert (std::make_pair ("NewReno",       "ns3::TcpNewReno"));
@@ -347,12 +379,18 @@ main (int argc, char *argv[])
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
   cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations", interAllocDistance);
   cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
+  cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
+  cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
+  cmd.AddValue ("tLogEnd", "Log end [s]", tLogEnd);
   cmd.Parse (argc, argv);
 
   /* Global params: no fragmentation, no RTS/CTS, fixed rate for all packets */
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
+
+  std::vector<std::string> logComponents = SplitString (logComponentsStr, ':');
+  EnableMyTraces (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
 
   /*** Configure TCP Options ***/
   /* Select TCP variant */
