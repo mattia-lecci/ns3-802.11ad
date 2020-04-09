@@ -103,6 +103,35 @@ bool csv = false;                         /* Enable CSV output. */
 /* Tracing */
 Ptr<QdPropagationLossModel> lossModelRaytracing;                         //!< Q-D Channel Tracing Model.
 
+std::vector<std::string>
+SplitString (const std::string &str, char delimiter)
+{
+  std::stringstream ss (str);
+  std::string token;
+  std::vector<std::string> container;
+
+  while (std::getline (ss, token, delimiter))
+    {
+      container.push_back (token);
+    }
+  return container;
+}
+
+void
+EnableMyTraces (std::vector<std::string> &logComponents, Time tLogStart, Time tLogEnd)
+{
+  for (size_t i = 0; i < logComponents.size (); ++i)
+    {
+      const char* component = logComponents.at (i).c_str ();
+      if (strlen(component) > 0)
+        {
+          NS_LOG_UNCOND ("Logging component " << component);
+          Simulator::Schedule (tLogStart, &LogComponentEnable, component, LOG_LEVEL_ALL);
+          Simulator::Schedule (tLogEnd, &LogComponentDisable, component, LOG_LEVEL_ALL);
+        }
+    }
+}
+
 struct Parameters : public SimpleRefCount<Parameters>
 {
   uint32_t srcNodeID;
@@ -294,23 +323,26 @@ main (int argc, char *argv[])
   uint32_t packetSize = 1448;                   /* Application payload size in bytes. */
   string dataRate = "300Mbps";                  /* Application data rate. */
   string tcpVariant = "NewReno";                /* TCP Variant Type. */
-  uint32_t bufferSize = 131072;                 /* TCP Send/Receive Buffer Size. */
+  uint32_t bufferSize = 131072;                 /* TCP Send/Receive Buffer Size [bytes]. */
   uint32_t maxPackets = 0;                      /* Maximum Number of Packets */
-  uint32_t msduAggregationSize = 7935;          /* The maximum aggregation size for A-MSDU in Bytes. */
-  uint32_t mpduAggregationSize = 262143;        /* The maximum aggregation size for A-MSPU in Bytes. */
+  uint32_t msduAggregationSize = 7935;          /* The maximum aggregation size for A-MSDU [bytes]. */
+  uint32_t mpduAggregationSize = 262143;        /* The maximum aggregation size for A-MSPU [bytes]. */
   uint32_t queueSize = 1000;                    /* Wifi MAC Queue Size. */
   string phyMode = "DMG_MCS12";                 /* Type of the Physical Layer. */
-  uint16_t startDistance = 0;                   /* Starting distance in the Trace-File. */
+  uint16_t startDistance = 0;                   /* Starting distance in the Trace-File [0-260 m] */
   bool enableMobility = true;                   /* Enable mobility. */
   bool verbose = false;                         /* Print Logging Information. */
-  double simulationTime = 10;                   /* Simulation time in seconds. */
+  double simulationTime = 10;                   /* Simulation time [s]. */
   bool pcapTracing = false;                     /* PCAP Tracing is enabled or not. */
-  uint32_t interAllocDistance = 0;              /* Duration of a broadcast CBAP between two ADDTS allocations */
+  uint32_t interAllocDistance = 10;              /* Duration of a broadcast CBAP between two ADDTS allocations [us] */
   std::map<std::string, std::string> tcpVariants; /* List of the tcp Variants */
   uint16_t ac = 0;                              /* Select AC_BE as default AC */
   /*https://www.nsnam.org/doxygen/wifi-multi-tos_8cc_source.html */
   std::vector<uint8_t> tosValues = {0x70, 0x28, 0xb8, 0xc0}; /* AC_BE, AC_BK, AC_VI, AC_VO */
   std::string arrayConfig = "28";               /* Phased antenna array configuration*/
+  std::string logComponentsStr = "";            /* Components to be logged from tLogStart to tLogEnd separated by ':' */
+  double tLogStart = 0.0;                       /* Log start [s] */
+  double tLogEnd = simulationTime;              /* Log end [s] */
 
   /** TCP Variants **/
   tcpVariants.insert (std::make_pair ("NewReno",       "ns3::TcpNewReno"));
@@ -327,32 +359,38 @@ main (int argc, char *argv[])
   CommandLine cmd;
   cmd.AddValue ("activateApp", "Whether to activate data transmission or not", activateApp);
   cmd.AddValue ("applicationType", "Type of the Tx Application: onoff or bulk", applicationType);
-  cmd.AddValue ("packetSize", "Application packet size in bytes", packetSize);
+  cmd.AddValue ("packetSize", "Application packet size [bytes]", packetSize);
   cmd.AddValue ("dataRate", "Application data rate", dataRate);
   cmd.AddValue ("maxPackets", "Maximum number of packets to send", maxPackets);
   cmd.AddValue ("tcpVariant", "Transport protocol to use: TcpTahoe, TcpReno, TcpNewReno, TcpWestwood, TcpWestwoodPlus", tcpVariant);
   cmd.AddValue ("socketType", "Type of the Socket (ns3::TcpSocketFactory, ns3::UdpSocketFactory)", socketType);
-  cmd.AddValue ("bufferSize", "TCP Buffer Size (Send/Receive) in Bytes", bufferSize);
-  cmd.AddValue ("msduAggregation", "The maximum aggregation size for A-MSDU in Bytes", msduAggregationSize);
-  cmd.AddValue ("mpduAggregation", "The maximum aggregation size for A-MPDU in Bytes", mpduAggregationSize);
+  cmd.AddValue ("bufferSize", "TCP Buffer Size (Send/Receive) [bytes]", bufferSize);
+  cmd.AddValue ("msduAggregation", "The maximum aggregation size for A-MSDU [bytes]", msduAggregationSize);
+  cmd.AddValue ("mpduAggregation", "The maximum aggregation size for A-MPDU [bytes]", mpduAggregationSize);
   cmd.AddValue ("queueSize", "The maximum size of the Wifi MAC Queue", queueSize);
   cmd.AddValue ("phyMode", "802.11ad PHY Mode", phyMode);
-  cmd.AddValue ("startDistance", "Starting distance in the trace file [0-260]", startDistance);
+  cmd.AddValue ("startDistance", "Starting distance in the trace file [0-260 m]", startDistance);
   cmd.AddValue ("biThreshold", "BI Threshold to trigger beamforming training", biThreshold);
   cmd.AddValue ("enableMobility", "Whether to enable mobility or simulate static scenario", enableMobility);
   cmd.AddValue ("verbose", "Turn on all WifiNetDevice log components", verbose);
-  cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
+  cmd.AddValue ("simulationTime", "Simulation time [s]", simulationTime);
   cmd.AddValue ("ac", "0: AC_BE, 1: AC_BK, 2: AC_VI, 3: AC_VO", ac);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
-  cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations", interAllocDistance);
+  cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
   cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
+  cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
+  cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
+  cmd.AddValue ("tLogEnd", "Log end [s]", tLogEnd);
   cmd.Parse (argc, argv);
 
   /* Global params: no fragmentation, no RTS/CTS, fixed rate for all packets */
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
+
+  std::vector<std::string> logComponents = SplitString (logComponentsStr, ':');
+  EnableMyTraces (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
 
   /*** Configure TCP Options ***/
   /* Select TCP variant */

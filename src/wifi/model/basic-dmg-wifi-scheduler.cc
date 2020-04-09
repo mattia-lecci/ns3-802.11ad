@@ -48,7 +48,7 @@ BasicDmgWifiScheduler::GetTypeId (void)
                      MakeUintegerChecker<uint32_t> ())
       .AddAttribute ("InterAllocationDistance", "The time distance in microseconds between two adjacent allocations "
                      "This distance will be allocated as broadcast CBAP",
-                     UintegerValue (0),
+                     UintegerValue (10),
                      MakeUintegerAccessor (&BasicDmgWifiScheduler::m_interAllocationDistance),
                      MakeUintegerChecker<uint32_t> (10, 65535))
   ;
@@ -267,7 +267,7 @@ BasicDmgWifiScheduler::AddBroadcastCbapAllocations (void)
     {
       start = iter->GetAllocationStart () + iter->GetAllocationBlockDuration () + m_guardTime;
       if ((m_remainingDtiTime >= m_interAllocationDistance)
-          && (m_interAllocationDistance > 0)) // here the decision to place a broadcast CBAP among allocated requests
+          && (m_interAllocationDistance > m_guardTime)) // here the decision to place a broadcast CBAP among allocated requests
         {
           broadcastCbapList = GetBroadcastCbapAllocation (true, start, m_interAllocationDistance + m_guardTime);
           iter = m_allocationList.insert (nextIter, broadcastCbapList.begin (), broadcastCbapList.end ());
