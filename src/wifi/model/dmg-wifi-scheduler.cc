@@ -51,7 +51,8 @@ DmgWifiScheduler::DmgWifiScheduler ()
   : m_isAddtsAccepted (false),
     m_isAllocationModified (false),
     m_isNonStaticRemoved (false),
-    m_isDeltsReceived (false)
+    m_isDeltsReceived (false),
+    m_guardTime (GUARD_TIME.GetMicroSeconds ())
 {
   NS_LOG_FUNCTION (this);
 }
