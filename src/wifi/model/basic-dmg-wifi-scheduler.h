@@ -92,4 +92,4 @@ private:
 
 } // namespace ns3
 
-#endif /* DMG_WIFI_SCHEDULER_H */
+#endif /* BASIC_DMG_WIFI_SCHEDULER_H */

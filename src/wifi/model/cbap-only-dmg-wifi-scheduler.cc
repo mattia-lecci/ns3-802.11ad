@@ -80,7 +80,7 @@ StatusCode
 CbapOnlyDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info)
 {
   NS_LOG_FUNCTION (this);
-  /* Implementation of an admission policy for newly received requests. */
+  /* The newly received ADDTS request is not accepted. */
   StatusCode status;
   status.SetFailure ();
   return status;
@@ -90,7 +90,7 @@ StatusCode
 CbapOnlyDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info)
 {
   NS_LOG_FUNCTION (this);
-  /* Implementation of an admission policy for modification requests. */
+  /* The modification ADDTS request is not accepted. */
   StatusCode status;
   status.SetFailure ();
   return status;

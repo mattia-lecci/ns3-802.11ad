@@ -64,8 +64,9 @@ using namespace ns3;
 using namespace std;
 
 /**  Application Variables **/
-string applicationType = "bulk";              /* Type of the Tx application */
-string socketType = "ns3::TcpSocketFactory";  /* Socket Type (TCP/UDP) */
+string applicationType = "bulk";                       /* Type of the Tx application */
+string socketType = "ns3::TcpSocketFactory";           /* Socket Type (TCP/UDP) */
+string schedulerType = "ns3::BasicDmgWifiScheduler";   /* Type of scheduler to be used */
 uint64_t totalRx = 0;
 double throughput = 0;
 Ptr<PacketSink> packetSink;
@@ -256,7 +257,7 @@ void
 ADDTSResponseReceived (Mac48Address address, StatusCode status, DmgTspecElement element)
 {
   NS_LOG_DEBUG (address << " Received ADDTS response with status: " << status.IsSuccess ());
-  if (status.IsSuccess () && !appStarted)
+  if ((status.IsSuccess () || (schedulerType == "ns3::CbapOnlyDmgWifiScheduler")) && !appStarted)
     {
       appStartTime = Simulator::Now ();
       appStarted = true;
@@ -377,6 +378,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("ac", "0: AC_BE, 1: AC_BK, 2: AC_VI, 3: AC_VO", ac);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
+  cmd.AddValue ("scheduler", "The type of scheduler to use in the simulation", schedulerType);
   cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
   cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
   cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
@@ -388,6 +390,7 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
+  Config::SetDefault ("ns3::BasicDmgWifiScheduler::InterAllocationDistance", UintegerValue (interAllocDistance));
 
   std::vector<std::string> logComponents = SplitString (logComponentsStr, ':');
   EnableMyTraces (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
@@ -491,8 +494,7 @@ main (int argc, char *argv[])
   wifi.SetCodebook ("ns3::CodebookParametric",
                     "FileName", StringValue ("DmgFiles/Codebook/CODEBOOK_URA_AP_" + arrayConfig + "x.txt"));
   /* Set the Scheduler for the DMG AP */
-  wifi.SetDmgScheduler ("ns3::BasicDmgWifiScheduler",
-                        "InterAllocationDistance", UintegerValue (interAllocDistance));
+  wifi.SetDmgScheduler (schedulerType);
 
   /* Create Wifi Network Devices (WifiNetDevice) */
   NetDeviceContainer apDevice;
