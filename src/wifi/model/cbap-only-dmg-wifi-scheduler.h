@@ -20,37 +20,35 @@
  *
  */
 
-#ifndef BASIC_DMG_WIFI_SCHEDULER_H
-#define BASIC_DMG_WIFI_SCHEDULER_H
+#ifndef CBAP_ONLY_DMG_WIFI_SCHEDULER_H
+#define CBAP_ONLY_DMG_WIFI_SCHEDULER_H
 
 #include "dmg-wifi-scheduler.h"
 
 namespace ns3 {
 /**
- * \brief Basic scheduling features for IEEE 802.11ad
+ * \brief Cbap Only scheduler for IEEE 802.11ad
  *
- * This class provides the implementation of a basic set of scheduling features 
- * for IEEE 802.11ad. In particular, this class develops the admission and control
- * policy in the case of new ADDTS requests or modification ADDTS requests received.
- * The presence of a minimum broadcast CBAP time is considered when evaluating ADDTS requests.
- * The remaining DTI time is allocated as broadcast CBAP. 
+ * This class provides the implementation of the simplest scheduler for
+ * IEEE 802.11ad which allocates the entire DTI as CBAP and rejects with
+ * status code Failure all the ADDTS requests received. 
  */
-class BasicDmgWifiScheduler : public DmgWifiScheduler
+class CbapOnlyDmgWifiScheduler : public DmgWifiScheduler
 {
 public:
   static TypeId GetTypeId (void);
 
-  BasicDmgWifiScheduler ();
-  virtual ~BasicDmgWifiScheduler ();
+  CbapOnlyDmgWifiScheduler ();
+  virtual ~CbapOnlyDmgWifiScheduler ();
 
-protected:
-  virtual void DoDispose (void);
+private:
+  void DoDispose (void);
   /**
    * \param minAllocation The minimum acceptable allocation in us for each allocation period.
    * \param maxAllocation The desired allocation in us for each allocation period.
    * \return The allocation duration for the allocation period.
    */
-  virtual uint32_t GetAllocationDuration (uint32_t minAllocation, uint32_t maxAllocation);
+  uint32_t GetAllocationDuration (uint32_t minAllocation, uint32_t maxAllocation);
   /**
    * Implement the policy that accept, reject a new ADDTS request.
    * \param sourceAid The AID of the requesting STA.
@@ -58,7 +56,7 @@ protected:
    * \param info The DMG Allocation Info element of the request.
    * \return The Status Code to be included in the ADDTS response.
    */
-  virtual StatusCode AddNewAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info);
+  StatusCode AddNewAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info);
   /**
    * Implement the policy that accept, reject a modification request.
    * \param sourceAid The AID of the requesting STA.
@@ -66,30 +64,24 @@ protected:
    * \param info The DMG Allocation Info element of the request.
    * \return The Status Code to be included in the ADDTS response.
    */
-  virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info);
+  StatusCode ModifyExistingAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info);
   /**
    * Adjust the existing allocations when an allocation is removed or modified.
    * \param iter The iterator pointing to the next element in the addtsAllocationList.
    * \param duration The duration of the time to manage.
    * \param isToAdd Whether the duration is to be added or subtracted.
    */
-  virtual void AdjustExistingAllocations (AllocationFieldListI iter, uint32_t duration, bool isToAdd);
+  void AdjustExistingAllocations (AllocationFieldListI iter, uint32_t duration, bool isToAdd);
   /**
    * Update start time and remaining DTI time for the next request to be evaluated.
    */
-  virtual void UpdateStartAndRemainingTime (void);
+  void UpdateStartAndRemainingTime (void);
   /**
    * Add broadcast CBAP allocations in the DTI.
    */
-  virtual void AddBroadcastCbapAllocations (void);
-
-private:
-
-  uint32_t m_minBroadcastCbapDuration;          //!< The minimum duration of a broadcast CBAP to be present in the DTI.
-  uint32_t m_interAllocationDistance;           //!< The distance between two allocations to be used as broadcast CBAP.
-
+  void AddBroadcastCbapAllocations (void);
 };
 
 } // namespace ns3
 
-#endif /* BASIC_DMG_WIFI_SCHEDULER_H */
+#endif /* CBAP_ONLY_DMG_WIFI_SCHEDULER_H */
