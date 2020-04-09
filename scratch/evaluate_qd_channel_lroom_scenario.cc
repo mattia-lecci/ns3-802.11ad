@@ -323,18 +323,18 @@ main (int argc, char *argv[])
   uint32_t packetSize = 1448;                   /* Application payload size in bytes. */
   string dataRate = "300Mbps";                  /* Application data rate. */
   string tcpVariant = "NewReno";                /* TCP Variant Type. */
-  uint32_t bufferSize = 131072;                 /* TCP Send/Receive Buffer Size. */
+  uint32_t bufferSize = 131072;                 /* TCP Send/Receive Buffer Size [bytes]. */
   uint32_t maxPackets = 0;                      /* Maximum Number of Packets */
-  uint32_t msduAggregationSize = 7935;          /* The maximum aggregation size for A-MSDU in Bytes. */
-  uint32_t mpduAggregationSize = 262143;        /* The maximum aggregation size for A-MSPU in Bytes. */
+  uint32_t msduAggregationSize = 7935;          /* The maximum aggregation size for A-MSDU [bytes]. */
+  uint32_t mpduAggregationSize = 262143;        /* The maximum aggregation size for A-MSPU [bytes]. */
   uint32_t queueSize = 1000;                    /* Wifi MAC Queue Size. */
   string phyMode = "DMG_MCS12";                 /* Type of the Physical Layer. */
-  uint16_t startDistance = 0;                   /* Starting distance in the Trace-File. */
+  uint16_t startDistance = 0;                   /* Starting distance in the Trace-File [0-260 m] */
   bool enableMobility = true;                   /* Enable mobility. */
   bool verbose = false;                         /* Print Logging Information. */
-  double simulationTime = 10;                   /* Simulation time in seconds. */
+  double simulationTime = 10;                   /* Simulation time [s]. */
   bool pcapTracing = false;                     /* PCAP Tracing is enabled or not. */
-  uint32_t interAllocDistance = 10;              /* Duration of a broadcast CBAP between two ADDTS allocations */
+  uint32_t interAllocDistance = 10;              /* Duration of a broadcast CBAP between two ADDTS allocations [us] */
   std::map<std::string, std::string> tcpVariants; /* List of the tcp Variants */
   uint16_t ac = 0;                              /* Select AC_BE as default AC */
   /*https://www.nsnam.org/doxygen/wifi-multi-tos_8cc_source.html */
@@ -359,25 +359,25 @@ main (int argc, char *argv[])
   CommandLine cmd;
   cmd.AddValue ("activateApp", "Whether to activate data transmission or not", activateApp);
   cmd.AddValue ("applicationType", "Type of the Tx Application: onoff or bulk", applicationType);
-  cmd.AddValue ("packetSize", "Application packet size in bytes", packetSize);
+  cmd.AddValue ("packetSize", "Application packet size [bytes]", packetSize);
   cmd.AddValue ("dataRate", "Application data rate", dataRate);
   cmd.AddValue ("maxPackets", "Maximum number of packets to send", maxPackets);
   cmd.AddValue ("tcpVariant", "Transport protocol to use: TcpTahoe, TcpReno, TcpNewReno, TcpWestwood, TcpWestwoodPlus", tcpVariant);
   cmd.AddValue ("socketType", "Type of the Socket (ns3::TcpSocketFactory, ns3::UdpSocketFactory)", socketType);
-  cmd.AddValue ("bufferSize", "TCP Buffer Size (Send/Receive) in Bytes", bufferSize);
-  cmd.AddValue ("msduAggregation", "The maximum aggregation size for A-MSDU in Bytes", msduAggregationSize);
-  cmd.AddValue ("mpduAggregation", "The maximum aggregation size for A-MPDU in Bytes", mpduAggregationSize);
+  cmd.AddValue ("bufferSize", "TCP Buffer Size (Send/Receive) [bytes]", bufferSize);
+  cmd.AddValue ("msduAggregation", "The maximum aggregation size for A-MSDU [bytes]", msduAggregationSize);
+  cmd.AddValue ("mpduAggregation", "The maximum aggregation size for A-MPDU [bytes]", mpduAggregationSize);
   cmd.AddValue ("queueSize", "The maximum size of the Wifi MAC Queue", queueSize);
   cmd.AddValue ("phyMode", "802.11ad PHY Mode", phyMode);
-  cmd.AddValue ("startDistance", "Starting distance in the trace file [0-260]", startDistance);
+  cmd.AddValue ("startDistance", "Starting distance in the trace file [0-260 m]", startDistance);
   cmd.AddValue ("biThreshold", "BI Threshold to trigger beamforming training", biThreshold);
   cmd.AddValue ("enableMobility", "Whether to enable mobility or simulate static scenario", enableMobility);
   cmd.AddValue ("verbose", "Turn on all WifiNetDevice log components", verbose);
-  cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
+  cmd.AddValue ("simulationTime", "Simulation time [s]", simulationTime);
   cmd.AddValue ("ac", "0: AC_BE, 1: AC_BK, 2: AC_VI, 3: AC_VO", ac);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
-  cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations", interAllocDistance);
+  cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
   cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
   cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
   cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
