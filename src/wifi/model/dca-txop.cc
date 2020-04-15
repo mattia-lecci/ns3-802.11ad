@@ -294,7 +294,7 @@ DcaTxop::StartAllocationPeriod (AllocationType allocationType, AllocationID allo
       m_currentHdr = info.second;
     }
 
-  StartAccessIfNeeded ();
+  ReStartAccessIfNeeded ();
 }
 
 void
