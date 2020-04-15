@@ -1049,8 +1049,11 @@ EdcaTxopN::StartAllocationPeriod (AllocationType allocationType, AllocationID al
           m_currentHdr = info.second;
           NS_LOG_DEBUG ("Restored packet with seq=0x" << std::hex << m_currentHdr.GetSequenceControl ());
         }
+
+      NS_LOG_DEBUG (m_queue->IsEmpty () << ", " << m_baManager->HasPackets () << ", " <<
+                    m_low->RestoredSuspendedTransmission () << ", " << m_currentPacket << ", " << m_queue->GetNPackets ());
       /* Do the contention access by DCF Manager */
-      if ((!m_queue->IsEmpty () || m_baManager->HasPackets () || m_currentPacket != 0)
+      if ((!m_queue->IsEmpty () || m_baManager->HasPackets () || m_currentPacket != 0 || !m_low->RestoredSuspendedTransmission ())
           && !m_dcf->IsAccessRequested ())
         {
           m_manager->RequestAccess (m_dcf);
