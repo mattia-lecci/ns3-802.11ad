@@ -539,6 +539,9 @@ MacLow::ResumeTransmission (Time duration, Ptr<DcaTxop> dca)
   m_currentTxVector = m_currentAllocation.txVector;
   m_ampdu = m_currentAllocation.isAmpdu;
 
+  /* Remove Allocation from allocation table as we restored it */
+  m_allocationPeriodsTable.erase (m_currentAllocationID);
+
   /* Restore Aggregate Queue contents */
   if (m_ampdu && m_currentHdr.IsQosData ())
     {
@@ -571,11 +574,10 @@ MacLow::ResumeTransmission (Time duration, Ptr<DcaTxop> dca)
     }
   else
     {
+      NS_LOG_DEBUG ("No enough time to complete this DMG transaction for Packet=" << m_currentPacket);
+      StoreAllocationParameters ();
       m_transmissionSuspended = true;
     }
-
-  /* Remove Allocation from allocation list as we restored it */
-  m_allocationPeriodsTable.erase (m_currentAllocationID);
 }
 
 void
