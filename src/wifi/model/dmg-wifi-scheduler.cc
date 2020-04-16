@@ -368,7 +368,7 @@ DmgWifiScheduler::GetBroadcastCbapAllocation (bool staticAllocation, uint32_t al
   uint16_t lastCbapLength = blockDuration % MAX_CBAP_BLOCK_DURATION;
   AllocationFieldList list;
   AllocationField field;
-  field.SetAllocationID (0);
+  field.SetAllocationID (BROADCAST_CBAP);
   field.SetAllocationType (CBAP_ALLOCATION);
   field.SetAsPseudoStatic (staticAllocation);
   field.SetSourceAid (AID_BROADCAST);
