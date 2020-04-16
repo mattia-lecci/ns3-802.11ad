@@ -540,7 +540,7 @@ MacLow::ResumeTransmission (Time duration, Ptr<DcaTxop> dca)
   m_ampdu = m_currentAllocation.isAmpdu;
 
   /* Remove Allocation from allocation table as we restored it */
-  m_allocationPeriodsTable.erase (m_currentAllocationID);
+  m_allocationPeriodsTable.erase (m_restoredAllocationID);
 
   /* Restore Aggregate Queue contents */
   if (m_ampdu && m_currentHdr.IsQosData ())
@@ -552,7 +552,10 @@ MacLow::ResumeTransmission (Time duration, Ptr<DcaTxop> dca)
     }
 
   m_txParams.SetMaximumTransmissionDuration (duration);
-  NS_LOG_DEBUG ("IsAmpdu=" << m_currentAllocation.isAmpdu
+  NS_LOG_DEBUG ("Resuming packet=" << m_currentPacket
+                << ", currentAllocID=" << +m_currentAllocationID
+                << ", restoredAllocID=" << +m_restoredAllocationID 
+                << ", IsAmpdu=" << m_currentAllocation.isAmpdu
                 << ", PacketSize=" << m_currentAllocation.packet->GetSize ()
                 << ", seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
 
@@ -583,9 +586,9 @@ MacLow::ResumeTransmission (Time duration, Ptr<DcaTxop> dca)
 void
 MacLow::ChangeAllocationPacketsAddress (AllocationID allocationId, Mac48Address destAdd)
 {
-  NS_LOG_FUNCTION (this << uint16_t (allocationId) << destAdd);
+  NS_LOG_FUNCTION (this << +allocationId << destAdd);
   /* Find the stored parameters and packets for the provided allocation */
-  AllocationPeriodsTableI it = m_allocationPeriodsTable.find (m_currentAllocationID);
+  AllocationPeriodsTableI it = m_allocationPeriodsTable.find (allocationId);
   if (it != m_allocationPeriodsTable.end ())
     {
       NS_LOG_DEBUG ("Changing Receiver Address for Packets stored for AllocationID=" << uint16_t (allocationId));
@@ -600,22 +603,48 @@ MacLow::ChangeAllocationPacketsAddress (AllocationID allocationId, Mac48Address 
 void
 MacLow::RestoreAllocationParameters (AllocationID allocationId)
 {
-  NS_LOG_FUNCTION (this << uint16_t (allocationId));
+  NS_LOG_FUNCTION (this << +allocationId);
   m_transmissionSuspended = false;
   m_allocationStored = false;
   m_currentAllocationID = allocationId;
-  /* Find the stored parameters and packets for the provided allocation */
-  AllocationPeriodsTableCI it = m_allocationPeriodsTable.find (m_currentAllocationID);
-  if (it != m_allocationPeriodsTable.end ())
+  m_restoredAllocationID = allocationId;
+  AllocationPeriodsTableCI iter = m_allocationPeriodsTable.begin ();
+
+  if (iter == m_allocationPeriodsTable.end ())
     {
-      NS_LOG_DEBUG ("Restored allocation parameters for AllocationID=" << uint16_t (allocationId));
-      m_currentAllocation = it->second;
-      m_restoredSuspendedTransmission = false;
+      NS_LOG_DEBUG ("No suspended allocations to restore");
+      m_restoredSuspendedTransmission = true;
+      return;
+    }
+
+  if (m_currentAllocationID == BROADCAST_CBAP)
+    {
+      /* Broadcast CBAP: Restore parameters and packets from any suspended allocation */
+      for (AllocationPeriodsTableCI it = iter; it != m_allocationPeriodsTable.end (); ++it)
+        {
+          m_restoredAllocationID = it->first;
+          NS_LOG_DEBUG ("Restored allocation parameters for AllocationID=" << +m_restoredAllocationID
+                        << ", currentAllocID=" << +m_currentAllocationID);
+          m_currentAllocation = it->second;
+          m_restoredSuspendedTransmission = false;
+          break;
+        }
     }
   else
     {
-      NS_LOG_DEBUG ("No allocation parameters stored for AllocationID=" << uint16_t (allocationId));
-      m_restoredSuspendedTransmission = true;
+      /* SP or non-broadcast CBAP: Restore parameters and packets from the provided allocation */
+      iter = m_allocationPeriodsTable.find (m_currentAllocationID);
+      if (iter != m_allocationPeriodsTable.end ())
+        {
+          NS_LOG_DEBUG ("Restored allocation parameters for AllocationID=" << +m_currentAllocationID);
+          m_currentAllocation = iter->second;
+          m_restoredSuspendedTransmission = false;
+        }
+      else
+        {
+          NS_LOG_DEBUG ("No allocation parameters stored for AllocationID=" << +m_currentAllocationID);
+          m_restoredSuspendedTransmission = true;
+        }
     }
 }
 
@@ -643,9 +672,13 @@ MacLow::StoreAllocationParameters (void)
         {
           m_currentAllocation.aggregateQueue = 0;
         }
-      m_allocationPeriodsTable[m_currentAllocationID] = m_currentAllocation;
+
+      m_allocationPeriodsTable[m_restoredAllocationID] = m_currentAllocation;
       m_allocationStored = true;
-      NS_LOG_DEBUG ("IsAmpdu=" << m_currentAllocation.isAmpdu
+      NS_LOG_DEBUG ("Storing packet=" << m_currentPacket
+                    << ", currentAllocID=" << +m_currentAllocationID
+                    << ", restoredAllocID=" << +m_restoredAllocationID
+                    << ", IsAmpdu=" << m_currentAllocation.isAmpdu
                     << ", PacketSize=" << m_currentAllocation.packet->GetSize ()
                     << ", seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
 

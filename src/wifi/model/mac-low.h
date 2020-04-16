@@ -1152,6 +1152,7 @@ double mpduSnr;
   typedef AllocationPeriodsTable::iterator AllocationPeriodsTableI;
   AllocationPeriodsTable m_allocationPeriodsTable;
   AllocationID m_currentAllocationID;
+  AllocationID m_restoredAllocationID;
   AllocationParameters m_currentAllocation;   //!< Current allocation parameters.
   bool m_transmissionSuspended;               //!< Flag to indicate that we have suspended transmission applicable for 802.11ad only.
   bool m_allocationStored;                    //!< Flag to indicate that we have suspended transmission applicable for 802.11ad only.

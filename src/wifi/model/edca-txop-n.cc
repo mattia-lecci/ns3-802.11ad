@@ -229,6 +229,11 @@ EdcaTxopN::NotifyAccessGranted (void)
           if (!m_low->HasStoredAmpduExpired ())
             {
               m_low->ResumeTransmission (m_remainingDuration, this);
+              if (!m_low->IsTransmissionSuspended ())
+                {
+                  /* Check if other allocations need to be restored */
+                  m_low->RestoreAllocationParameters (m_allocationID);
+                }
               return;
             }
           else
