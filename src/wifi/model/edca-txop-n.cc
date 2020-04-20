@@ -232,7 +232,7 @@ EdcaTxopN::NotifyAccessGranted (void)
               if (!m_low->IsTransmissionSuspended ())
                 {
                   /* Check if other allocations need to be restored */
-                  m_low->RestoreAllocationParameters (m_allocationID);
+                  m_low->RestoreAllocationParameters (m_allocationID, m_low->GetAddress (), m_peerStation);
                 }
               return;
             }
@@ -1039,6 +1039,7 @@ EdcaTxopN::StartAllocationPeriod (AllocationType allocationType, AllocationID al
   m_allocationID = allocationID;
   m_peerStation = peerStation;
   m_allocationDuration = allocationDuration;
+
   if (m_allocationType == CBAP_ALLOCATION)
     {
       m_firstTransmission = true;
@@ -1046,13 +1047,13 @@ EdcaTxopN::StartAllocationPeriod (AllocationType allocationType, AllocationID al
 
       /* Check if we have stored packet for this allocation period */
       StoredPacketsCI it = m_storedPackets.find (m_allocationID);
-      NS_LOG_DEBUG ("StoredPackets=" << m_storedPackets.size () << " , AllocationID=" << +m_allocationID);
+      NS_LOG_UNCOND ("StoredPackets=" << m_storedPackets.size () << " , AllocationID=" << +m_allocationID);
       if (it != m_storedPackets.end ())
         {
           PacketInformation info = it->second;
           m_currentPacket = info.first;
           m_currentHdr = info.second;
-          NS_LOG_DEBUG ("Restored packet with seq=0x" << std::hex << m_currentHdr.GetSequenceControl ());
+          NS_LOG_UNCOND ("Restored packet with seq=0x" << std::hex << m_currentHdr.GetSequenceControl ());
         }
 
       NS_LOG_DEBUG (m_queue->IsEmpty () << ", " << m_baManager->HasPackets () << ", " <<

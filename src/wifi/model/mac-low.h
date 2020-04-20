@@ -391,12 +391,12 @@ public:
    */
   void ResumeTransmission (Time duration, Ptr<DcaTxop> dca);
 
-  void ChangeAllocationPacketsAddress (AllocationID allocationId, Mac48Address destAdd);
+  void ChangeAllocationPacketsAddress (Mac48Address currentSrc, Mac48Address currentDst, Mac48Address destAdd);
   /**
    * Restore Allocation Parameters for specific allocation SP or CBAP.
    * \param allocationId The ID of the allocation.
    */
-  void RestoreAllocationParameters (AllocationID allocationId);
+  void RestoreAllocationParameters (AllocationID allocationId, Mac48Address srcAddress, Mac48Address dstAddress);
 
   void StoreAllocationParameters (void);
   /**
@@ -1147,12 +1147,14 @@ double mpduSnr;
     Ptr<WifiMacQueue> aggregateQueue;
   } AllocationParameters;
 
-  typedef std::map<AllocationID, AllocationParameters> AllocationPeriodsTable;
+  typedef std::pair<Mac48Address, Mac48Address> AddressPair;
+  typedef std::map<AddressPair, AllocationParameters> AllocationPeriodsTable;
   typedef AllocationPeriodsTable::const_iterator AllocationPeriodsTableCI;
   typedef AllocationPeriodsTable::iterator AllocationPeriodsTableI;
   AllocationPeriodsTable m_allocationPeriodsTable;
   AllocationID m_currentAllocationID;
-  AllocationID m_restoredAllocationID;
+  Mac48Address m_currentSrcAddress;
+  Mac48Address m_currentDstAddress;
   AllocationParameters m_currentAllocation;   //!< Current allocation parameters.
   bool m_transmissionSuspended;               //!< Flag to indicate that we have suspended transmission applicable for 802.11ad only.
   bool m_allocationStored;                    //!< Flag to indicate that we have suspended transmission applicable for 802.11ad only.

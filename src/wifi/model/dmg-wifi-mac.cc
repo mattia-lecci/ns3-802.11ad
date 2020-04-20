@@ -329,7 +329,7 @@ DmgWifiMac::StartContentionPeriod (AllocationID allocationID, Time contentionDur
   /* Allow Contention Access */
   m_dcfManager->AllowChannelAccess ();
   /* Restore previously suspended transmission in LowMac */
-  m_low->RestoreAllocationParameters (allocationID);
+  m_low->RestoreAllocationParameters (allocationID, GetAddress (), GetBssid ());
   /* Signal DCA, EDCA, and SLS DCA Functions to start channel access */
   m_dca->StartAllocationPeriod (CBAP_ALLOCATION, allocationID, GetBssid (), contentionDuration);
   for (EdcaQueues::iterator i = m_edca.begin (); i != m_edca.end (); ++i)
@@ -401,7 +401,7 @@ DmgWifiMac::ScheduleServicePeriod (uint8_t blocks, Time spStart, Time spLength, 
 void
 DmgWifiMac::StartServicePeriod (AllocationID allocationID, Time length, uint8_t peerAid, Mac48Address peerAddress, bool isSource)
 {
-  NS_LOG_FUNCTION (this << length << static_cast<uint16_t> (peerAid) << peerAddress << isSource << Simulator::Now ());
+  NS_LOG_FUNCTION (this << length << +peerAid << peerAddress << isSource << Simulator::Now ());
   m_currentAllocationID = allocationID;
   m_currentAllocation = SERVICE_PERIOD_ALLOCATION;
   m_currentAllocationLength = length;
@@ -412,7 +412,7 @@ DmgWifiMac::StartServicePeriod (AllocationID allocationID, Time length, uint8_t 
   m_servicePeriodStartedCallback (GetAddress (), peerAddress);
   SteerAntennaToward (peerAddress);
   /* Restore previously suspended transmission in LowMac */
-  m_low->RestoreAllocationParameters (allocationID);
+  m_low->RestoreAllocationParameters (allocationID, GetAddress (), peerAddress);
   m_edca[AC_BE]->StartAllocationPeriod (SERVICE_PERIOD_ALLOCATION, allocationID, peerAddress, length);
   if (isSource)
     {

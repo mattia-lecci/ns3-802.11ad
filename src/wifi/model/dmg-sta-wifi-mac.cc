@@ -1472,7 +1472,7 @@ DmgStaWifiMac::EndRelayPeriods (REDS_PAIR &pair)
           if (m_aid == m_relayLinkInfo.srcRedsAid)
             {
               /* Switching back to the direct link so change addresses of all the packets stored in MacLow and EdcaTxopN */
-              m_low->ChangeAllocationPacketsAddress (m_currentAllocationID, m_relayLinkInfo.dstRedsAddress);
+              m_low->ChangeAllocationPacketsAddress (m_relayLinkInfo.srcRedsAddress, m_relayLinkInfo.selectedRelayAddress, m_relayLinkInfo.dstRedsAddress);
               m_edca[AC_BE]->GetQueue ()->ChangePacketsReceiverAddress (m_relayLinkInfo.selectedRelayAddress,
                                                                         m_relayLinkInfo.dstRedsAddress);
             }
@@ -1657,7 +1657,7 @@ DmgStaWifiMac::StartRelayFirstPeriod (void)
     {
       SteerAntennaToward (m_relayLinkInfo.selectedRelayAddress);
       /* Restore previously suspended transmission in LowMac */
-      m_low->RestoreAllocationParameters (m_currentAllocationID);
+      m_low->RestoreAllocationParameters (m_currentAllocationID, m_relayLinkInfo.srcRedsAddress, m_relayLinkInfo.dstRedsAddress);
       m_edca[AC_BE]->StartAllocationPeriod (SERVICE_PERIOD_ALLOCATION, m_currentAllocationID, m_relayLinkInfo.selectedRelayAddress,
                                             MicroSeconds (m_relayLinkInfo.relayFirstPeriod));
       m_edca[AC_BE]->InitiateTransmission ();
