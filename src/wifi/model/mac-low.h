@@ -382,9 +382,9 @@ public:
    */
   bool HasStoredAmpduExpired (void) const;
   /**
-   * Remove currrent allocation if HasStoredAmpduExpired returns true.
+   * Remove current allocation if HasStoredAmpduExpired returns true.
    */
-  void RemoveCurrrentAllocation (void);
+  void RemoveCurrentAllocation (void);
   /**
    * Resume Transmission for the current allocation if transmission has been suspended.
    * \param listener

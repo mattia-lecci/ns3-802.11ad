@@ -239,7 +239,7 @@ EdcaTxopN::NotifyAccessGranted (void)
           else
             {
               NS_LOG_DEBUG ("Removed very old A-MPDU from previous allocation");
-              m_low->RemoveCurrrentAllocation ();
+              m_low->RemoveCurrentAllocation ();
             }
         }
     }

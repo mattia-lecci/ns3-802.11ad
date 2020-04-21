@@ -520,7 +520,7 @@ MacLow::HasStoredAmpduExpired (void) const
 }
 
 void
-MacLow::RemoveCurrrentAllocation (void)
+MacLow::RemoveCurrentAllocation (void)
 {
   m_restoredSuspendedTransmission = true;
   m_allocationPeriodsTable.erase (AddressPair (m_currentSrcAddress, m_currentDstAddress));
