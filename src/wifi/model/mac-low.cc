@@ -623,16 +623,12 @@ MacLow::RestoreAllocationParameters (AllocationID allocationId, Mac48Address src
   if (m_currentAllocationID == BROADCAST_CBAP)
     {
       /* Broadcast CBAP: Restore parameters and packets from any suspended allocation */
-      for (AllocationPeriodsTableCI it = iter; it != m_allocationPeriodsTable.end (); ++it)
-        {
-          m_currentAllocation = it->second;
-          NS_LOG_UNCOND ("Restored allocation parameters with srcAddress=" << m_currentAllocation.hdr.GetAddr2 ()
-                        << ", dstAddress=" << m_currentAllocation.hdr.GetAddr1 ());
-          NS_ASSERT_MSG (m_currentSrcAddress == m_currentAllocation.hdr.GetAddr2 (), "Current address should equal hdr address");
-          m_currentDstAddress = m_currentAllocation.hdr.GetAddr1 ();
-          m_restoredSuspendedTransmission = false;
-          break;
-        }
+      m_currentAllocation = iter->second;
+      NS_LOG_UNCOND ("Restored allocation parameters with srcAddress=" << m_currentAllocation.hdr.GetAddr2 ()
+                    << ", dstAddress=" << m_currentAllocation.hdr.GetAddr1 ());
+      NS_ASSERT_MSG (m_currentSrcAddress == m_currentAllocation.hdr.GetAddr2 (), "Current Src address should equal Hdr Src address");
+      m_currentDstAddress = m_currentAllocation.hdr.GetAddr1 ();
+      m_restoredSuspendedTransmission = false;
     }
   else
     {
@@ -647,7 +643,7 @@ MacLow::RestoreAllocationParameters (AllocationID allocationId, Mac48Address src
         }
       else
         {
-          NS_LOG_DEBUG ("No allocation parameters are stored for this allocation");
+          NS_LOG_DEBUG ("No allocation parameters have been stored for this allocation");
           m_restoredSuspendedTransmission = true;
         }
     }
@@ -677,8 +673,8 @@ MacLow::StoreAllocationParameters (void)
         {
           m_currentAllocation.aggregateQueue = 0;
         }
-      NS_ASSERT_MSG (m_currentSrcAddress == m_currentHdr.GetAddr2 (), "Current src address is not equal to hdr src address");
-      AllocationPeriodsTableCI iter = m_allocationPeriodsTable.find (std::make_pair (m_currentSrcAddress, m_currentHdr.GetAddr1 ()));
+      NS_ASSERT_MSG (m_currentSrcAddress == m_currentHdr.GetAddr2 (), "Current Src address should be equal to Hdr Src address");
+      AllocationPeriodsTableCI iter = m_allocationPeriodsTable.find (AddressPair (m_currentSrcAddress, m_currentHdr.GetAddr1 ()));
       NS_ASSERT_MSG (iter == m_allocationPeriodsTable.end (), "Attempting to store existing allocation parameters");
       m_allocationPeriodsTable.insert (std::make_pair (AddressPair (m_currentSrcAddress, m_currentHdr.GetAddr1 ()), m_currentAllocation));
       m_allocationStored = true;
@@ -1702,7 +1698,7 @@ void
 MacLow::ForwardDown (Ptr<const Packet> packet, const WifiMacHeader* hdr, WifiTxVector txVector)
 {
   NS_LOG_FUNCTION (this << packet << hdr << txVector);
-  NS_LOG_DEBUG ("send " << hdr->GetTypeString () <<
+  NS_LOG_UNCOND ("send " << hdr->GetTypeString () <<
                 ", to=" << hdr->GetAddr1 () <<
                 ", size=" << packet->GetSize () <<
                 ", mode=" << txVector.GetMode  () <<
