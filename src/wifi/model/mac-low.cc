@@ -552,7 +552,7 @@ MacLow::ResumeTransmission (Time duration, Ptr<DcaTxop> dca)
     }
 
   m_txParams.SetMaximumTransmissionDuration (duration);
-  NS_LOG_UNCOND ("Resuming packet=" << m_currentPacket
+  NS_LOG_DEBUG ("Resuming tx of packet=" << m_currentPacket
                 << ", currentAllocID=" << +m_currentAllocationID
                 << ", sourceAddress=" << m_currentSrcAddress
                 << ", destAddress=" << m_currentDstAddress
@@ -622,10 +622,11 @@ MacLow::RestoreAllocationParameters (AllocationID allocationId, Mac48Address src
 
   if (m_currentAllocationID == BROADCAST_CBAP)
     {
-      /* Broadcast CBAP: Restore parameters and packets from any suspended allocation */
+      /* Broadcast CBAP: Restore parameters and packets from the first available allocation */
       m_currentAllocation = iter->second;
-      NS_LOG_UNCOND ("Restored allocation parameters with srcAddress=" << m_currentAllocation.hdr.GetAddr2 ()
-                    << ", dstAddress=" << m_currentAllocation.hdr.GetAddr1 ());
+      NS_LOG_DEBUG ("Restored allocation parameters with srcAddress=" << m_currentAllocation.hdr.GetAddr2 ()
+                    << ", dstAddress=" << m_currentAllocation.hdr.GetAddr1 ()
+                    << ", seq=0x" << std::hex <<  m_currentAllocation.hdr.GetSequenceControl () << std::dec);
       NS_ASSERT_MSG (m_currentSrcAddress == m_currentAllocation.hdr.GetAddr2 (), "Current Src address should equal Hdr Src address");
       m_currentDstAddress = m_currentAllocation.hdr.GetAddr1 ();
       m_restoredSuspendedTransmission = false;
@@ -636,9 +637,10 @@ MacLow::RestoreAllocationParameters (AllocationID allocationId, Mac48Address src
       iter = m_allocationPeriodsTable.find (AddressPair (m_currentSrcAddress, m_currentDstAddress));
       if (iter != m_allocationPeriodsTable.end ())
         {
-          NS_LOG_UNCOND ("Restored allocation parameters with srcAddress=" << m_currentSrcAddress
-                        << ", dstAddress=" << m_currentDstAddress);
           m_currentAllocation = iter->second;
+          NS_LOG_DEBUG ("Restored allocation parameters with srcAddress=" << m_currentSrcAddress
+                        << ", dstAddress=" << m_currentDstAddress
+                        << ", seq=0x" << std::hex <<  m_currentAllocation.hdr.GetSequenceControl () << std::dec);
           m_restoredSuspendedTransmission = false;
         }
       else
@@ -678,7 +680,7 @@ MacLow::StoreAllocationParameters (void)
       NS_ASSERT_MSG (iter == m_allocationPeriodsTable.end (), "Attempting to store existing allocation parameters");
       m_allocationPeriodsTable.insert (std::make_pair (AddressPair (m_currentSrcAddress, m_currentHdr.GetAddr1 ()), m_currentAllocation));
       m_allocationStored = true;
-      NS_LOG_UNCOND ("Storing packet=" << m_currentPacket
+      NS_LOG_DEBUG ("Storing packet=" << m_currentPacket
                     << ", currentAllocID=" << +m_currentAllocationID
                     << ", sourceAddress=" << m_currentSrcAddress
                     << ", destAddress=" << m_currentHdr.GetAddr1 ()
@@ -1698,7 +1700,7 @@ void
 MacLow::ForwardDown (Ptr<const Packet> packet, const WifiMacHeader* hdr, WifiTxVector txVector)
 {
   NS_LOG_FUNCTION (this << packet << hdr << txVector);
-  NS_LOG_UNCOND ("send " << hdr->GetTypeString () <<
+  NS_LOG_DEBUG ("send " << hdr->GetTypeString () <<
                 ", to=" << hdr->GetAddr1 () <<
                 ", size=" << packet->GetSize () <<
                 ", mode=" << txVector.GetMode  () <<
