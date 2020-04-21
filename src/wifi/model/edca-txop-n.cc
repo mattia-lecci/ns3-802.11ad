@@ -228,11 +228,13 @@ EdcaTxopN::NotifyAccessGranted (void)
           /* If we stored A-MPDU packet and its sub-packets did not expire in the allocation WifiMacQueue */
           if (!m_low->HasStoredAmpduExpired ())
             {
+              NS_LOG_DEBUG ("EDCA, Resuming transmission, seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
               m_low->ResumeTransmission (m_remainingDuration, this);
               if (!m_low->IsTransmissionSuspended ())
                 {
                   /* Check if other allocations need to be restored */
                   m_low->RestoreAllocationParameters (m_allocationID, m_low->GetAddress (), m_peerStation);
+                  RestoreAllocation ();
                 }
               return;
             }
@@ -307,7 +309,7 @@ EdcaTxopN::NotifyAccessGranted (void)
           m_fragmentNumber = 0;
           NS_LOG_DEBUG ("dequeued size=" << m_currentPacket->GetSize () <<
                         ", to=" << m_currentHdr.GetAddr1 () <<
-                        ", seq=" << m_currentHdr.GetSequenceControl ());
+                        ", seq=" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
           if (m_currentHdr.IsQosData () && !m_currentHdr.GetAddr1 ().IsBroadcast ())
             {
               VerifyBlockAck ();
@@ -609,7 +611,7 @@ EdcaTxopN::GotAck (void)
       || !m_currentParams.HasNextPacket ()
       || m_currentHdr.IsQosAmsdu ())
     {
-      NS_LOG_DEBUG ("got ack. tx done.");
+      NS_LOG_DEBUG ("Got Ack. Tx done. Seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
       if (!m_txOkCallback.IsNull ())
         {
           m_txOkCallback (m_currentPacket, m_currentHdr);
@@ -1046,20 +1048,13 @@ EdcaTxopN::StartAllocationPeriod (AllocationType allocationType, AllocationID al
       m_transmissionStarted = Simulator::Now ();
 
       /* Check if we have stored packet for this allocation period */
-      StoredPacketsCI it = m_storedPackets.find (m_allocationID);
-      NS_LOG_UNCOND ("StoredPackets=" << m_storedPackets.size () << " , AllocationID=" << +m_allocationID);
-      if (it != m_storedPackets.end ())
-        {
-          PacketInformation info = it->second;
-          m_currentPacket = info.first;
-          m_currentHdr = info.second;
-          NS_LOG_UNCOND ("Restored packet with seq=0x" << std::hex << m_currentHdr.GetSequenceControl ());
-        }
+      RestoreAllocation ();
 
       NS_LOG_DEBUG (m_queue->IsEmpty () << ", " << m_baManager->HasPackets () << ", " <<
-                    m_low->RestoredSuspendedTransmission () << ", " << m_currentPacket << ", " << m_queue->GetNPackets ());
+                    m_low->RestoredSuspendedTransmission () << ", " << m_currentPacket << ", " << m_queue->GetNPackets () <<
+                    ", accessRequested=" << m_dcf->IsAccessRequested ());
       /* Do the contention access by DCF Manager */
-      if ((!m_queue->IsEmpty () || m_baManager->HasPackets () || m_currentPacket != 0 || !m_low->RestoredSuspendedTransmission ())
+      if ((!m_queue->IsEmpty () || m_baManager->HasPackets () || (m_currentPacket != 0 && !m_low->RestoredSuspendedTransmission ()))
           && !m_dcf->IsAccessRequested ())
         {
           m_manager->RequestAccess (m_dcf);
@@ -1076,15 +1071,7 @@ EdcaTxopN::InitiateTransmission (void)
   m_transmissionStarted = Simulator::Now ();
 
   /* Check if we have stored packet for this service period (MSDU/A-MSDU) */
-  StoredPacketsCI it = m_storedPackets.find (m_allocationID);
-  NS_LOG_DEBUG ("Count=" << m_storedPackets.size () << " , AllocationID=" << +m_allocationID);
-  if (it != m_storedPackets.end ())
-    {
-      PacketInformation info = it->second;
-      m_currentPacket = info.first;
-      m_currentHdr = info.second;
-      NS_LOG_DEBUG ("Restored packet with seq=0x" << std::hex << m_currentHdr.GetSequenceControl ());
-    }
+  RestoreAllocation ();
 
   /* Start access if we have packets in the queue or packets that need retransmit or non-restored transmission */
   NS_LOG_DEBUG (m_queue->IsEmpty () << ", " << m_baManager->HasPackets () << ", " <<
