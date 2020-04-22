@@ -219,6 +219,39 @@ void
 PeriodicDmgWifiScheduler::AddBroadcastCbapAllocations (void)
 {
   NS_LOG_FUNCTION (this);
+  /* Addts allocation list is copied to the allocation list */
+  m_allocationList = m_addtsAllocationList;
+  AllocationFieldList broadcastCbapList;
+
+  // fill all the remaining available slots with broadcast CBAPs
+
+  auto itSlot = m_availableSlots.begin();
+  for(auto itAll = m_allocationList.begin(); itAll != m_allocationList.end(); ++itAll)
+  {
+    auto itNextAll = itAll + 1;
+    uint32_t start = itAll->GetAllocationStart ();
+    uint32_t end =  start + itAll->GetAllocationBlockDuration () + m_guardTime;
+
+    NS_LOG_DEBUG("Allocation start: " << start << " end: " << end);
+
+    if ( itNextAll != m_allocationList.end() )
+    {
+      if (itSlot->first >= end && itSlot->first < itNextAll->GetAllocationStart ())
+      {
+        broadcastCbapList = GetBroadcastCbapAllocation (true, itSlot->first, itSlot->second - itSlot->first);
+        itAll = m_allocationList.insert (itNextAll, broadcastCbapList.begin (), broadcastCbapList.end ());
+        itAll += broadcastCbapList.size () - 1;
+
+        NS_LOG_DEBUG("Added broadcast CBAPs list of size: " << broadcastCbapList.size () << " for a total duration of " << itSlot->second - itSlot->first);
+
+        itSlot++;
+      }
+    }
+
+  }
+
+  m_availableSlots.clear();
+  m_remainingDtiTime = 0;
 
 }
 
