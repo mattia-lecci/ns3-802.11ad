@@ -75,6 +75,17 @@ void
 PeriodicDmgWifiScheduler::UpdateStartAndRemainingTime (void)
 {
   NS_LOG_FUNCTION (this);
+  if (m_addtsAllocationList.empty ())
+    {
+      /* No existing allocations */
+      m_allocationStartTime = 0;
+      m_remainingDtiTime = m_dtiDuration.GetMicroSeconds ();
+      m_availableSlots.push_back(std::make_pair(0, m_dtiDuration.GetMicroSeconds ()));
+    }
+  else
+    {
+      //TODO
+    }
 }
 
 void
