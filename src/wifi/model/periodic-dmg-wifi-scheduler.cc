@@ -107,8 +107,102 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
   NS_LOG_FUNCTION (this);
 
   StatusCode status;
+  uint32_t allocDuration;
+  if (info.GetAllocationFormat () == ISOCHRONOUS)
+    {
+      allocDuration = GetAllocationDuration (dmgTspec.GetMinimumAllocation (), dmgTspec.GetMaximumAllocation ());
+    }
+  else if (info.GetAllocationFormat () == ASYNCHRONOUS)
+    {
+      /* for asynchronous allocations, the Maximum Allocation field is reserved (IEEE 802.11ad 8.4.2.136) */
+      allocDuration = dmgTspec.GetMinimumAllocation ();
+    }
+  else
+    {
+      NS_FATAL_ERROR ("Allocation Format not supported");
+    }
+
+  /* Implementation of an admission policy for newly received requests. */
+  uint16_t allocPeriod = dmgTspec.GetAllocationPeriod ();
+  if (allocPeriod != 0)
+    {
+      bool isMultiple = dmgTspec.IsAllocationPeriodMultipleBI();
+      if (isMultiple)
+      {
+        NS_FATAL_ERROR ("Multiple BI periodicity is not supported yet.");
+      }
+
+      uint32_t spInterval = uint32_t(m_biDuration.GetMicroSeconds()/allocPeriod);
+      if (spInterval - allocDuration < m_minBroadcastCbapDuration)
+      {
+        NS_FATAL_ERROR("These settings cannot guarantee minimum CBAP duration.");
+      }
+
+      NS_LOG_DEBUG("Allocation Period " << uint32_t(allocPeriod) << " AllocDuration " << allocDuration << " Multiple " << isMultiple);
+      NS_LOG_DEBUG("Schedule one SP every " << spInterval);
+
+      // ASSUMPTION : periodic requests are always the first to arrive
+
+      std::pair<uint32_t, uint32_t> timeChunk;
+
+      timeChunk = m_availableSlots.back();
+      uint32_t startPeriodicAllocation = timeChunk.first;
+      uint32_t endAlloc = timeChunk.first;
+
+      while ((startPeriodicAllocation < timeChunk.second) && (startPeriodicAllocation+allocDuration <= timeChunk.second))
+      {
+        NS_LOG_DEBUG("Reserve from " << startPeriodicAllocation << " for " << allocDuration << " timeChunk.second  " << timeChunk.second );
+        endAlloc = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
+                                                              sourceAid, info.GetDestinationAid (), startPeriodicAllocation, allocDuration);
+
+        UpdateAvailableSlots(startPeriodicAllocation, endAlloc);
+        startPeriodicAllocation += spInterval;
+      }
+      status.SetSuccess ();
+    }
+  else
+    {
+      // TODO
+    }
 
   return status;
+}
+
+void
+PeriodicDmgWifiScheduler::UpdateAvailableSlots(uint32_t startPeriodicAllocation, uint32_t endAlloc)
+{
+    NS_LOG_FUNCTION(this);
+
+    std::vector<std::pair<uint32_t, uint32_t>> newDTI;
+
+    for (auto it = m_availableSlots.begin() ; it != m_availableSlots.end(); ++it)
+    {
+      //NS_LOG_DEBUG("Available slot from " << it->first << " to " << it->second);
+
+      if (it->second < startPeriodicAllocation)
+      {
+        newDTI.push_back(*it);
+        continue;
+      }
+
+      if(it->first == startPeriodicAllocation)
+      {
+        newDTI.push_back(std::make_pair(endAlloc, it->second));
+      }
+      else if (it->first < startPeriodicAllocation && it->second > endAlloc)
+      {
+        newDTI.push_back(std::make_pair(it->first, startPeriodicAllocation));
+        newDTI.push_back(std::make_pair(endAlloc, it->second));
+      }
+    }
+
+    for (auto it = newDTI.begin() ; it != newDTI.end(); ++it)
+    {
+      NS_LOG_DEBUG("Available slot from " << it->first << " to " << it->second);
+    }
+
+    m_availableSlots = newDTI;
+
 }
 
 StatusCode
