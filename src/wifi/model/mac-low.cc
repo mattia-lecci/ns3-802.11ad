@@ -578,7 +578,7 @@ MacLow::ResumeTransmission (Time duration, Ptr<DcaTxop> dca)
     }
   else
     {
-      NS_LOG_DEBUG ("No enough time to complete this DMG transaction for Packet=" << m_currentPacket);
+      NS_LOG_DEBUG ("There is not enough time to complete this DMG transaction for Packet=" << m_currentPacket);
       StoreAllocationParameters ();
       m_transmissionSuspended = true;
     }

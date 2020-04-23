@@ -1472,7 +1472,8 @@ DmgStaWifiMac::EndRelayPeriods (REDS_PAIR &pair)
           if (m_aid == m_relayLinkInfo.srcRedsAid)
             {
               /* Switching back to the direct link so change addresses of all the packets stored in MacLow and EdcaTxopN */
-              m_low->ChangeAllocationPacketsAddress (m_relayLinkInfo.srcRedsAddress, m_relayLinkInfo.selectedRelayAddress, m_relayLinkInfo.dstRedsAddress);
+              m_low->ChangeAllocationPacketsAddress (m_relayLinkInfo.srcRedsAddress, m_relayLinkInfo.selectedRelayAddress,
+                                                     m_relayLinkInfo.dstRedsAddress);
               m_edca[AC_BE]->GetQueue ()->ChangePacketsReceiverAddress (m_relayLinkInfo.selectedRelayAddress,
                                                                         m_relayLinkInfo.dstRedsAddress);
             }

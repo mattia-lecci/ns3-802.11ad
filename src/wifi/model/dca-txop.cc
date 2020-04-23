@@ -341,7 +341,7 @@ DcaTxop::EndAllocationPeriod (void)
       NS_LOG_DEBUG ("Store packet with seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
       NS_ASSERT_MSG (m_low->GetAddress () == m_currentHdr.GetAddr2 (), "Current Src address should equal Hdr Src address");
       m_storedPackets.insert (std::make_pair (AddressPair (m_currentHdr.GetAddr2 (), m_currentHdr.GetAddr1 ()),
-                                              PacketInformation (m_currentPacket, m_currentHdr)));
+                              PacketInformation (m_currentPacket, m_currentHdr)));
       m_currentPacket = 0;
     }
 }
@@ -485,7 +485,7 @@ DcaTxop::NotifyAccessGranted (void)
       m_fragmentNumber = 0;
       NS_LOG_DEBUG ("dequeued size=" << m_currentPacket->GetSize () <<
                     ", to=" << m_currentHdr.GetAddr1 () <<
-                    ", seq=" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
+                    ", seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
     }
 
   if (m_stationManager->HasDmgSupported ())

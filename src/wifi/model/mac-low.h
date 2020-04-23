@@ -390,23 +390,40 @@ public:
    * \param listener
    */
   void ResumeTransmission (Time duration, Ptr<DcaTxop> dca);
-
+  /**
+   * Change the Destination MAC address for a specific traffic flow.
+   * \param currentSrc The current source MAC address of the traffic flow.
+   * \param currentDst The current dest MAC address of the traffic flow.
+   * \param destAdd The new dest MAC address for the traffic flow.
+   *
+   * This function is used during relay operations in IEEE 802.11ad.
+   */
   void ChangeAllocationPacketsAddress (Mac48Address currentSrc, Mac48Address currentDst, Mac48Address destAdd);
   /**
-   * Restore Allocation Parameters for specific allocation SP or CBAP.
-   * \param allocationId The ID of the allocation.
+   * Restore Allocation Parameters for a specific traffic flow.
+   * \param allocationId The ID of the current allocation (SP, CBAP or broadcast CBAP).
+   * \param srcAddress The source MAC address of the traffic flow.
+   * \param dstAddress The destination MAC address of the traffic flow.
    */
   void RestoreAllocationParameters (AllocationID allocationId, Mac48Address srcAddress, Mac48Address dstAddress);
-
+  /**
+   * Store the Allocation Parameters for a specific traffic flow.
+   */
   void StoreAllocationParameters (void);
   /**
-   * Check whether a transmission has been suspended due to time constraints for the restored allocation.
-   * \return True if transmission has been suspended otherwise false.
+   * Check whether a transmission has been suspended due to time constraints for the restored traffic flow.
+   * \return True if transmission has been suspended otherwise False.
    */
   bool IsTransmissionSuspended (void) const;
-
+  /**
+   * Check whether a previously suspended transmission has been restored.
+   * \return False if the transmission of a restored traffic flow needs to be resumed otherwise True. 
+   */
   bool RestoredSuspendedTransmission (void) const;
-
+  /**
+   * Check whether, at MacLow, a transmission has been stored.
+   * \return True if the parameters of the current traffic flow have been stored otherwise False 
+   */
   bool StoredCurrentAllocation (void) const;
   /**
    * \param packet packet received
@@ -1151,14 +1168,14 @@ double mpduSnr;
   typedef std::map<AddressPair, AllocationParameters> AllocationPeriodsTable;
   typedef AllocationPeriodsTable::const_iterator AllocationPeriodsTableCI;
   typedef AllocationPeriodsTable::iterator AllocationPeriodsTableI;
-  AllocationPeriodsTable m_allocationPeriodsTable;
-  AllocationID m_currentAllocationID;
-  Mac48Address m_currentSrcAddress;
-  Mac48Address m_currentDstAddress;
-  AllocationParameters m_currentAllocation;   //!< Current allocation parameters.
-  bool m_transmissionSuspended;               //!< Flag to indicate that we have suspended transmission applicable for 802.11ad only.
-  bool m_allocationStored;                    //!< Flag to indicate that we have suspended transmission applicable for 802.11ad only.
-  bool m_restoredSuspendedTransmission;       //!< Flag to indicate that we have more time to traansmit more packets.
+  AllocationPeriodsTable m_allocationPeriodsTable;  //!< Map that contains the parameters associated with a suspended transmission.
+  AllocationID m_currentAllocationID;               //!< The allocation ID of the current channel access period.
+  Mac48Address m_currentSrcAddress;                 //!< The source MAC address for the current traffic flow.
+  Mac48Address m_currentDstAddress;                 //!< The destination MAC address for the current traffic flow.
+  AllocationParameters m_currentAllocation;         //!< Currently restored allocation parameters.
+  bool m_transmissionSuspended;                     //!< Flag to indicate that we have suspended transmission applicable for 802.11ad only.
+  bool m_allocationStored;                          //!< Flag to indicate that we have suspended transmission applicable for 802.11ad only.
+  bool m_restoredSuspendedTransmission;             //!< Flag to indicate that we have more time to traansmit more packets.
 };
 
 } //namespace ns3

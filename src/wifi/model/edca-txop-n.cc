@@ -309,7 +309,7 @@ EdcaTxopN::NotifyAccessGranted (void)
           m_fragmentNumber = 0;
           NS_LOG_DEBUG ("dequeued size=" << m_currentPacket->GetSize () <<
                         ", to=" << m_currentHdr.GetAddr1 () <<
-                        ", seq=" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
+                        ", seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
           if (m_currentHdr.IsQosData () && !m_currentHdr.GetAddr1 ().IsBroadcast ())
             {
               VerifyBlockAck ();
@@ -1050,9 +1050,12 @@ EdcaTxopN::StartAllocationPeriod (AllocationType allocationType, AllocationID al
       /* Check if we have stored packet for this allocation period */
       RestoreAllocation ();
 
-      NS_LOG_DEBUG (m_queue->IsEmpty () << ", " << m_baManager->HasPackets () << ", " <<
-                    m_low->RestoredSuspendedTransmission () << ", " << m_currentPacket << ", " << m_queue->GetNPackets () <<
-                    ", accessRequested=" << m_dcf->IsAccessRequested ());
+      NS_LOG_DEBUG ("IsQueueEmpty=" << m_queue->IsEmpty () 
+                    << ", HasBaManagerPkts=" << m_baManager->HasPackets () 
+                    << ", IsMacLowRestored=" << m_low->RestoredSuspendedTransmission () 
+                    << ", currentPacket=" << m_currentPacket 
+                    << ", queueSize=" << m_queue->GetNPackets () 
+                    << ", accessRequested=" << m_dcf->IsAccessRequested ());
       /* Do the contention access by DCF Manager */
       if ((!m_queue->IsEmpty () || m_baManager->HasPackets () || (m_currentPacket != 0 && !m_low->RestoredSuspendedTransmission ()))
           && !m_dcf->IsAccessRequested ())
@@ -1074,8 +1077,11 @@ EdcaTxopN::InitiateTransmission (void)
   RestoreAllocation ();
 
   /* Start access if we have packets in the queue or packets that need retransmit or non-restored transmission */
-  NS_LOG_DEBUG (m_queue->IsEmpty () << ", " << m_baManager->HasPackets () << ", " <<
-                m_low->RestoredSuspendedTransmission () << ", " << m_currentPacket << ", " << m_queue->GetNPackets ());
+  NS_LOG_DEBUG ("IsQueueEmpty=" << m_queue->IsEmpty () 
+                << ", HasBaManagerPkts=" << m_baManager->HasPackets () 
+                << ", IsMacLowRestored=" << m_low->RestoredSuspendedTransmission () 
+                << ", currentPacket=" << m_currentPacket 
+                << ", queueSize=" << m_queue->GetNPackets ());
 
   if (!m_queue->IsEmpty () || m_baManager->HasPackets ()
       || !m_low->RestoredSuspendedTransmission () || m_currentPacket != 0)

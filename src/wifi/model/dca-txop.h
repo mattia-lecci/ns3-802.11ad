@@ -331,7 +331,8 @@ public:
    */
   void EndAllocationPeriod (void);
   /**
-   * Restore Allocation.
+   * Restore packet and header parameters for the suspended transmission
+   * by source and destination MAC addresses.
    */
   void RestoreAllocation (void);
 

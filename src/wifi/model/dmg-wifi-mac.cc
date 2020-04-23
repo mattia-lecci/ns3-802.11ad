@@ -328,7 +328,7 @@ DmgWifiMac::StartContentionPeriod (AllocationID allocationID, Time contentionDur
     }
   /* Allow Contention Access */
   m_dcfManager->AllowChannelAccess ();
-  /* Restore previously suspended transmission in LowMac */
+  /* Restore previously suspended transmission at MacLow*/
   m_low->RestoreAllocationParameters (allocationID, GetAddress (), GetBssid ());
   /* Signal DCA, EDCA, and SLS DCA Functions to start channel access */
   m_dca->StartAllocationPeriod (CBAP_ALLOCATION, allocationID, GetBssid (), contentionDuration);
