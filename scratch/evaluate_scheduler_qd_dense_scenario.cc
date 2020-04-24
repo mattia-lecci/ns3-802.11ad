@@ -92,6 +92,7 @@ struct CommunicationPair
   Ptr<PacketSink> packetSink;
   uint64_t totalRx = 0;
   double throughput = 0;
+  uint64_t appDataRate;
   Time startTime;
 };
 typedef map<Ptr<Node>, CommunicationPair> CommunicationPairList;
@@ -102,6 +103,7 @@ typedef CommunicationPairList::const_iterator CommunicationPairListCI;
 string applicationType = "onoff";             /* Type of the Tx application */
 string socketType = "ns3::UdpSocketFactory";  /* Socket Type (TCP/UDP) */
 string schedulerType = "ns3::CbapOnlyDmgWifiScheduler";   /* Type of scheduler to be used */
+string phyMode = "DMG_MCS12";                   /* The MCS to use at the Physical Layer. */
 uint32_t packetSize = 1448;                   /* Application payload size [bytes]. */
 string tcpVariant = "NewReno";                /* TCP Variant Type. */
 uint32_t maxPackets = 0;                      /* Maximum Number of Packets */
@@ -110,6 +112,7 @@ uint32_t mpduAggregationSize = 262143;        /* The maximum aggregation size fo
 double simulationTime = 10;                   /* Simulation time [s]. */
 bool csv = false;                             /* Enable CSV output. */
 bool reportDataSnr = true;                    /* Report Data Packets SNR. */
+uint8_t allocationId = 1;                     /* The allocation ID of the DMG Tspec to create */
 
 /* NUmber of SP allocations */
 uint16_t numSPs = 6;
@@ -120,6 +123,8 @@ map<Mac48Address, uint16_t> biCounter;   /* Number of beacon intervals that have
 
 /**  Applications **/
 CommunicationPairList communicationPairList;  /* List of communicating devices. */
+
+Ptr<DmgApWifiMac> apWifiMac;
 
 template <typename T>
 string to_string_with_precision (const T a_value, const int n = 6)
@@ -202,6 +207,55 @@ CalculateThroughput (void)
 }
 
 void
+ADDTSResponseReceived (Ptr<Node> node, Mac48Address address, StatusCode status, DmgTspecElement element)
+{
+  NS_LOG_DEBUG ("Mac=" << address << " received ADDTS response with status=" << status.IsSuccess ());
+  if (status.IsSuccess () || (schedulerType == "ns3::CbapOnlyDmgWifiScheduler"))
+    {
+      CommunicationPairListI it = communicationPairList.find (node);
+      if (it != communicationPairList.end ())
+        {
+          it->second.startTime = Simulator::Now ();
+          it->second.srcApp->StartApplication ();
+        }
+      else
+        {
+          NS_FATAL_ERROR ("Could not find application to start.");
+        }
+    }
+}
+
+uint32_t
+ComputeServicePeriodDuration (const uint64_t &dataBitRate, const uint64_t &phyModeDataRate)
+{
+  NS_LOG_UNCOND (dataBitRate << " " << phyModeDataRate);
+  double numberBIs = Seconds (1).GetMicroSeconds () / double (apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
+  uint32_t spDuration = ceil (dataBitRate / double (phyModeDataRate) / numberBIs * 1e6);
+  return spDuration;
+}
+
+DmgTspecElement
+GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation)
+{
+  /* Simple assert for the moment */
+  NS_LOG_FUNCTION (+allocId << isPseudoStatic << minAllocation << maxAllocation);
+  NS_ASSERT_MSG (minAllocation <= maxAllocation, "Minimum Allocation cannot be greater than Maximum Allocation");
+  NS_ASSERT_MSG (maxAllocation <= MAX_SP_BLOCK_DURATION, "Maximum Allocation exceeds Max SP block duration");
+  DmgTspecElement element;
+  DmgAllocationInfo info;
+  info.SetAllocationID (allocId);
+  info.SetAllocationType (SERVICE_PERIOD_ALLOCATION);
+  info.SetAllocationFormat (ISOCHRONOUS);
+  info.SetAsPseudoStatic (isPseudoStatic);
+  info.SetDestinationAid (AID_AP);
+  element.SetDmgAllocationInfo (info);
+  element.SetMinimumAllocation (minAllocation);
+  element.SetMaximumAllocation (maxAllocation);
+  element.SetMinimumDuration (minAllocation);
+  return element;
+}
+
+void
 StationAssociated (Ptr<Node> node, Ptr<DmgWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
 {
   if (!csv)
@@ -210,15 +264,16 @@ StationAssociated (Ptr<Node> node, Ptr<DmgWifiMac> staWifiMac, Mac48Address addr
            << ", AID= " << aid << endl;
     }
 
+  /* Send ADDTS request to the PCP/AP */
   CommunicationPairListI it = communicationPairList.find (node);
   if (it != communicationPairList.end ())
     {
-      it->second.startTime = Simulator::Now ();
-      it->second.srcApp->StartApplication ();
+      uint32_t spDuration = ComputeServicePeriodDuration (it->second.appDataRate, WifiMode (phyMode).GetDataRate ());
+      StaticCast<DmgStaWifiMac> (staWifiMac)->CreateAllocation (GetDmgTspecElement (allocationId++, true, spDuration, spDuration));
     }
   else
     {
-      NS_FATAL_ERROR ("Could not find application to start.");
+      NS_FATAL_ERROR ("Could not find application for this node.");
     }
 }
 
@@ -266,6 +321,7 @@ InstallApplications (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address address, 
     }
   srcApp.Stop (Seconds (simulationTime));
   commPair.srcApp = srcApp.Get (0);
+  commPair.appDataRate = DataRate (appDataRate).GetBitRate ();
 
   /* Install Simple TCP/UDP Server on the destination node */
   PacketSinkHelper sinkHelper (socketType, InetSocketAddress (Ipv4Address::GetAny (), 9000 + appNumber));
@@ -341,7 +397,6 @@ main (int argc, char *argv[])
   string appDataRate = "300Mbps";                    /* Application data rate. */
   bool frameCapture = false;                      /* Use a frame capture model. */
   double frameCaptureMargin = 10;                 /* Frame capture margin [dB]. */
-  string phyMode = "DMG_MCS12";                   /* The MCS to use at the Physical Layer. */
   uint32_t snapShotLength = numeric_limits<uint32_t>::max (); /* The maximum PCAP Snapshot Length. */
   bool verbose = false;                           /* Print Logging Information. */
   bool pcapTracing = false;                       /* Enable PCAP Tracing. */
@@ -465,6 +520,10 @@ main (int argc, char *argv[])
   /**** WifiHelper is a meta-helper: it helps to create helpers ****/
   DmgWifiHelper wifiHelper;
 
+  /* Set default algorithm for all nodes to be constant rate */
+  wifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "ControlMode", StringValue (phyMode),
+                                      "DataMode", StringValue (phyMode));
+
   /* Add a DMG upper mac */
   DmgWifiMacHelper wifiMacHelper = DmgWifiMacHelper::Default ();
 
@@ -582,7 +641,6 @@ main (int argc, char *argv[])
   *snrStream->GetStream () << "TIME,SRC,DST,SNR" << endl;
 
   Ptr<WifiNetDevice> wifiNetDevice;
-  Ptr<DmgApWifiMac> apWifiMac;
   Ptr<DmgStaWifiMac> staWifiMac;
   Ptr<WifiRemoteStationManager> remoteStationManager;
 
@@ -595,6 +653,7 @@ main (int argc, char *argv[])
       remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, staWifiMac, snrStream));
       staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, staWifiNodes.Get (i), staWifiMac));
       staWifiMac->TraceConnectWithoutContext ("DeAssoc", MakeBoundCallback (&StationDeAssociated, staWifiNodes.Get (i), staWifiMac));
+      staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, staWifiNodes.Get (i)));
 
       Ptr<Parameters> parameters = Create<Parameters> ();
       parameters->srcNodeID = wifiNetDevice->GetNode ()->GetId ();
