@@ -121,6 +121,12 @@ PacketCountMap macRxDataOk;
 
 Ptr<DmgApWifiMac> apWifiMac;
 
+/* MAC layer Statistics */
+typedef map<Mac48Address, uint64_t> PacketCountMap;
+PacketCountMap macTxDataFailed;
+PacketCountMap macTxDataOk;
+PacketCountMap macRxDataOk;
+
 Ptr<DmgApWifiMac> apWifiMac;
 
 template <typename T>
@@ -205,6 +211,7 @@ void
 CalculateThroughput (void)
 {
   double totalThr = 0;
+  Ptr<Node> node;
   double thr;
   /* duration is the time period which corresponds to the logged throughput values */
   std::string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - thrLogPeriodicity.GetSeconds (), 2) +
@@ -468,6 +475,7 @@ main (int argc, char *argv[])
   /* Enable Log of specific components from tLogStart to tLogEnd */  
   std::vector<std::string> logComponents = SplitString (logComponentsStr, ':');
   EnableMyTraces (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
+  LogComponentEnable ("EvaluateScheduler", LOG_LEVEL_ALL);
 
   /* Compute system path in order to import correctly DmgFiles */
   std::string systemPath = SystemPath::FindSelfDirectory ();
