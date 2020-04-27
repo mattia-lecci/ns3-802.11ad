@@ -789,7 +789,7 @@ main (int argc, char *argv[])
           cout << "  Rx Packets: " << packetSink->GetTotalReceivedPackets () << endl;
           cout << "  Rx Bytes:   " << packetSink->GetTotalRx () << endl;
           cout << "  Throughput: " << packetSink->GetTotalRx () * 8.0 / ((simulationTime - it->second.startTime.GetSeconds ()) * 1e6)
-                    << " Mbps" << endl;
+               << " Mbps" << endl;
           communicationLinks++;
         }
 
