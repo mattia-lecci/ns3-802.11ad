@@ -52,13 +52,16 @@
  *
  *
  * Requested Service Periods:
- * DMG STA (1) --> DMG STA (2)
- * DMG STA (3) --> DMG STA (4)
- * DMG STA (6) --> DMG STA (7)
- * DMG STA (8) --> DMG STA (9)
  * DMG STA (1) --> DMG AP
- * DMG AP      --> DMG STA (10) 
- *
+ * DMG STA (2) --> DMG AP
+ * DMG STA (3) --> DMG AP
+ * DMG STA (4) --> DMG AP
+ * DMG STA (5) --> DMG AP
+ * DMG STA (6) --> DMG AP
+ * DMG STA (7) --> DMG AP
+ * DMG STA (8) --> DMG AP
+ * DMG STA (9) --> DMG AP
+ * DMG STA (10)--> DMG AP
  *
  * Running the Simulation:
  * ./waf --run "evaluate_scheduler_qd_dense_scenario"
@@ -67,7 +70,6 @@
  * The simulation generates the following traces:
  *
  */
-
 
 NS_LOG_COMPONENT_DEFINE ("EvaluateScheduler");
 
@@ -102,8 +104,8 @@ typedef CommunicationPairList::const_iterator CommunicationPairListCI;
 /** Simulation Arguments **/
 string applicationType = "onoff";             /* Type of the Tx application */
 string socketType = "ns3::UdpSocketFactory";  /* Socket Type (TCP/UDP) */
-string schedulerType = "ns3::CbapOnlyDmgWifiScheduler";   /* Type of scheduler to be used */
-string phyMode = "DMG_MCS12";                   /* The MCS to use at the Physical Layer. */
+string schedulerType = "ns3::CbapOnlyDmgWifiScheduler";   /* The type of scheduler to be used */
+string phyMode = "DMG_MCS12";                 /* The MCS to be used at the Physical Layer. */
 uint32_t packetSize = 1448;                   /* Application payload size [bytes]. */
 string tcpVariant = "NewReno";                /* TCP Variant Type. */
 uint32_t maxPackets = 0;                      /* Maximum Number of Packets */
@@ -111,8 +113,8 @@ uint32_t msduAggregationSize = 7935;          /* The maximum aggregation size fo
 uint32_t mpduAggregationSize = 262143;        /* The maximum aggregation size for A-MPDU [bytes]. */
 double simulationTime = 10;                   /* Simulation time [s]. */
 bool csv = false;                             /* Enable CSV output. */
-bool reportDataSnr = true;                    /* Report Data Packets SNR. */
-uint8_t allocationId = 1;                     /* The allocation ID of the DMG Tspec to create */
+bool reportDataSnr = true;                    /* Enable report of Data Packets SNR. */
+uint8_t allocationId = 1;                     /* The allocation ID of the DMG Tspec element to create */
 
 /* NUmber of SP allocations */
 uint16_t numSPs = 6;
@@ -123,6 +125,12 @@ map<Mac48Address, uint16_t> biCounter;   /* Number of beacon intervals that have
 
 /**  Applications **/
 CommunicationPairList communicationPairList;  /* List of communicating devices. */
+
+/* MAC layer Statistics */
+typedef map<Mac48Address, uint64_t> PacketCountMap;
+PacketCountMap macTxDataFailed;
+PacketCountMap macTxDataOk;
+PacketCountMap macRxDataOk;
 
 Ptr<DmgApWifiMac> apWifiMac;
 
@@ -177,6 +185,7 @@ void
 CalculateThroughput (void)
 {
   double totalThr = 0;
+  Ptr<Node> node;
   double thr;
   if (!csv)
     {
@@ -186,6 +195,7 @@ CalculateThroughput (void)
 
       for (CommunicationPairListI it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
         {
+          node = it->second.srcApp->GetNode ();
           thr = CalculateSingleStreamThroughput (it->second.packetSink, it->second.totalRx, it->second.throughput);
           totalThr += thr;
           cout << left << setw (12) << thr;
@@ -209,12 +219,13 @@ CalculateThroughput (void)
 void
 ADDTSResponseReceived (Ptr<Node> node, Mac48Address address, StatusCode status, DmgTspecElement element)
 {
-  NS_LOG_DEBUG ("Mac=" << address << " received ADDTS response with status=" << status.IsSuccess ());
+  NS_LOG_DEBUG ("DMG STA=" << address << " received ADDTS response with status=" << status.IsSuccess ());
   if (status.IsSuccess () || (schedulerType == "ns3::CbapOnlyDmgWifiScheduler"))
     {
       CommunicationPairListI it = communicationPairList.find (node);
       if (it != communicationPairList.end ())
         {
+          NS_LOG_DEBUG ("Starting APP at node with Id=" << node->GetId ());
           it->second.startTime = Simulator::Now ();
           it->second.srcApp->StartApplication ();
         }
@@ -228,7 +239,7 @@ ADDTSResponseReceived (Ptr<Node> node, Mac48Address address, StatusCode status, 
 uint32_t
 ComputeServicePeriodDuration (const uint64_t &dataBitRate, const uint64_t &phyModeDataRate)
 {
-  NS_LOG_UNCOND (dataBitRate << " " << phyModeDataRate);
+  NS_LOG_FUNCTION (dataBitRate << phyModeDataRate);
   double numberBIs = Seconds (1).GetMicroSeconds () / double (apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
   uint32_t spDuration = ceil (dataBitRate / double (phyModeDataRate) / numberBIs * 1e6);
   return spDuration;
@@ -256,20 +267,20 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
 }
 
 void
-StationAssociated (Ptr<Node> node, Ptr<DmgWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
+StationAssociated (Ptr<Node> node, Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
 {
+  NS_LOG_FUNCTION (node << staWifiMac << address << aid);
   if (!csv)
     {
-      cout << "DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
-           << ", AID= " << aid << endl;
+      NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << address
+           << ", AID=" << aid);
     }
-
   /* Send ADDTS request to the PCP/AP */
   CommunicationPairListI it = communicationPairList.find (node);
   if (it != communicationPairList.end ())
     {
       uint32_t spDuration = ComputeServicePeriodDuration (it->second.appDataRate, WifiMode (phyMode).GetDataRate ());
-      StaticCast<DmgStaWifiMac> (staWifiMac)->CreateAllocation (GetDmgTspecElement (allocationId++, true, spDuration, spDuration));
+      staWifiMac->CreateAllocation (GetDmgTspecElement (allocationId++, true, spDuration, spDuration));
     }
   else
     {
@@ -282,9 +293,8 @@ StationDeAssociated (Ptr<Node> node, Ptr<DmgWifiMac> staWifiMac, Mac48Address ad
 {
   if (!csv)
     {
-      cout << "DMG STA " << staWifiMac->GetAddress () << " deassociated from DMG PCP/AP " << address << endl;
+      NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " deassociated from DMG PCP/AP=" << address);
     }
-
   CommunicationPairListI it = communicationPairList.find (node);
   if (it != communicationPairList.end ())
     {
@@ -297,10 +307,10 @@ StationDeAssociated (Ptr<Node> node, Ptr<DmgWifiMac> staWifiMac, Mac48Address ad
 }
 
 CommunicationPair
-InstallApplications (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address address, string appDataRate, uint8_t appNumber)
+InstallApplications (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address address, string appDataRate, uint16_t appNumber)
 {
+  NS_LOG_FUNCTION (srcNode->GetId () << dstNode->GetId () << address << appDataRate << +appNumber);
   CommunicationPair commPair;
-
   /* Install TCP/UDP Transmitter on the source node */
   Address dest (InetSocketAddress (address, 9000 + appNumber));
   ApplicationContainer srcApp;
@@ -319,6 +329,8 @@ InstallApplications (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address address, 
       BulkSendHelper src (socketType, dest);
       srcApp = src.Install (srcNode);
     }
+  /* The application is started when the corresponding ADDTS request succeeded (or failed only for CbapOnlyDmgWifiScheduler) */
+  srcApp.Start (Seconds (simulationTime + 1));
   srcApp.Stop (Seconds (simulationTime));
   commPair.srcApp = srcApp.Get (0);
   commPair.appDataRate = DataRate (appDataRate).GetBitRate ();
@@ -347,8 +359,18 @@ SLSCompleted (Ptr<OutputStreamWrapper> stream, Ptr<Parameters> parameters,
                         << Simulator::Now ().GetNanoSeconds () << std::endl;
   if (!csv)
     {
-      cout << "DMG STA: " << parameters->srcNodeID << " Address: " << address << " Sector ID: " << +sectorId
-           << " Antenna ID: " << +antennaId << endl;
+      string stationType;
+      if (parameters->wifiMac->GetTypeOfStation () == DMG_AP)
+        {
+          stationType = "DMG  AP=";
+        }
+      else
+        {
+          stationType = "DMG STA=";
+        }
+      NS_LOG_DEBUG (stationType << parameters->wifiMac->GetAddress () << " completed SLS phase with " << address 
+                    << ", antennaID=" << +antennaId << ", sectorID=" << +sectorId << ", accessPeriod=" << accessPeriod
+                    << ", IsInitiator=" << (beamformingDirection == 0));
     }
 }
 
@@ -369,14 +391,15 @@ DataTransmissionIntervalStarted (Ptr<DmgStaWifiMac> wifiMac, Mac48Address addres
 }
 
 void
-MacRxOk (Ptr<DmgWifiMac> WifiMac, Ptr<OutputStreamWrapper> stream,
+MacRxOk (Ptr<DmgWifiMac> wifiMac, Ptr<OutputStreamWrapper> stream,
          WifiMacType type, Mac48Address address, double snrValue)
 {
+  macRxDataOk.at (wifiMac->GetAddress ()) += 1;
   if ((type == WIFI_MAC_QOSDATA) && reportDataSnr)
     {
       *stream->GetStream () << Simulator::Now ().GetNanoSeconds () << ","
                             << address << ","
-                            << WifiMac->GetAddress () << ","
+                            << wifiMac->GetAddress () << ","
                             << snrValue << std::endl;
     }
   else if ((type == WIFI_MAC_EXTENSION_DMG_BEACON) || (type == WIFI_MAC_CTL_DMG_SSW)
@@ -384,9 +407,21 @@ MacRxOk (Ptr<DmgWifiMac> WifiMac, Ptr<OutputStreamWrapper> stream,
     {
       *stream->GetStream () << Simulator::Now ().GetNanoSeconds () << ","
                             << address << ","
-                            << WifiMac->GetAddress () << ","
+                            << wifiMac->GetAddress () << ","
                             << snrValue << std::endl;
     }
+}
+
+void
+MacTxDataFailed (Ptr<DmgWifiMac> wifiMac, Mac48Address address)
+{
+  macTxDataFailed.at (wifiMac->GetAddress ()) += 1;
+}
+
+void 
+MacTxOk (Ptr<DmgWifiMac> wifiMac, Mac48Address address)
+{
+  macTxDataOk.at (wifiMac->GetAddress ()) += 1;
 }
 
 int
@@ -456,6 +491,7 @@ main (int argc, char *argv[])
   /* Enable Log of specific components from tLogStart to tLogEnd */  
   vector<string> logComponents = SplitString (logComponentsStr, ':');
   EnableMyTraces (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
+  LogComponentEnable ("EvaluateScheduler", LOG_LEVEL_ALL);
 
   /*** Configure TCP Options ***/
   map<string, string>::const_iterator iter = tcpVariants.find (tcpVariant);
@@ -581,7 +617,7 @@ main (int argc, char *argv[])
     {
       netDevice = StaticCast<WifiNetDevice> (devices.Get (i));
       mac2IdMap[netDevice->GetMac ()->GetAddress ()] = netDevice->GetNode ()->GetId ();
-      NS_LOG_UNCOND ("macAddress=" << netDevice->GetMac ()->GetAddress () << ", nodeId=" << netDevice->GetNode ()->GetId ());
+      NS_LOG_DEBUG ("macAddress=" << netDevice->GetMac ()->GetAddress () << ", nodeId=" << netDevice->GetNode ()->GetId ());
     }
 
   /* Setting mobility model for AP */
@@ -618,7 +654,6 @@ main (int argc, char *argv[])
       {
         dataRate = appDataRates.at (i);
       }
-      NS_LOG_UNCOND ("STA nodeId=" << staWifiNodes.Get (i)->GetId ());
       communicationPairList[staWifiNodes.Get (i)] = InstallApplications (staWifiNodes.Get (i), apWifiNode.Get (0),
                                                                          apInterface.GetAddress (0), dataRate, i);
     }
@@ -629,6 +664,14 @@ main (int argc, char *argv[])
       spectrumWifiPhyHelper.SetPcapDataLinkType (SpectrumWifiPhyHelper::DLT_IEEE802_11_RADIO);
       spectrumWifiPhyHelper.EnablePcap ("Traces/AccessPoint", apDevice, false);
       spectrumWifiPhyHelper.EnablePcap ("Traces/STA", staDevices, false);
+    }
+
+  /* Turn on logging */
+  if (verbose)
+    {
+      LogComponentEnable ("EvaluateScheduler", LOG_LEVEL_ALL);
+      wifiHelper.EnableDmgMacLogComponents ();
+      wifiHelper.EnableDmgPhyLogComponents ();
     }
 
   /* Callback for DMG STAs SLS */
@@ -649,8 +692,13 @@ main (int argc, char *argv[])
     {
       wifiNetDevice = StaticCast<WifiNetDevice> (staDevices.Get (i));
       staWifiMac = StaticCast<DmgStaWifiMac> (wifiNetDevice->GetMac ());
+      macTxDataFailed.insert (make_pair (staWifiMac->GetAddress (), 0));
+      macTxDataOk.insert (make_pair (staWifiMac->GetAddress (), 0));
+      macRxDataOk.insert (make_pair (staWifiMac->GetAddress (), 0));
       remoteStationManager = wifiNetDevice->GetRemoteStationManager ();
       remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, staWifiMac, snrStream));
+      remoteStationManager->TraceConnectWithoutContext ("MacTxOK", MakeBoundCallback (&MacTxOk, staWifiMac));
+      remoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeBoundCallback (&MacTxDataFailed, staWifiMac));
       staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, staWifiNodes.Get (i), staWifiMac));
       staWifiMac->TraceConnectWithoutContext ("DeAssoc", MakeBoundCallback (&StationDeAssociated, staWifiNodes.Get (i), staWifiMac));
       staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, staWifiNodes.Get (i)));
@@ -666,6 +714,9 @@ main (int argc, char *argv[])
   /* Connect DMG PCP/AP traces */
   wifiNetDevice = StaticCast<WifiNetDevice> (apDevice.Get (0));
   apWifiMac = StaticCast<DmgApWifiMac> (wifiNetDevice->GetMac ());
+  macTxDataFailed.insert (make_pair (apWifiMac->GetAddress (), 0));
+  macTxDataOk.insert (make_pair (apWifiMac->GetAddress (), 0));
+  macRxDataOk.insert (make_pair (apWifiMac->GetAddress (), 0));
   remoteStationManager = wifiNetDevice->GetRemoteStationManager ();
   Ptr<Parameters> parameters = Create<Parameters> ();
   parameters->srcNodeID = wifiNetDevice->GetNode ()->GetId ();
@@ -683,9 +734,9 @@ main (int argc, char *argv[])
       cout << "Application Layer Throughput per Communicating Pair [Mbps]" << endl;
       cout << left << setw (12) << "Time [s]";
       string columnName;
-      for (uint8_t i = 0; i < communicationPairList.size (); i++)
+      for (CommunicationPairListCI it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
         {
-          columnName = "Pair (" + std::to_string (i + 1) + ")";
+          columnName = "SrcNodeId=" + to_string (it->second.srcApp->GetNode ()->GetId ());
           cout << left << setw (12) << columnName;
         }
       cout << left << setw (12) << "Total" << endl;
@@ -740,6 +791,16 @@ main (int argc, char *argv[])
           cout << "  Throughput: " << packetSink->GetTotalRx () * 8.0 / ((simulationTime - it->second.startTime.GetSeconds ()) * 1e6)
                     << " Mbps" << endl;
           communicationLinks++;
+        }
+
+      /* Print MAC layer Stats */
+      cout << "\nMAC Layer Statistics:" << endl;
+      for (PacketCountMap::const_iterator it = macTxDataOk.begin (); it != macTxDataOk.end (); ++it)
+        {
+          NS_LOG_UNCOND ("DMG Station: " << it->first);
+          NS_LOG_UNCOND ("Tx Packets: " << it->second);
+          NS_LOG_UNCOND ("Tx Failed : " << macTxDataFailed.at (it->first));
+          NS_LOG_UNCOND ("Rx Packets: " << macRxDataOk.at (it->first));
         }
     }
 
