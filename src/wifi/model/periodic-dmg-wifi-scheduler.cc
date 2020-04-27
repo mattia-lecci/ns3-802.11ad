@@ -127,6 +127,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
   uint16_t allocPeriod = dmgTspec.GetAllocationPeriod ();
   if (allocPeriod != 0)
     {
+      /* Proceed with the allocation of periodic SPs */
       bool isMultiple = dmgTspec.IsAllocationPeriodMultipleBI();
       if (isMultiple)
       {
@@ -155,7 +156,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
         NS_LOG_DEBUG("Reserve from " << startPeriodicAllocation << " for " << allocDuration << " timeChunk.second  " << timeChunk.second );
         endAlloc = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
                                                               sourceAid, info.GetDestinationAid (), startPeriodicAllocation, allocDuration);
-
+        m_remainingDtiTime -= (allocDuration + m_guardTime);                                                      
         UpdateAvailableSlots(startPeriodicAllocation, endAlloc);
         startPeriodicAllocation += spInterval;
       }
@@ -163,7 +164,35 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
     }
   else
     {
-      // TODO
+      
+      if(m_availableSlots.begin() == m_availableSlots.end())
+      {
+        NS_LOG_DEBUG("There are no available slots.");
+        status.SetFailure();
+      }
+      
+      uint32_t endAlloc;
+      uint32_t slotDur;
+      for (auto it = m_availableSlots.begin() ; it != m_availableSlots.end(); ++it)
+      {
+        slotDur = it->second - it->first;
+        
+        if(slotDur > allocDuration)
+        {
+          
+          endAlloc = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
+                                                                sourceAid, info.GetDestinationAid (), it->first, allocDuration);
+          m_remainingDtiTime -= (allocDuration + m_guardTime);                                                      
+          UpdateAvailableSlots(it->first, endAlloc);
+          status.SetSuccess();
+          break;                                                    
+        }
+        else
+        {
+          status.SetFailure(); 
+        }
+      }
+      
     }
 
   return status;
