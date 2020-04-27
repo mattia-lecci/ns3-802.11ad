@@ -19,6 +19,7 @@
  *
  */
 
+#include <algorithm>    // std::sort
 #include <ns3/assert.h>
 #include <ns3/log.h>
 #include <ns3/simulator.h>
@@ -220,12 +221,17 @@ PeriodicDmgWifiScheduler::AddBroadcastCbapAllocations (void)
 {
   NS_LOG_FUNCTION (this);
   /* Addts allocation list is copied to the allocation list */
+  
   m_allocationList = m_addtsAllocationList;
+  sort(m_allocationList.begin(), 
+        m_allocationList.end(), 
+        [](const AllocationField& lhs, const AllocationField& rhs){
+            return lhs.GetAllocationStart() < rhs.GetAllocationStart();});
+  
   AllocationFieldList broadcastCbapList;
 
   // fill all the remaining available slots with broadcast CBAPs
-
-  auto itSlot = m_availableSlots.begin();
+  
   for(auto itAll = m_allocationList.begin(); itAll != m_allocationList.end(); ++itAll)
   {
     auto itNextAll = itAll + 1;
@@ -234,24 +240,26 @@ PeriodicDmgWifiScheduler::AddBroadcastCbapAllocations (void)
 
     NS_LOG_DEBUG("Allocation start: " << start << " end: " << end);
 
-    if ( itNextAll != m_allocationList.end() )
+    if(itNextAll != m_allocationList.end())
     {
-      if (itSlot->first >= end && itSlot->first < itNextAll->GetAllocationStart ())
+      if (end < itNextAll->GetAllocationStart ())
       {
-        broadcastCbapList = GetBroadcastCbapAllocation (true, itSlot->first, itSlot->second - itSlot->first);
+        broadcastCbapList = GetBroadcastCbapAllocation (true, end, itNextAll->GetAllocationStart() - end);
+        m_remainingDtiTime -= itNextAll->GetAllocationStart() - end;
         itAll = m_allocationList.insert (itNextAll, broadcastCbapList.begin (), broadcastCbapList.end ());
         itAll += broadcastCbapList.size () - 1;
 
-        NS_LOG_DEBUG("Added broadcast CBAPs list of size: " << broadcastCbapList.size () << " for a total duration of " << itSlot->second - itSlot->first);
-
-        itSlot++;
+        NS_LOG_DEBUG("Added broadcast CBAPs list of size: " << broadcastCbapList.size () << " for a total duration of " << itNextAll->GetAllocationStart() - end);
       }
     }
-
+    else 
+    {
+      broadcastCbapList = GetBroadcastCbapAllocation (true, end, m_remainingDtiTime);
+      m_remainingDtiTime = 0;
+      itAll = m_allocationList.insert (itNextAll, broadcastCbapList.begin (), broadcastCbapList.end ());
+      itAll += broadcastCbapList.size () - 1;
+    }
   }
-
-  m_availableSlots.clear();
-  m_remainingDtiTime = 0;
 
 }
 
