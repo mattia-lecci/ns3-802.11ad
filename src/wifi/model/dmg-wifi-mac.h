@@ -875,8 +875,9 @@ protected:
   TracedCallback<Mac48Address, Mac48Address> m_servicePeriodEndedCallback;
 
   /* Association Traces */
-  typedef void (* AssociationCallback)(Mac48Address address, uint16_t);
+  typedef void (* AssociationTracedCallback)(Mac48Address address, uint16_t aid);
   TracedCallback<Mac48Address, uint16_t> m_assocLogger;
+  typedef void (* DeAssociationTracedCallback)(Mac48Address address);
   TracedCallback<Mac48Address> m_deAssocLogger;
 
 private:
