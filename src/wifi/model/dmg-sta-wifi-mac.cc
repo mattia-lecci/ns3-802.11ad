@@ -177,7 +177,7 @@ DmgStaWifiMac::GetTypeId (void)
                      "ns3::DmgWifiMac::AssociationTracedCallback")
     .AddTraceSource ("DeAssoc", "Association with an access point lost.",
                      MakeTraceSourceAccessor (&DmgStaWifiMac::m_deAssocLogger),
-                     "ns3::Mac48Address::TracedCallback")
+                     "ns3::DmgWifiMac::DeAssociationTracedCallback")
 
     /* DMG BSS peer and service discovery */
     .AddTraceSource ("InformationResponseReceived", "Received information response regarding specific station.",
