@@ -170,7 +170,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 }
 
 void
-PeriodicDmgWifiScheduler::UpdateAvailableSlots(uint32_t startPeriodicAllocation, uint32_t endAlloc)
+PeriodicDmgWifiScheduler::UpdateAvailableSlots(uint32_t startAllocation, uint32_t endAlloc)
 {
     NS_LOG_FUNCTION(this);
 
@@ -178,21 +178,20 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots(uint32_t startPeriodicAllocation,
 
     for (auto it = m_availableSlots.begin() ; it != m_availableSlots.end(); ++it)
     {
-      //NS_LOG_DEBUG("Available slot from " << it->first << " to " << it->second);
 
-      if (it->second < startPeriodicAllocation)
+      if (it->first > endAlloc || it->second < startAllocation)
       {
         newDTI.push_back(*it);
         continue;
       }
 
-      if(it->first == startPeriodicAllocation)
+      if(it->first == startAllocation)
       {
         newDTI.push_back(std::make_pair(endAlloc, it->second));
       }
-      else if (it->first < startPeriodicAllocation && it->second > endAlloc)
+      else if (it->first < startAllocation && it->second > endAlloc)
       {
-        newDTI.push_back(std::make_pair(it->first, startPeriodicAllocation));
+        newDTI.push_back(std::make_pair(it->first, startAllocation));
         newDTI.push_back(std::make_pair(endAlloc, it->second));
       }
     }
