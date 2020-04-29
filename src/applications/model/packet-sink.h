@@ -138,7 +138,7 @@ private:
 
   /// Traced Callback: received packets, source address.
   TracedCallback<Ptr<const Packet>, const Address &> m_rxTrace;
-  Time accummulator;
+  Time m_accummulator;
 };
 
 } // namespace ns3
