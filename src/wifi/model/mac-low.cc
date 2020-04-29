@@ -1027,7 +1027,7 @@ MacLow::ReceiveOk (Ptr<Packet> packet, double rxSnr, WifiTxVector txVector, bool
             {
               NS_LOG_DEBUG ("rx RTS from=" << hdr.GetAddr2 () << ", schedule CTS");
               NS_ASSERT (m_sendCtsEvent.IsExpired ());
-              m_stationManager->ReportRxOk (hdr.GetAddr2 (), &hdr,
+              m_stationManager->ReportRxOk (hdr.GetAddr2 (), &hdr, packet,
                                             rxSnr, txVector.GetMode ());
               if (m_phy->GetStandard () == WIFI_PHY_STANDARD_80211ad)
                 {
@@ -1069,7 +1069,7 @@ MacLow::ReceiveOk (Ptr<Packet> packet, double rxSnr, WifiTxVector txVector, bool
       SnrTag tag;
       packet->RemovePacketTag (tag);
       m_stationManager->ReportRxOk (m_currentHdr.GetAddr1 (), &m_currentHdr,
-                                    rxSnr, txVector.GetMode ());
+                                    packet, rxSnr, txVector.GetMode ());
       m_stationManager->ReportRtsOk (m_currentHdr.GetAddr1 (), &m_currentHdr,
                                      rxSnr, txVector.GetMode (), tag.Get ());
 
@@ -1094,7 +1094,7 @@ MacLow::ReceiveOk (Ptr<Packet> packet, double rxSnr, WifiTxVector txVector, bool
       if (!m_txParams.HasNextPacket ())
         {
           m_stationManager->ReportRxOk (m_currentHdr.GetAddr1 (), &m_currentHdr,
-                                        rxSnr, txVector.GetMode ());
+                                        packet, rxSnr, txVector.GetMode ());
           m_stationManager->ReportDataOk (m_currentHdr.GetAddr1 (), &m_currentHdr,
                                           rxSnr, txVector.GetMode (), tag.Get ());
         }
@@ -1223,7 +1223,7 @@ MacLow::ReceiveOk (Ptr<Packet> packet, double rxSnr, WifiTxVector txVector, bool
   else if (hdr.IsDMGBeacon ())
     {
       NS_LOG_DEBUG ("Received DMG Beacon with BSSID=" << hdr.GetAddr1 ());
-      m_stationManager->ReportRxOk (hdr.GetAddr1 (), &hdr, rxSnr, txVector.GetMode ());
+      m_stationManager->ReportRxOk (hdr.GetAddr1 (), &hdr, packet, rxSnr, txVector.GetMode ());
       // Apply SNR tag for beacon quality measurements
       SnrTag tag;
       tag.Set (rxSnr);
@@ -1236,7 +1236,7 @@ MacLow::ReceiveOk (Ptr<Packet> packet, double rxSnr, WifiTxVector txVector, bool
     }
   else if (hdr.GetAddr1 () == m_self)
     {
-      m_stationManager->ReportRxOk (hdr.GetAddr2 (), &hdr,
+      m_stationManager->ReportRxOk (hdr.GetAddr2 (), &hdr, packet,
                                     rxSnr, txVector.GetMode ());
 
       if (hdr.IsActionNoAck ())

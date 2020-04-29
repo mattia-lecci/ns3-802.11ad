@@ -809,14 +809,15 @@ public:
 
   /**
    * \param address remote address
-   * \param header MAC header
+   * \param header MAC header received
+   * \param packet MAC packet received
    * \param rxSnr the snr of the packet received
    * \param txMode the transmission mode used for the packet received.
    *
    * Should be invoked whenever a packet is successfully received.
    */
   void ReportRxOk (Mac48Address address, const WifiMacHeader *header,
-                   double rxSnr, WifiMode txMode);
+                   Ptr<const Packet> packet, double rxSnr, WifiMode txMode);
 
   /**
    * \param address remote address
@@ -1606,7 +1607,7 @@ private:
   Callback<void, Mac48Address> m_txCallbackOk;
   Callback<void, Mac48Address> m_rxCallbackOk;
 
-  TracedCallback<WifiMacType, Mac48Address, double> m_macRxOk;   /* Trace for Successful WifiMAC Reception */
+  TracedCallback<WifiMacType, Ptr<const Packet>, Mac48Address, double> m_macRxOk;   /* Trace for Successful WifiMAC Reception */
 
   /**
    * TracedCallback signature for MAC Rx OK.
@@ -1615,7 +1616,7 @@ private:
    * \param address The MAC address of the station.
    * \param snr The snr value in linear scale.
    */
-  typedef void (* MacRxOkCallback)(WifiMacType type, Mac48Address address, double snr);
+  typedef void (* MacRxOkCallback)(WifiMacType type, Ptr<const Packet> packet, Mac48Address address, double snr);
 
 };
 
