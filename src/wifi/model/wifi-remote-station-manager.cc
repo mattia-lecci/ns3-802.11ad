@@ -1115,7 +1115,7 @@ WifiRemoteStationManager::ReportFinalDataFailed (Mac48Address address, const Wif
 }
 
 void
-WifiRemoteStationManager::ReportRxOk (Mac48Address address, const WifiMacHeader *header, Ptr<const Packet> packet,
+WifiRemoteStationManager::ReportRxOk (Mac48Address address, const WifiMacHeader *header,
                                       double rxSnr, WifiMode txMode)
 {
   NS_LOG_FUNCTION (this << address << *header << rxSnr << txMode);
@@ -1126,7 +1126,7 @@ WifiRemoteStationManager::ReportRxOk (Mac48Address address, const WifiMacHeader 
     }
   WifiRemoteStation *station = Lookup (address, header);
   m_rxCallbackOk (address);
-  m_macRxOk (header->GetType (), packet->Copy (), address, rxSnr);
+  m_macRxOk (header->GetType (), address, rxSnr);
   DoReportRxOk (station, rxSnr, txMode);
 }
 
