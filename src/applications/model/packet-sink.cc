@@ -203,23 +203,25 @@ void PacketSink::HandleRead (Ptr<Socket> socket)
                        << " total Rx " << m_totalRx << " bytes");
         }
 
+      /* If we have a SeqTs header we don't need to check for a Timestamp tag  */
       SeqTsHeader header;
       if (packet->PeekHeader (header) > 0)
         {
           NS_LOG_DEBUG ("Rx seq=" << header.GetSeq () << ", at time=" << header.GetTs ().GetSeconds ());
           m_accummulator += Simulator::Now () - header.GetTs ();
         }
+      else
+        {
+          /* Otherwise, look for the presence of a Timestamp tag */
+          TimestampTag timestamp;
+          if (packet->FindFirstMatchingByteTag (timestamp))
+            {
+              Time tx = timestamp.GetTimestamp ();
+              m_accummulator += Simulator::Now () - tx;
+            }
+        }
 
       m_rxTrace (packet, from);
-
-      TimestampTag timestamp;
-      // Should never not be found since the sender is adding it, but
-      // you never know.
-      if (packet->FindFirstMatchingByteTag (timestamp))
-        {
-          Time tx = timestamp.GetTimestamp ();
-          m_accummulator += Simulator::Now () - tx;
-        }
       m_totalPackets++;
     }
 }
