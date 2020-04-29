@@ -71,6 +71,7 @@ PacketSink::PacketSink ()
   m_socket = 0;
   m_totalRx = 0;
   m_totalPackets = 0;
+  m_accummulator = Seconds (0);
 }
 
 PacketSink::~PacketSink()
@@ -202,9 +203,12 @@ void PacketSink::HandleRead (Ptr<Socket> socket)
                        << " total Rx " << m_totalRx << " bytes");
         }
 
-//      SeqTsHeader header;
-//      packet->RemoveHeader (header);
-//      NS_LOG_UNCOND ("RCV: " << header.GetSeq () << " " << header.GetTs ().GetSeconds ());
+      SeqTsHeader header;
+      if (packet->PeekHeader (header) > 0)
+        {
+          NS_LOG_DEBUG ("Rx seq=" << header.GetSeq () << ", at time=" << header.GetTs ().GetSeconds ());
+          m_accummulator += Simulator::Now () - header.GetTs ();
+        }
 
       m_rxTrace (packet, from);
 
@@ -214,7 +218,7 @@ void PacketSink::HandleRead (Ptr<Socket> socket)
       if (packet->FindFirstMatchingByteTag (timestamp))
         {
           Time tx = timestamp.GetTimestamp ();
-          accummulator += Simulator::Now () - tx;
+          m_accummulator += Simulator::Now () - tx;
         }
       m_totalPackets++;
     }
@@ -225,7 +229,7 @@ PacketSink::GetAverageDelay (void) const
 {
   if (m_totalPackets != 0)
     {
-      return accummulator/m_totalPackets;
+      return m_accummulator/m_totalPackets;
     }
   else
     {
