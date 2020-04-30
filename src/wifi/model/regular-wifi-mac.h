@@ -803,10 +803,6 @@ private:
   TracedCallback<const WifiMacHeader &> m_txOkCallback; ///< transmit OK callback
   TracedCallback<const WifiMacHeader &> m_txErrCallback; ///< transmit error callback
 
-  /* Packet forwarded Up traced callback */
-  TracedCallback<Ptr<Packet>, Mac48Address, Mac48Address> m_forwardUpTrace;
-  typedef void (* ForwardUpTracedCallback)(Ptr<Packet> packet, Mac48Address from, Mac48Address to);
-
   TypeOfStation m_type;  ///< type of the station
   bool m_shortSlotTimeSupported; ///< flag whether short slot time is supported
   bool m_rifsSupported; ///< flag whether RIFS is supported
