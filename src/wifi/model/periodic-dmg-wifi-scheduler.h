@@ -92,6 +92,11 @@ private:
    * \return number of SPs that can be allocated in the DTI
    */
   uint8_t VerifyAvailableSlots(uint32_t allocDuration, uint32_t spInterval);
+  /**
+   * Update the list of available time slots in the DTI.
+   * \param startAllocation start time of the allocation that has to be excluded from the available time.
+   * \param endAlloc end time of the allocation that has to be excluded from the available time.
+   */
   void UpdateAvailableSlots(uint32_t startAllocation, uint32_t endAlloc);
 
   uint32_t m_minBroadcastCbapDuration;          //!< The minimum duration of a broadcast CBAP to be present in the DTI.
