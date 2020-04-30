@@ -392,7 +392,7 @@ DataTransmissionIntervalStarted (Ptr<DmgStaWifiMac> wifiMac, Mac48Address addres
 
 void
 MacRxOk (Ptr<DmgWifiMac> wifiMac, Ptr<OutputStreamWrapper> stream,
-         WifiMacType type, Mac48Address address, double snrValue)
+         WifiMacType type, Ptr<const Packet> packet, Mac48Address address, double snrValue)
 {
   macRxDataOk.at (wifiMac->GetAddress ()) += 1;
   if ((type == WIFI_MAC_QOSDATA) && reportDataSnr)
@@ -442,6 +442,7 @@ main (int argc, char *argv[])
   double tLogStart = 0.0;                         /* Log start [s] */
   double tLogEnd = simulationTime;                /* Log end [s] */
   string appDataRateStr = "";                     /* List of App Data Rates for each SP allocation separated by ':' */
+  uint32_t interAllocDistance = 10;               /* Duration of a broadcast CBAP between two ADDTS allocations [us] */
 
   /** TCP Variants **/
   tcpVariants.insert (make_pair ("NewReno",       "ns3::TcpNewReno"));
@@ -477,6 +478,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("numSTAs", "The number of DMG STA", numSTAs);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("scheduler", "The type of scheduler to use in the simulation", schedulerType);
+  cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
   cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
   cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
   cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
@@ -487,6 +489,7 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
+  Config::SetDefault ("ns3::BasicDmgWifiScheduler::InterAllocationDistance", UintegerValue (interAllocDistance));
 
   /* Enable Log of specific components from tLogStart to tLogEnd */  
   vector<string> logComponents = SplitString (logComponentsStr, ':');
