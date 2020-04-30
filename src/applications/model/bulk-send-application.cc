@@ -29,6 +29,7 @@
 #include "ns3/uinteger.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/tcp-socket-factory.h"
+#include "ns3/seq-ts-header.h"
 #include "bulk-send-application.h"
 
 namespace ns3 {
@@ -193,8 +194,15 @@ void BulkSendApplication::SendData (void)
           toSend = std::min (toSend, m_maxBytes - m_totBytes);
         }
 
-      NS_LOG_LOGIC ("sending packet at " << Simulator::Now ());
-      Ptr<Packet> packet = Create<Packet> (toSend);
+      static uint32_t m_seq = 0;
+      SeqTsHeader header;
+      header.SetSeq (m_seq++);
+      NS_ABORT_IF (toSend < header.GetSerializedSize ());
+      Ptr<Packet> packet = Create<Packet> (toSend - header.GetSerializedSize ());
+      packet->AddHeader (header);
+      NS_ABORT_IF (packet->GetSize () != toSend);
+      NS_LOG_DEBUG ("Tx seq=" << header.GetSeq () << ", at time=" << header.GetTs ());
+
       int actual = m_socket->Send (packet);
       if (actual > 0)
         {
