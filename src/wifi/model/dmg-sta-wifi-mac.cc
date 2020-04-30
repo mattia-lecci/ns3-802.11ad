@@ -1300,7 +1300,7 @@ DmgStaWifiMac::ScheduleAllocationBlocks (AllocationField &field, STA_ROLE role)
           NS_LOG_INFO ("Schedule SP Block [" << i << "] at " << spStart << " till " << spStart + spLength);
           Simulator::Schedule (spStart, &DmgStaWifiMac::InitiateAllocationPeriod, this,
                                field.GetAllocationID (), field.GetSourceAid (), field.GetDestinationAid (), spLength, role);
-          spStart += spLength + spPeriod + GUARD_TIME;
+          spStart += spPeriod;
         }
     }
   else
