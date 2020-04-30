@@ -9,6 +9,7 @@
 #include "ns3/string.h"
 #include "ns3/pointer.h"
 #include "ns3/boolean.h"
+#include "ns3/timestamp-tag.h"
 
 #include "amsdu-subframe-header.h"
 #include "dcf-manager.h"
@@ -352,6 +353,14 @@ Mac48Address to, uint8_t tid)
 
   // Sanity check that the TID is valid
   NS_ASSERT (tid < 8);
+
+  /* Add timestamp before queueing */
+  TimestampTag tag;
+  tag.SetTimestamp (Simulator::Now ());
+  packet->AddByteTag (tag);
+  NS_LOG_DEBUG ("Adding Timestamp Tag to packet=" << packet
+                << ", size=" << packet->GetSize ()
+                << ", timestamp=" << tag.GetTimestamp ());
 
   m_edca[QosUtilsMapTidToAc (tid)]->Queue (packet, hdr);
 }
