@@ -273,7 +273,7 @@ DataTransmissionIntervalStarted (Ptr<DmgStaWifiMac> wifiMac, Mac48Address addres
 
 void
 MacRxOk (Ptr<DmgWifiMac> WifiMac, Ptr<OutputStreamWrapper> stream,
-         WifiMacType type, Mac48Address address, double snrValue)
+         WifiMacType type, Ptr<const Packet> packet, Mac48Address address, double snrValue)
 {
   if ((type == WIFI_MAC_QOSDATA) && reportDataSnr)
     {
