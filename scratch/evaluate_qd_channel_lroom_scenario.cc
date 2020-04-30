@@ -96,8 +96,6 @@ Ptr<FlowMonitor> monitor;
 
 /* Statistics */
 uint64_t macForwardUpBytes = 0;
-uint64_t macForwardUpPkts = 0;
-Time macDelaySum = Seconds (0);
 uint64_t macTxDataFailed = 0;
 uint64_t transmittedPackets = 0;
 uint64_t droppedPackets = 0;
@@ -202,14 +200,6 @@ SLSCompleted (Ptr<OutputStreamWrapper> stream, Ptr<Parameters> parameters, Mac48
 void
 MacForwardUp (Ptr<Packet> packet, Mac48Address from, Mac48Address to)
 {
-  TimestampTag tag;
-  bool isTag = packet->FindFirstMatchingByteTag (tag);
-  if (isTag)
-    {
-      macForwardUpPkts += 1;
-      macDelaySum += Simulator::Now () - tag.GetTimestamp ();
-    }
-
   /* MAC layer throughput */
   macForwardUpBytes += packet->GetSize (); 
 }
@@ -710,11 +700,8 @@ main (int argc, char *argv[])
       std::cout << "  Avg Delay:  " << packetSink->GetAverageDelay ().GetMicroSeconds () << " us" << std::endl;
 
       /* Print MAC Layer Statistics */
-      Time avgMacDelay = macDelaySum / macForwardUpPkts;
       std::cout << "\nMAC Layer Statistics:" << std::endl;
       std::cout << "  Mac Throughput: " << macForwardUpBytes * 8 / ((simulationTime - appStartTime.GetSeconds ()) * 1e6) << " Mbps" << std::endl;
-      std::cout << "  Avg Delay: " << avgMacDelay.GetSeconds () << " s" << std::endl;
-      std::cout << "  Avg Delay: " << avgMacDelay.GetMicroSeconds () << " us" << std::endl;
       std::cout << "  Number of Failed Tx Data Packets:  " << macTxDataFailed << std::endl;
 
       /* Print PHY Layer Statistics */
