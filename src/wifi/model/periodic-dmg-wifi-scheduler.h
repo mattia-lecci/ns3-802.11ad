@@ -84,7 +84,14 @@ protected:
   virtual void AddBroadcastCbapAllocations (void);
 
 private:
-
+  
+  /**
+   * Verify if there is enough time in the DTI to allocate periodic SPs.
+   * \param allocDuration the duration associated to the SPs.
+   * \param spInterval time between two consecutive periodic SPs.
+   * \return number of SPs that can be allocated in the DTI
+   */
+  uint8_t VerifyAvailableSlots(uint32_t allocDuration, uint32_t spInterval);
   void UpdateAvailableSlots(uint32_t startAllocation, uint32_t endAlloc);
 
   uint32_t m_minBroadcastCbapDuration;          //!< The minimum duration of a broadcast CBAP to be present in the DTI.
