@@ -115,7 +115,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
     }
   else if (info.GetAllocationFormat () == ASYNCHRONOUS)
     {
-      /* for asynchronous allocations, the Maximum Allocation field is reserved (IEEE 802.11ad 8.4.2.136) */
+      // for asynchronous allocations, the Maximum Allocation field is reserved (IEEE 802.11ad 8.4.2.136)
       allocDuration = dmgTspec.GetMinimumAllocation ();
     }
   else
@@ -123,11 +123,11 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
       NS_FATAL_ERROR ("Allocation Format not supported");
     }
 
-  /* Implementation of an admission policy for newly received requests. */
+  // Implementation of an admission policy for newly received requests. 
   uint16_t allocPeriod = dmgTspec.GetAllocationPeriod ();
   if (allocPeriod != 0)
     {
-      /* Proceed with the allocation of periodic SPs */
+      // Proceed with the allocation of periodic SPs 
       bool isMultiple = dmgTspec.IsAllocationPeriodMultipleBI();
       if (isMultiple)
       {
@@ -142,32 +142,48 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 
       NS_LOG_DEBUG("Allocation Period " << uint32_t(allocPeriod) << " AllocDuration " << allocDuration << " Multiple " << isMultiple);
       NS_LOG_DEBUG("Schedule one SP every " << spInterval);
-
-      // ASSUMPTION : periodic requests are always the first to arrive
-
-      std::pair<uint32_t, uint32_t> timeChunk;
-
-      timeChunk = m_availableSlots.back();
-      uint32_t startPeriodicAllocation = timeChunk.first;
-      uint32_t endAlloc = timeChunk.first;
-
-      while ((startPeriodicAllocation < timeChunk.second) && (startPeriodicAllocation+allocDuration <= timeChunk.second))
-      {
-        NS_LOG_DEBUG("Reserve from " << startPeriodicAllocation << " for " << allocDuration << " timeChunk.second  " << timeChunk.second );
-        endAlloc = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
-                                                              sourceAid, info.GetDestinationAid (), startPeriodicAllocation, allocDuration);
-        m_remainingDtiTime -= (allocDuration + m_guardTime);                                                      
-        UpdateAvailableSlots(startPeriodicAllocation, endAlloc);
-        startPeriodicAllocation += spInterval;
+      
+      uint32_t startPeriodicAllocation = m_availableSlots[0].first;
+      uint32_t startFirstAllocation = startPeriodicAllocation;
+      uint32_t endAlloc;
+      uint8_t counter = 0;
+      
+      uint8_t blocks = VerifyAvailableSlots(allocDuration, spInterval);
+      
+      if(blocks > 1)
+      {            
+        while (counter < blocks)
+        {
+          NS_LOG_DEBUG("Reserve from " << startPeriodicAllocation << " for " << allocDuration);
+          
+          endAlloc = startPeriodicAllocation + allocDuration + m_guardTime;                                                            
+          UpdateAvailableSlots(startPeriodicAllocation, endAlloc);
+          
+          startPeriodicAllocation += spInterval;
+          counter++;
+          
+          // update remaining DTI time for consistency
+          m_remainingDtiTime -= (allocDuration + m_guardTime);
+        }
+        
+        AddAllocationPeriod(info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (), 
+                            sourceAid, info.GetDestinationAid (), 
+                            startFirstAllocation, allocDuration, spInterval, blocks);
+        status.SetSuccess ();
       }
-      status.SetSuccess ();
+      else
+      {
+        // if we cannot guarantee AT LEAST two periodic SPs, the request is rejected.
+        status.SetFailure();
+      }
+      
     }
   else
     {
       
       if(m_availableSlots.begin() == m_availableSlots.end())
       {
-        NS_LOG_DEBUG("There are no available slots.");
+        NS_LOG_DEBUG("There are no free available slots in the DTI.");
         status.SetFailure();
       }
       
