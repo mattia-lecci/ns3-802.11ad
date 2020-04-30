@@ -308,7 +308,7 @@ void OnOffApplication::SendPacket ()
   Ptr<Packet> packet = Create<Packet> (m_pktSize - header.GetSerializedSize ());
   packet->AddHeader (header);
   NS_ABORT_IF (packet->GetSize () != m_pktSize);
-  NS_LOG_DEBUG ("Tx seq=" << header.GetSeq () << ", at time=" << header.GetTs ());
+  NS_LOG_UNCOND ("Tx seq=" << header.GetSeq () << ", at time=" << header.GetTs ());
 
 // Ptr<Packet> packet = Create<Packet> (m_pktSize);
   m_txTrace (packet);

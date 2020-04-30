@@ -798,7 +798,6 @@ void
 RegularWifiMac::ForwardUp (Ptr<Packet> packet, Mac48Address from, Mac48Address to)
 {
   NS_LOG_FUNCTION (this << packet << from << to);
-  m_forwardUpTrace (packet, from, to);
   m_forwardUp (packet, from, to);
 }
 
@@ -1536,10 +1535,6 @@ RegularWifiMac::GetTypeId (void)
                      "The header of unsuccessfully transmitted packet.",
                      MakeTraceSourceAccessor (&RegularWifiMac::m_txErrCallback),
                      "ns3::WifiMacHeader::TracedCallback")
-    .AddTraceSource ("ForwardUp",
-                     "The received MAC packet is forwarded to higher layers",
-                     MakeTraceSourceAccessor (&RegularWifiMac::m_forwardUpTrace),
-                     "ns3::RegularWifiMac::ForwardUpTracedCallback")
   ;
   return tid;
 }
