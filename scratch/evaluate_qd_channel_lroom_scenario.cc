@@ -64,8 +64,8 @@ using namespace ns3;
 using namespace std;
 
 /**  Application Variables **/
-string applicationType = "bulk";                       /* Type of the Tx application */
-string socketType = "ns3::TcpSocketFactory";           /* Socket Type (TCP/UDP) */
+string applicationType = "onoff";                      /* Type of the Tx application */
+string socketType = "ns3::UdpSocketFactory";           /* Socket Type (TCP/UDP) */
 string schedulerType = "ns3::BasicDmgWifiScheduler";   /* Type of scheduler to be used */
 uint64_t totalRx = 0;
 double throughput = 0;
@@ -95,6 +95,9 @@ uint16_t biCounter;                       /* Number of beacon intervals that hav
 Ptr<FlowMonitor> monitor;
 
 /* Statistics */
+uint64_t macForwardUpBytes = 0;
+uint64_t macForwardUpPkts = 0;
+Time macDelaySum = Seconds (0);
 uint64_t macTxDataFailed = 0;
 uint64_t transmittedPackets = 0;
 uint64_t droppedPackets = 0;
@@ -184,27 +187,42 @@ SLSCompleted (Ptr<OutputStreamWrapper> stream, Ptr<Parameters> parameters, Mac48
 {
   *stream->GetStream () << parameters->srcNodeID + 1 << "," << parameters->dstNodeID + 1 << ","
                         << lossModelRaytracing->GetCurrentTraceIndex () << ","
-                        << uint16_t (sectorId) << "," << uint16_t (antennaId)  << ","
+                        << +sectorId << "," << +antennaId  << ","
                         << parameters->wifiMac->GetTypeOfStation ()  << ","
                         << apWifiNetDevice->GetNode ()->GetId () + 1  << ","
                         << Simulator::Now ().GetNanoSeconds () << std::endl;
 
   if (!csv)
     {
-      std::cout << "DMG STA " << parameters->wifiMac->GetAddress () << " completed SLS phase with DMG STA " << address << std::endl;
-      std::cout << "Best Tx Antenna Configuration: SectorID=" << uint16_t (sectorId) << ", AntennaID=" << uint16_t (antennaId) << std::endl;
+      NS_LOG_DEBUG ("DMG STA " << parameters->wifiMac->GetAddress () << " completed SLS phase with DMG STA " << address);
+      NS_LOG_DEBUG ("Best Tx Antenna Configuration: SectorID=" << +sectorId << ", AntennaID=" << +antennaId);
     }
 }
 
 void
-MacRxOk (Ptr<DmgWifiMac> WifiMac, Ptr<OutputStreamWrapper> stream,
-         WifiMacType type, Mac48Address address, double snrValue)
+MacForwardUp (Ptr<Packet> packet, Mac48Address from, Mac48Address to)
+{
+  TimestampTag tag;
+  bool isTag = packet->FindFirstMatchingByteTag (tag);
+  if (isTag)
+    {
+      macForwardUpPkts += 1;
+      macDelaySum += Simulator::Now () - tag.GetTimestamp ();
+    }
+
+  /* MAC layer throughput */
+  macForwardUpBytes += packet->GetSize (); 
+}
+
+void
+MacRxOk (Ptr<DmgWifiMac> wifiMac, Ptr<OutputStreamWrapper> stream,
+         WifiMacType type, Ptr<const Packet> packet, Mac48Address address, double snrValue)
 {
   if (type == WIFI_MAC_QOSDATA)
     {
       *stream->GetStream () << Simulator::Now ().GetNanoSeconds () << ","
                             << address << ","
-                            << WifiMac->GetAddress () << ","
+                            << wifiMac->GetAddress () << ","
                             << snrValue << std::endl;
     }
 }
@@ -246,8 +264,8 @@ StationAssociated (Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t
 {
   if (!csv)
     {
-      std::cout << "DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
-                << ", Association ID (AID) = " << aid << std::endl;
+      NS_LOG_DEBUG ("DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
+                    << ", AID= " << aid);
     }
     staWifiMac->CreateAllocation (GetDmgTspecElement (1, true, 1000, 1000));
     Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (1, true, 10000, 10000));
@@ -272,8 +290,16 @@ ADDTSResponseReceived (Mac48Address address, StatusCode status, DmgTspecElement 
       /* Connect to TCP traces */
       if (socketType == "ns3::TcpSocketFactory")
         {
-          onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
-          onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+          if (applicationType == "onoff")
+            {
+              onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+              onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));              
+            }
+          else
+            {
+              bulk->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+              bulk->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+            }
         }
     }
 }
@@ -599,6 +625,7 @@ main (int argc, char *argv[])
   parametersAp->srcNodeID = apWifiNetDevice->GetNode ()->GetId ();
   parametersAp->dstNodeID = staWifiNetDevice->GetNode ()->GetId ();
   parametersAp->wifiMac = apWifiMac;
+  apWifiMac->TraceConnectWithoutContext ("ForwardUp", MakeCallback (&MacForwardUp));
   apWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, outputSlsPhase, parametersAp));
   apWifiMac->TraceConnectWithoutContext ("DTIStarted", MakeBoundCallback (&DataTransmissionIntervalStarted,
                                                                           apWifiMac, staWifiMac));
@@ -679,9 +706,15 @@ main (int argc, char *argv[])
       std::cout << "  Rx Packets: " << packetSink->GetTotalReceivedPackets () << std::endl;
       std::cout << "  Rx Bytes:   " << packetSink->GetTotalRx () << std::endl;
       std::cout << "  Throughput: " << packetSink->GetTotalRx () * 8.0 / ((simulationTime - appStartTime.GetSeconds ()) * 1e6) << " Mbps" << std::endl;
+      std::cout << "  Avg Delay:  " << packetSink->GetAverageDelay ().GetSeconds () << " s" << std::endl;
+      std::cout << "  Avg Delay:  " << packetSink->GetAverageDelay ().GetMicroSeconds () << " us" << std::endl;
 
       /* Print MAC Layer Statistics */
+      Time avgMacDelay = macDelaySum / macForwardUpPkts;
       std::cout << "\nMAC Layer Statistics:" << std::endl;
+      std::cout << "  Mac Throughput: " << macForwardUpBytes * 8 / ((simulationTime - appStartTime.GetSeconds ()) * 1e6) << " Mbps" << std::endl;
+      std::cout << "  Avg Delay: " << avgMacDelay.GetSeconds () << " s" << std::endl;
+      std::cout << "  Avg Delay: " << avgMacDelay.GetMicroSeconds () << " us" << std::endl;
       std::cout << "  Number of Failed Tx Data Packets:  " << macTxDataFailed << std::endl;
 
       /* Print PHY Layer Statistics */
