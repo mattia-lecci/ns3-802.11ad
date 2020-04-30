@@ -318,42 +318,26 @@ PeriodicDmgWifiScheduler::AddBroadcastCbapAllocations (void)
   /* Addts allocation list is copied to the allocation list */
   
   m_allocationList = m_addtsAllocationList;
+  AllocationFieldList broadcastCbapList;
+  
+  // fill all the remaining available slots with broadcast CBAPs
+  
+  for(auto it = m_availableSlots.begin(); it != m_availableSlots.end(); ++it)
+  {
+    broadcastCbapList = GetBroadcastCbapAllocation (true, it->first, it->second - it->first);
+    m_remainingDtiTime -= it->second - it->first;
+    m_allocationList.insert (m_allocationList.begin(), broadcastCbapList.begin(), broadcastCbapList.end());
+    NS_LOG_DEBUG("Added broadcast CBAPs list of size: " << broadcastCbapList.size () << " for a total duration of " << it->second - it->first);
+  }
+  
   sort(m_allocationList.begin(), 
         m_allocationList.end(), 
         [](const AllocationField& lhs, const AllocationField& rhs){
             return lhs.GetAllocationStart() < rhs.GetAllocationStart();});
   
-  AllocationFieldList broadcastCbapList;
-
-  // fill all the remaining available slots with broadcast CBAPs
-  
-  for(auto itAll = m_allocationList.begin(); itAll != m_allocationList.end(); ++itAll)
+  for(auto it = m_allocationList.begin(); it != m_allocationList.end(); ++it)
   {
-    auto itNextAll = itAll + 1;
-    uint32_t start = itAll->GetAllocationStart ();
-    uint32_t end =  start + itAll->GetAllocationBlockDuration () + m_guardTime;
-
-    NS_LOG_DEBUG("Allocation start: " << start << " end: " << end);
-
-    if(itNextAll != m_allocationList.end())
-    {
-      if (end < itNextAll->GetAllocationStart ())
-      {
-        broadcastCbapList = GetBroadcastCbapAllocation (true, end, itNextAll->GetAllocationStart() - end);
-        m_remainingDtiTime -= itNextAll->GetAllocationStart() - end;
-        itAll = m_allocationList.insert (itNextAll, broadcastCbapList.begin (), broadcastCbapList.end ());
-        itAll += broadcastCbapList.size () - 1;
-
-        NS_LOG_DEBUG("Added broadcast CBAPs list of size: " << broadcastCbapList.size () << " for a total duration of " << itNextAll->GetAllocationStart() - end);
-      }
-    }
-    else 
-    {
-      broadcastCbapList = GetBroadcastCbapAllocation (true, end, m_remainingDtiTime);
-      m_remainingDtiTime = 0;
-      itAll = m_allocationList.insert (itNextAll, broadcastCbapList.begin (), broadcastCbapList.end ());
-      itAll += broadcastCbapList.size () - 1;
-    }
+    NS_LOG_UNCOND("Allocation element start at: " << it->GetAllocationStart () << " periodicity " << it->GetAllocationBlockPeriod() << " duration " << it->GetAllocationBlockDuration());
   }
 
 }
