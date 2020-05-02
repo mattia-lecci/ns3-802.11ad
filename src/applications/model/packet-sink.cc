@@ -207,7 +207,7 @@ void PacketSink::HandleRead (Ptr<Socket> socket)
       SeqTsHeader header;
       if (packet->PeekHeader (header) > 0)
         {
-          NS_LOG_UNCOND ("Rx seq=" << header.GetSeq () << ", Tx at time=" << header.GetTs ().GetSeconds ());
+          NS_LOG_DEBUG ("Rx seq=" << header.GetSeq () << ", Tx at time=" << header.GetTs ().GetSeconds ());
           m_accummulator += Simulator::Now () - header.GetTs ();
         }
       else
