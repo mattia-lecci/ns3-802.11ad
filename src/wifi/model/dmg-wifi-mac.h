@@ -870,9 +870,9 @@ protected:
    * \param srcAddress The MAC address of the source station.
    * \param dstAddress The MAC address of the destination station.
    */
-  typedef void (* ServicePeriodCallback)(Mac48Address srcAddress, Mac48Address dstAddress);
-  TracedCallback<Mac48Address, Mac48Address> m_servicePeriodStartedCallback;
-  TracedCallback<Mac48Address, Mac48Address> m_servicePeriodEndedCallback;
+  typedef void (* ServicePeriodCallback)(Mac48Address srcAddress, Mac48Address dstAddress, bool isSource);
+  TracedCallback<Mac48Address, Mac48Address, bool> m_servicePeriodStartedCallback;
+  TracedCallback<Mac48Address, Mac48Address, bool> m_servicePeriodEndedCallback;
 
   /* Association Traces */
   typedef void (* AssociationTracedCallback)(Mac48Address address, uint16_t aid);

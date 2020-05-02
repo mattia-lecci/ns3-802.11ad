@@ -401,7 +401,7 @@ DmgWifiMac::ScheduleServicePeriod (uint8_t blocks, Time spStart, Time spLength, 
 void
 DmgWifiMac::StartServicePeriod (AllocationID allocationID, Time length, uint8_t peerAid, Mac48Address peerAddress, bool isSource)
 {
-  NS_LOG_FUNCTION (this << length << static_cast<uint16_t> (peerAid) << peerAddress << isSource << Simulator::Now ());
+  NS_LOG_FUNCTION (this << length << +peerAid << peerAddress << isSource << Simulator::Now ());
   m_currentAllocationID = allocationID;
   m_currentAllocation = SERVICE_PERIOD_ALLOCATION;
   m_currentAllocationLength = length;
@@ -409,7 +409,7 @@ DmgWifiMac::StartServicePeriod (AllocationID allocationID, Time length, uint8_t 
   m_peerStationAid = peerAid;
   m_peerStationAddress = peerAddress;
   m_spSource = isSource;
-  m_servicePeriodStartedCallback (GetAddress (), peerAddress);
+  m_servicePeriodStartedCallback (GetAddress (), peerAddress, m_spSource);
   SteerAntennaToward (peerAddress);
   /* Restore previously suspended transmission in LowMac */
   m_low->RestoreAllocationParameters (allocationID);
@@ -457,7 +457,7 @@ DmgWifiMac::EndServicePeriod (void)
 {
   NS_LOG_FUNCTION (this);
   NS_ASSERT_MSG (m_currentAllocation == SERVICE_PERIOD_ALLOCATION, "The current allocation is not SP");
-  m_servicePeriodEndedCallback (GetAddress (), m_peerStationAddress);
+  m_servicePeriodEndedCallback (GetAddress (), m_peerStationAddress, m_spSource);
   m_edca[AC_BE]->EndAllocationPeriod ();
   /* Check if we have beamlink maintenance timer running */
   if (m_beamLinkMaintenanceTimeout.IsRunning ())
