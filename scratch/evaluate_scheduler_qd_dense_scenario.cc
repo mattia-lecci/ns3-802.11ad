@@ -76,9 +76,9 @@ NS_LOG_COMPONENT_DEFINE ("EvaluateScheduler");
 using namespace ns3;
 using namespace std;
 
-typedef map<Mac48Address, uint32_t> Mac2IdMap;
-typedef Mac2IdMap::iterator Mac2IdMapI;
-Mac2IdMap mac2IdMap;
+typedef map<Mac48Address, Ptr<Node>> Mac2NodeMap;
+typedef Mac2NodeMap::iterator Mac2NodeMapI;
+Mac2NodeMap mac2NodeMap;
 Ptr<QdPropagationLossModel> lossModelRaytracing;                   
 
 struct Parameters : public SimpleRefCount<Parameters>
@@ -217,6 +217,18 @@ CalculateThroughput (void)
 }
 
 void
+ServicePeriodStarted (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
+{
+  NS_LOG_DEBUG ("Starting SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
+}
+
+void
+ServicePeriodEnded (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
+{
+  NS_LOG_DEBUG ("Ending SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
+}
+
+void
 ADDTSResponseReceived (Ptr<Node> node, Mac48Address address, StatusCode status, DmgTspecElement element)
 {
   NS_LOG_DEBUG ("DMG STA=" << address << " received ADDTS response with status=" << status.IsSuccess ());
@@ -273,7 +285,7 @@ StationAssociated (Ptr<Node> node, Ptr<DmgStaWifiMac> staWifiMac, Mac48Address a
   if (!csv)
     {
       NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << address
-           << ", AID=" << aid);
+                    << ", AID=" << aid);
     }
   /* Send ADDTS request to the PCP/AP */
   CommunicationPairListI it = communicationPairList.find (node);
@@ -351,11 +363,11 @@ SLSCompleted (Ptr<OutputStreamWrapper> stream, Ptr<Parameters> parameters,
               SECTOR_ID sectorId, ANTENNA_ID antennaId)
 {
   // In the Visualizer, node ID takes into account the AP so +1 is needed
-  *stream->GetStream () << parameters->srcNodeID + 1 << "," << mac2IdMap[address] + 1 << ","
+  *stream->GetStream () << parameters->srcNodeID + 1 << "," << mac2NodeMap[address]->GetId () + 1 << ","
                         << lossModelRaytracing->GetCurrentTraceIndex () << ","
                         << uint16_t (sectorId) << "," << uint16_t (antennaId)  << ","
                         << parameters->wifiMac->GetTypeOfStation ()  << ","
-                        << mac2IdMap[parameters->wifiMac->GetBssid ()] + 1  << ","
+                        << mac2NodeMap[parameters->wifiMac->GetBssid ()]->GetId () + 1  << ","
                         << Simulator::Now ().GetNanoSeconds () << std::endl;
   if (!csv)
     {
@@ -619,7 +631,7 @@ main (int argc, char *argv[])
   for (uint32_t i = 0; i < devices.GetN (); i++)
     {
       netDevice = StaticCast<WifiNetDevice> (devices.Get (i));
-      mac2IdMap[netDevice->GetMac ()->GetAddress ()] = netDevice->GetNode ()->GetId ();
+      mac2NodeMap[netDevice->GetMac ()->GetAddress ()] = netDevice->GetNode ();
       NS_LOG_DEBUG ("macAddress=" << netDevice->GetMac ()->GetAddress () << ", nodeId=" << netDevice->GetNode ()->GetId ());
     }
 
@@ -705,6 +717,8 @@ main (int argc, char *argv[])
       staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, staWifiNodes.Get (i), staWifiMac));
       staWifiMac->TraceConnectWithoutContext ("DeAssoc", MakeBoundCallback (&StationDeAssociated, staWifiNodes.Get (i), staWifiMac));
       staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, staWifiNodes.Get (i)));
+      staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeCallback (&ServicePeriodStarted));
+      staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeCallback (&ServicePeriodEnded));
 
       Ptr<Parameters> parameters = Create<Parameters> ();
       parameters->srcNodeID = wifiNetDevice->GetNode ()->GetId ();
@@ -742,7 +756,7 @@ main (int argc, char *argv[])
           columnName = "SrcNodeId=" + to_string (it->second.srcApp->GetNode ()->GetId ());
           cout << left << setw (12) << columnName;
         }
-      cout << left << setw (12) << "Total" << endl;
+      cout << left << setw (12) << " Total" << endl;
     }
 
   /* Schedule Throughput Calulcations */
@@ -791,8 +805,9 @@ main (int argc, char *argv[])
           Ptr<PacketSink> packetSink = StaticCast<PacketSink> (it->second.packetSink);
           cout << "  Rx Packets: " << packetSink->GetTotalReceivedPackets () << endl;
           cout << "  Rx Bytes:   " << packetSink->GetTotalRx () << endl;
-          cout << "  Throughput: " << packetSink->GetTotalRx () * 8.0 / ((simulationTime - it->second.startTime.GetSeconds ()) * 1e6)
-               << " Mbps" << endl;
+          cout << "  Throughput: " << packetSink->GetTotalRx () * 8.0 / ((simulationTime - it->second.startTime.GetSeconds ()) * 1e6) << " Mbps" << endl;
+          cout << "  Avg Delay:  " << packetSink->GetAverageDelay ().GetSeconds () << " s" << endl;
+          cout << "  Avg Delay:  " << packetSink->GetAverageDelay ().GetMicroSeconds () << " us" << endl;
           communicationLinks++;
         }
 
