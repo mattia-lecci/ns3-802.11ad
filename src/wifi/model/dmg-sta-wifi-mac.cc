@@ -1592,7 +1592,7 @@ DmgStaWifiMac::StartFullDuplexRelay (AllocationID allocationID, Time length,
   m_peerStationAid = peerAid;
   m_peerStationAddress = peerAddress;
   m_moreData = true;
-  m_servicePeriodStartedCallback (GetAddress (), peerAddress);
+  m_servicePeriodStartedCallback (GetAddress (), peerAddress, isSource);
   /* Check current transmission link */
   if (m_relayLinkInfo.transmissionLink == DIRECT_LINK)
     {
