@@ -128,87 +128,93 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
   if (allocPeriod != 0)
     {
       // Proceed with the allocation of periodic SPs 
-      bool isMultiple = dmgTspec.IsAllocationPeriodMultipleBI();
+      bool isMultiple = dmgTspec.IsAllocationPeriodMultipleBI ();
       if (isMultiple)
-      {
-        NS_FATAL_ERROR ("Multiple BI periodicity is not supported yet.");
-      }
-
-      uint32_t spInterval = uint32_t(m_biDuration.GetMicroSeconds()/allocPeriod);
-      if (spInterval - allocDuration < m_minBroadcastCbapDuration)
-      {
-        NS_FATAL_ERROR("These settings cannot guarantee minimum CBAP duration.");
-      }
-
-      NS_LOG_DEBUG("Allocation Period " << uint32_t(allocPeriod) << " AllocDuration " << allocDuration << " Multiple " << isMultiple);
-      NS_LOG_DEBUG("Schedule one SP every " << spInterval);
+        {
+          NS_FATAL_ERROR ("Multiple BI periodicity is not supported yet.");
+        }
       
+      // spInterval is going to be passed to AddAllocationPeriod to specify the 
+      // distance between consecutive periodic SPs
+      uint32_t spInterval = uint32_t (m_biDuration.GetMicroSeconds () / allocPeriod);
+      if (spInterval - allocDuration < m_minBroadcastCbapDuration)
+        {
+          NS_FATAL_ERROR ("These settings cannot guarantee minimum CBAP duration.");
+        }
+
+      NS_LOG_DEBUG ("Allocation Period " << uint32_t (allocPeriod) << " AllocDuration " << allocDuration << " Multiple " << isMultiple);
+      NS_LOG_DEBUG ("Schedule one SP every " << spInterval);
+
       uint32_t startPeriodicAllocation = m_availableSlots[0].first;
       uint32_t startFirstAllocation = startPeriodicAllocation;
       uint32_t endAlloc;
       uint8_t counter = 0;
-      
-      uint8_t blocks = VerifyAvailableSlots(allocDuration, spInterval);
-      
-      if(blocks > 1)
-      {            
-        while (counter < blocks)
+
+      uint8_t blocks = VerifyAvailableSlots (allocDuration, spInterval);
+
+      if (blocks > 1)
         {
-          NS_LOG_DEBUG("Reserve from " << startPeriodicAllocation << " for " << allocDuration);
-          
-          endAlloc = startPeriodicAllocation + allocDuration + m_guardTime;                                                            
-          UpdateAvailableSlots(startPeriodicAllocation, endAlloc);
-          
-          startPeriodicAllocation += spInterval;
-          counter++;
-          
-          // update remaining DTI time for consistency
-          m_remainingDtiTime -= (allocDuration + m_guardTime);
+          while (counter < blocks)
+            {
+              NS_LOG_DEBUG ("Reserve from " << startPeriodicAllocation << " for " << allocDuration);
+
+              endAlloc = startPeriodicAllocation + allocDuration + m_guardTime;
+              UpdateAvailableSlots (startPeriodicAllocation, endAlloc);
+
+              startPeriodicAllocation += spInterval;
+              counter++;
+
+              // update remaining DTI time for consistency
+              m_remainingDtiTime -= (allocDuration + m_guardTime);
+            }
+
+          AddAllocationPeriod (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
+                               sourceAid, info.GetDestinationAid (),
+                               startFirstAllocation, allocDuration, spInterval, blocks);
+          status.SetSuccess ();
         }
-        
-        AddAllocationPeriod(info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (), 
-                            sourceAid, info.GetDestinationAid (), 
-                            startFirstAllocation, allocDuration, spInterval, blocks);
-        status.SetSuccess ();
-      }
       else
-      {
-        // if we cannot guarantee AT LEAST two periodic SPs, the request is rejected.
-        status.SetFailure();
-      }
-      
+        {
+          // if we cannot guarantee AT LEAST TWO periodic SPs, the request is rejected.
+          status.SetFailure ();
+        }
+
     }
   else
     {
-      
-      if(m_availableSlots.begin() == m_availableSlots.end())
-      {
-        NS_LOG_DEBUG("There are no free available slots in the DTI.");
-        status.SetFailure();
-      }
-      
+
+      if (m_availableSlots.begin () == m_availableSlots.end ())
+        {
+          NS_LOG_DEBUG ("There are no free available slots in the DTI.");
+          status.SetFailure ();
+        }
+
       uint32_t endAlloc;
       uint32_t slotDur;
-      for (auto it = m_availableSlots.begin() ; it != m_availableSlots.end(); ++it)
-      {
-        slotDur = it->second - it->first;
-        
-        if(slotDur > allocDuration)
+      for (auto it = m_availableSlots.begin (); it != m_availableSlots.end (); ++it)
         {
-          
-          endAlloc = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
-                                                                sourceAid, info.GetDestinationAid (), it->first, allocDuration);
-          m_remainingDtiTime -= (allocDuration + m_guardTime);                                                      
-          UpdateAvailableSlots(it->first, endAlloc);
-          status.SetSuccess();
-          break;                                                    
+          slotDur = it->second - it->first;
+
+          if (slotDur > allocDuration)
+            {
+
+              endAlloc = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
+                                                        sourceAid, info.GetDestinationAid (), it->first, allocDuration);
+              m_remainingDtiTime -= (allocDuration + m_guardTime);
+              
+              // The following function modifies m_availableSlots, on which this
+              // loop is iterating. Commonly, it is a bad practice but, as we break 
+              // the loop if we enter this condition, the damage is avoided.
+              UpdateAvailableSlots (it->first, endAlloc);
+              status.SetSuccess ();
+              break;
+            }
+          else
+            {
+              status.SetFailure ();
+            }
         }
-        else
-        {
-          status.SetFailure(); 
-        }
-      }
-      
+
     }
 
   return status;
