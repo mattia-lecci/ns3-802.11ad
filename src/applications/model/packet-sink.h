@@ -82,11 +82,17 @@ public:
    */
   uint64_t GetTotalRx () const;
   /**
-   * \return the total number of received
+   * \return the total number of received packets
    */
   uint64_t GetTotalReceivedPackets (void) const;
-
+  /**
+   * \return the average delay value 
+   */
   Time GetAverageDelay (void) const;
+  /**
+   * \return the average jitter value 
+   */
+  Time GetAverageJitter (void) const;
   /**
    * \return pointer to listening socket
    */
@@ -138,7 +144,9 @@ private:
 
   /// Traced Callback: received packets, source address.
   TracedCallback<Ptr<const Packet>, const Address &> m_rxTrace;
-  Time m_accummulator;
+  Time m_delayAccumulator;       //!< Accumulate the delay of the currently received packet
+  Time m_jitterAccumulator;      //!< Accumulate the jitter if the currently received packet
+  Time m_currentDelay;           //!< Current delay value in order to measure jitter
 };
 
 } // namespace ns3
