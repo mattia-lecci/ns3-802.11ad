@@ -24,11 +24,11 @@ def main():
     #################
 
     campaign = sem.CampaignManager.new(ns_path, script, campaign_dir,
-        runner_type="ParallelRunner",
+        runner_type="SimulationRunner",
         check_repo=False,
         skip_config=True,
         optimized=False,
-        overwrite=False)
+        overwrite=True)
 
     print (campaign)
 
