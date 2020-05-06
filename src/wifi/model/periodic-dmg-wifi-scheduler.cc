@@ -332,29 +332,30 @@ PeriodicDmgWifiScheduler::AddBroadcastCbapAllocations (void)
 {
   NS_LOG_FUNCTION (this);
   /* Addts allocation list is copied to the allocation list */
-  
+
   m_allocationList = m_addtsAllocationList;
   AllocationFieldList broadcastCbapList;
-  
+
   // fill all the remaining available slots with broadcast CBAPs
-  
-  for(auto it = m_availableSlots.begin(); it != m_availableSlots.end(); ++it)
-  {
-    broadcastCbapList = GetBroadcastCbapAllocation (true, it->first, it->second - it->first);
-    m_remainingDtiTime -= it->second - it->first;
-    m_allocationList.insert (m_allocationList.begin(), broadcastCbapList.begin(), broadcastCbapList.end());
-    NS_LOG_DEBUG("Added broadcast CBAPs list of size: " << broadcastCbapList.size () << " for a total duration of " << it->second - it->first);
-  }
-  
-  sort(m_allocationList.begin(), 
-        m_allocationList.end(), 
+
+  for (const auto & slot : m_availableSlots)
+    {
+      broadcastCbapList = GetBroadcastCbapAllocation (true, slot.first, slot.second - slot.first);
+      m_remainingDtiTime -= slot.second - slot.first;
+      m_allocationList.insert (m_allocationList.begin (), broadcastCbapList.begin (), broadcastCbapList.end ());
+      NS_LOG_DEBUG ("Added broadcast CBAPs list of size: " << broadcastCbapList.size () << " for a total duration of " << slot.second - slot.first);
+    }
+
+  sort (m_allocationList.begin (),
+        m_allocationList.end (),
         [](const AllocationField& lhs, const AllocationField& rhs){
-            return lhs.GetAllocationStart() < rhs.GetAllocationStart();});
-  
-  for(auto it = m_allocationList.begin(); it != m_allocationList.end(); ++it)
-  {
-    NS_LOG_UNCOND("Allocation element start at: " << it->GetAllocationStart () << " periodicity " << it->GetAllocationBlockPeriod() << " duration " << it->GetAllocationBlockDuration());
-  }
+      return lhs.GetAllocationStart () < rhs.GetAllocationStart ();
+    });
+
+  for (const auto & alloc: m_allocationList)
+    {
+      NS_LOG_DEBUG ("Allocation element start at: " << alloc.GetAllocationStart () << " periodicity " << alloc.GetAllocationBlockPeriod () << " duration " << alloc.GetAllocationBlockDuration ());
+    }
 
 }
 
