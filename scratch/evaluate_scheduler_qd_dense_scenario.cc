@@ -15,6 +15,7 @@
 #include "ns3/network-module.h"
 #include "ns3/spectrum-module.h"
 #include "ns3/wifi-module.h"
+#include "ns3/system-path.h"
 #include "common-functions.h"
 #include <iomanip>
 #include <sstream>
@@ -494,6 +495,21 @@ main (int argc, char *argv[])
   EnableMyTraces (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
   LogComponentEnable ("EvaluateScheduler", LOG_LEVEL_ALL);
 
+  string currentPath = SystemPath::FindSelfDirectory ();
+  vector<string> vectorPath = SplitString (currentPath, '/');
+  string inputPath = "/";
+  string dir;
+  for (uint32_t i = 0; i < vectorPath.size (); ++i)
+    {
+      dir = vectorPath[i];
+      if (dir == "")
+        continue;
+      inputPath += dir + "/";
+      if (dir == "ns3-802.11ad")
+        break;
+    }
+  NS_LOG_UNCOND (inputPath);
+
   /*** Configure TCP Options ***/
   map<string, string>::const_iterator iter = tcpVariants.find (tcpVariant);
   NS_ASSERT_MSG (iter != tcpVariants.end (), "Cannot find Tcp Variant");
@@ -519,8 +535,8 @@ main (int argc, char *argv[])
   Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel> ();
   Ptr<QdPropagationDelay> propagationDelayRayTracing = CreateObject<QdPropagationDelay> ();
   lossModelRaytracing = CreateObject<QdPropagationLossModel> ();
-  lossModelRaytracing->SetAttribute ("QDModelFolder", StringValue ("DmgFiles/QdChannel/" + qdChannelFolder + "/"));
-  propagationDelayRayTracing->SetAttribute ("QDModelFolder", StringValue ("DmgFiles/QdChannel/" + qdChannelFolder + "/"));
+  lossModelRaytracing->SetAttribute ("QDModelFolder", StringValue (inputPath + "DmgFiles/QdChannel/" + qdChannelFolder + "/"));
+  propagationDelayRayTracing->SetAttribute ("QDModelFolder", StringValue (inputPath + "DmgFiles/QdChannel/" + qdChannelFolder + "/"));
   spectrumChannel->AddSpectrumPropagationLossModel (lossModelRaytracing);
   spectrumChannel->SetPropagationDelayModel (propagationDelayRayTracing);
 
@@ -542,7 +558,7 @@ main (int argc, char *argv[])
   spectrumWifiPhyHelper.Set ("ChannelNumber", UintegerValue (2));
   /* Set error model */
   spectrumWifiPhyHelper.SetErrorRateModel ("ns3::DmgErrorModel",
-                                           "FileName", StringValue ("DmgFiles/ErrorModel/LookupTable_1458.txt"));
+                                           "FileName", StringValue (inputPath + "DmgFiles/ErrorModel/LookupTable_1458.txt"));
   /* Sensitivity model includes implementation loss and noise figure */
   spectrumWifiPhyHelper.Set ("CcaMode1Threshold", DoubleValue (-79));
   spectrumWifiPhyHelper.Set ("EnergyDetectionThreshold", DoubleValue (-79 + 3));
@@ -582,7 +598,7 @@ main (int argc, char *argv[])
   
   /* Set Parametric Codebook for the DMG AP */
   wifiHelper.SetCodebook ("ns3::CodebookParametric",
-                          "FileName", StringValue ("DmgFiles/Codebook/CODEBOOK_URA_AP_28x.txt"));
+                          "FileName", StringValue (inputPath + "DmgFiles/Codebook/CODEBOOK_URA_AP_28x.txt"));
 
   /* Set the Scheduler for the DMG AP */
   wifiHelper.SetDmgScheduler (schedulerType);
@@ -604,7 +620,7 @@ main (int argc, char *argv[])
 
   /* Set Parametric Codebook for the DMG STA */
   wifiHelper.SetCodebook ("ns3::CodebookParametric",
-                          "FileName", StringValue ("DmgFiles/Codebook/CODEBOOK_URA_STA_28x.txt"));
+                          "FileName", StringValue (inputPath + "DmgFiles/Codebook/CODEBOOK_URA_STA_28x.txt"));
 
   NetDeviceContainer staDevices;
   staDevices = wifiHelper.Install (spectrumWifiPhyHelper, wifiMacHelper, staWifiNodes);
