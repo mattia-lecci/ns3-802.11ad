@@ -78,9 +78,9 @@ PeriodicDmgWifiScheduler::UpdateStartAndRemainingTime (void)
       // if there are existing allocations, update DTI time just for consistency
       m_remainingDtiTime = 0;
       for (const auto & slot: m_availableSlots)
-      {
-        m_remainingDtiTime += (slot.second - slot.first);
-      }
+        {
+          m_remainingDtiTime += (slot.second - slot.first);
+        }
     }
 }
 
@@ -88,46 +88,46 @@ void
 PeriodicDmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, uint32_t duration, bool isToAdd)
 {
   NS_LOG_FUNCTION (this << duration << isToAdd);
-  
+
   // This method is called upon a DelTsRequest or after the cleanup of 
   // non-pseudostatic allocations.
   // In this version of the periodic scheduler, existing allocations are not shifted 
   // to fill the created gaps but only the vector listing the available slots is updated.
   // For this reason, the current input parameters are useless.
-   
+
   auto addtsListCopy = m_addtsAllocationList;
-  
+
   // sort the copy to simplify the process of going through the allocation list
   sort (addtsListCopy.begin (),
         addtsListCopy.end (),
         [](const AllocationField& lhs, const AllocationField& rhs){
       return lhs.GetAllocationStart () < rhs.GetAllocationStart ();
     });
-  
+
   uint32_t startSlot = 0;
   std::vector<std::pair<uint32_t, uint32_t> > newDTI; 
-  
+
   for (const auto & allocation: addtsListCopy)
-  {
-    // this loop goes through the list of allocations, spotting all the available
-    // slots and adding them to the list
-    if (startSlot < allocation.GetAllocationStart())
     {
-      newDTI.push_back (std::make_pair (startSlot, allocation.GetAllocationStart()));
+      // this loop goes through the list of allocations, spotting all the available
+      // slots and adding them to the list
+      if (startSlot < allocation.GetAllocationStart ())
+        {
+          newDTI.push_back (std::make_pair (startSlot, allocation.GetAllocationStart ()));
+        }
+
+      startSlot = allocation.GetAllocationStart () + allocation.GetAllocationBlockDuration () + m_guardTime;
     }
-    
-    startSlot = allocation.GetAllocationStart() + allocation.GetAllocationBlockDuration() + m_guardTime;
-  }
-  
+
   // the following check ensure that if there is a trailing available slot in the DTI,
   // it will be correctly considered and added to the list.
   if (startSlot < m_dtiDuration.GetMicroSeconds ())
-  {
-    newDTI.push_back (std::make_pair (startSlot,  m_dtiDuration.GetMicroSeconds ()));
-  }
-  
+    {
+      newDTI.push_back (std::make_pair (startSlot,  m_dtiDuration.GetMicroSeconds ()));
+    }
+
   m_availableSlots = newDTI;
-  
+
 }
 
 uint32_t
@@ -168,7 +168,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
         {
           NS_FATAL_ERROR ("Multiple BI periodicity is not supported yet.");
         }
-      
+
       // spInterval is going to be passed to AddAllocationPeriod to specify the 
       // distance between consecutive periodic SPs
       uint32_t spInterval = uint32_t (m_biDuration.GetMicroSeconds () / allocPeriod);
@@ -232,7 +232,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
               endAlloc = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
                                                         sourceAid, info.GetDestinationAid (), it->first, allocDuration);
               m_remainingDtiTime -= (allocDuration + m_guardTime);
-              
+
               // The following function modifies m_availableSlots, on which this
               // loop is iterating. Commonly, it is a bad practice but, as we break 
               // the loop if we enter this condition, the damage is avoided.
@@ -325,7 +325,7 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAllocation, uint32
   NS_LOG_FUNCTION (this);
 
   std::vector<std::pair<uint32_t, uint32_t> > newDTI;
-  
+
   if (difference > 0)
     {
       // something has changed in the allocation list, need to change the list of 
@@ -361,7 +361,7 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAllocation, uint32
                       newDTI.push_back (slot);
                       search = false;
                     }
-                  NS_ASSERT_MSG(difference <= (slot.first - endAlloc), "Something broke in runtime, check the update of the available slots.");
+                  NS_ASSERT_MSG (difference <= (slot.first - endAlloc), "Something broke in runtime, check the update of the available slots.");
                 }
               else
                 {
@@ -379,7 +379,7 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAllocation, uint32
               newDTI.push_back (slot);
               continue;
             }
-          
+
           if (slot.first == startAllocation)
             {
               newDTI.push_back (std::make_pair (endAlloc, slot.second));
@@ -458,10 +458,10 @@ PeriodicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const Dmg
       timeDifference = currentDuration - newDuration;
       allocation->SetAllocationBlockDuration (newDuration);
       status.SetSuccess ();
-      
+
       uint32_t startAlloc = allocation->GetAllocationStart ();
       uint32_t endAlloc = allocation->GetAllocationStart () + allocation->GetAllocationBlockDuration () + m_guardTime;
-      
+
       uint16_t allocPeriod = allocation->GetAllocationBlockPeriod ();
       if (allocPeriod != 0)
         {
@@ -469,7 +469,7 @@ PeriodicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const Dmg
           // and update the available slots in the DTI accordingly.
           // TODO: update also the number of blocks if the new duration allows to 
           // add further blocks
-          uint8_t blocks = allocation->GetNumberOfBlocks();
+          uint8_t blocks = allocation->GetNumberOfBlocks ();
           for (uint8_t i = 0; i < blocks; i++)
             {
               NS_LOG_DEBUG ("Modify SP Block [" << +i << "] at " << startAlloc << " till " << endAlloc);
@@ -480,7 +480,7 @@ PeriodicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const Dmg
         }
       else
         {
-          UpdateAvailableSlots (startAlloc, endAlloc, timeDifference);          
+          UpdateAvailableSlots (startAlloc, endAlloc, timeDifference);
         }
 
     }
@@ -492,7 +492,7 @@ void
 PeriodicDmgWifiScheduler::AddBroadcastCbapAllocations (void)
 {
   NS_LOG_FUNCTION (this);
-  
+
   // Addts allocation list is copied to the allocation list 
 
   m_allocationList = m_addtsAllocationList;
