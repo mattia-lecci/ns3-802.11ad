@@ -75,17 +75,23 @@ PeriodicDmgWifiScheduler::DoDispose ()
 void
 PeriodicDmgWifiScheduler::UpdateStartAndRemainingTime (void)
 {
+  // for the periodic scheduler, m_allocationStartTime is useless, since the addition
+  // of new SPs is consecutive 
   NS_LOG_FUNCTION (this);
   if (m_addtsAllocationList.empty ())
     {
-      /* No existing allocations */
-      m_allocationStartTime = 0;
+      // no existing allocations
       m_remainingDtiTime = m_dtiDuration.GetMicroSeconds ();
-      m_availableSlots.push_back(std::make_pair(0, m_dtiDuration.GetMicroSeconds ()));
+      m_availableSlots.push_back (std::make_pair (0, m_dtiDuration.GetMicroSeconds ()));
     }
   else
     {
-      //TODO
+      // if there are existing allocations, update DTI time just for consistency
+      m_remainingDtiTime = 0;
+      for (const auto & slot: m_availableSlots)
+      {
+        m_remainingDtiTime += (slot.second - slot.first);
+      }
     }
 }
 
