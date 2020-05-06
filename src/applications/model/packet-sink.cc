@@ -66,20 +66,22 @@ PacketSink::GetTypeId (void)
 }
 
 PacketSink::PacketSink ()
-{
-  NS_LOG_FUNCTION (this);
-  m_socket = 0;
-  m_totalRx = 0;
-  m_totalPackets = 0;
-  m_accummulator = Seconds (0);
-}
-
-PacketSink::~PacketSink()
+  : m_socket (0),
+    m_totalRx (0),
+    m_totalPackets (0),
+    m_delayAccumulator (Seconds (0)),
+    m_jitterAccumulator (Seconds (0))   
 {
   NS_LOG_FUNCTION (this);
 }
 
-uint64_t PacketSink::GetTotalRx () const
+PacketSink::~PacketSink ()
+{
+  NS_LOG_FUNCTION (this);
+}
+
+uint64_t 
+PacketSink::GetTotalRx () const
 {
   NS_LOG_FUNCTION (this);
   return m_totalRx;
@@ -99,7 +101,7 @@ PacketSink::GetListeningSocket (void) const
   return m_socket;
 }
 
-std::list<Ptr<Socket> >
+std::list<Ptr<Socket>>
 PacketSink::GetAcceptedSockets (void) const
 {
   NS_LOG_FUNCTION (this);
@@ -118,7 +120,8 @@ void PacketSink::DoDispose (void)
 
 
 // Application Methods
-void PacketSink::StartApplication ()    // Called at time specified by Start
+void 
+PacketSink::StartApplication ()    // Called at time specified by Start
 {
   NS_LOG_FUNCTION (this);
   // Create the socket if not already
@@ -155,7 +158,8 @@ void PacketSink::StartApplication ()    // Called at time specified by Start
     MakeCallback (&PacketSink::HandlePeerError, this));
 }
 
-void PacketSink::StopApplication ()     // Called at time specified by Stop
+void
+PacketSink::StopApplication ()     // Called at time specified by Stop
 {
   NS_LOG_FUNCTION (this);
   while(!m_socketList.empty ()) //these are accepted sockets, close them
@@ -171,7 +175,8 @@ void PacketSink::StopApplication ()     // Called at time specified by Stop
     }
 }
 
-void PacketSink::HandleRead (Ptr<Socket> socket)
+void 
+PacketSink::HandleRead (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);
   Ptr<Packet> packet;
@@ -208,7 +213,15 @@ void PacketSink::HandleRead (Ptr<Socket> socket)
       if (packet->PeekHeader (header) > 0)
         {
           NS_LOG_DEBUG ("Rx seq=" << header.GetSeq () << ", Tx at time=" << header.GetTs ().GetSeconds ());
-          m_accummulator += Simulator::Now () - header.GetTs ();
+          Time delay = Simulator::Now () - header.GetTs ();
+          /* Accumulate Delay value */
+          m_delayAccumulator += delay;
+          if (m_currentDelay != 0)
+            {
+              /* Accumulate Jitter value */
+              m_jitterAccumulator += Seconds (std::abs (m_currentDelay.GetSeconds () - delay.GetSeconds ()));
+            }
+          m_currentDelay = delay;
         }
       else
         {
@@ -217,7 +230,7 @@ void PacketSink::HandleRead (Ptr<Socket> socket)
           if (packet->FindFirstMatchingByteTag (timestamp))
             {
               Time tx = timestamp.GetTimestamp ();
-              m_accummulator += Simulator::Now () - tx;
+              m_delayAccumulator += Simulator::Now () - tx;
             }
         }
 
@@ -231,7 +244,7 @@ PacketSink::GetAverageDelay (void) const
 {
   if (m_totalPackets != 0)
     {
-      return m_accummulator/m_totalPackets;
+      return m_delayAccumulator/m_totalPackets;
     }
   else
     {
@@ -239,18 +252,36 @@ PacketSink::GetAverageDelay (void) const
     }
 }
 
-void PacketSink::HandlePeerClose (Ptr<Socket> socket)
+Time
+PacketSink::GetAverageJitter (void) const
+{
+  if (m_totalPackets != 0)
+    {
+      /* The number of jitter measurements collected 
+         is always the total number of packets - 1 */
+      return m_jitterAccumulator/(m_totalPackets-1); 
+    }
+  else
+    {
+      return Seconds (0);
+    }  
+}
+
+void 
+PacketSink::HandlePeerClose (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);
 }
  
-void PacketSink::HandlePeerError (Ptr<Socket> socket)
+void 
+PacketSink::HandlePeerError (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);
 }
  
 
-void PacketSink::HandleAccept (Ptr<Socket> s, const Address& from)
+void 
+PacketSink::HandleAccept (Ptr<Socket> s, const Address& from)
 {
   NS_LOG_FUNCTION (this << s << from);
   s->SetRecvCallback (MakeCallback (&PacketSink::HandleRead, this));
