@@ -84,14 +84,13 @@ protected:
   virtual void AddBroadcastCbapAllocations (void);
 
 private:
-  
   /**
-   * Verify if there is enough time in the DTI to allocate periodic SPs.
+   * Verify how many blocks (in our case, one SP correspond to one block) we can guarantee to a periodic request.
    * \param allocDuration the duration associated to the SPs.
    * \param spInterval time between two consecutive periodic SPs.
-   * \return number of SPs that can be allocated in the DTI
+   * \return number of blocks that can be allocated in the DTI
    */
-  uint8_t VerifyAvailableSlots(uint32_t allocDuration, uint32_t spInterval);
+  uint8_t GetAvailableBlocks (uint32_t allocDuration, uint32_t spInterval);
   /**
    * Update the list of available time slots in the DTI.
    * \param startAllocation start time of the allocation that has to be excluded from the available time.

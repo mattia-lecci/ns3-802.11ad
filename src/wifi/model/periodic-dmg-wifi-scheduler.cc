@@ -156,7 +156,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
       uint32_t endAlloc;
       uint8_t counter = 0;
 
-      uint8_t blocks = VerifyAvailableSlots (allocDuration, spInterval);
+      uint8_t blocks = GetAvailableBlocks (allocDuration, spInterval);
 
       if (blocks > 1)
         {
@@ -227,70 +227,71 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 }
 
 uint8_t
-PeriodicDmgWifiScheduler::VerifyAvailableSlots(uint32_t allocDuration, uint32_t spInterval)
+PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t spInterval)
 {
-    NS_LOG_FUNCTION(this);
-    
-    auto it = m_availableSlots.begin();
-    uint32_t startAlloc = it->first;
-    uint32_t slotDuration = 0;
-    uint8_t blocks = 0;
-    
-    while (it != m_availableSlots.end())
+  NS_LOG_FUNCTION (this);
+
+  auto it = m_availableSlots.begin ();
+  uint32_t startAlloc = it->first;
+  uint32_t slotDuration = 0;
+  uint8_t blocks = 0;
+
+  while (it != m_availableSlots.end ())
     {
       if (startAlloc < it->first)
-      {
-        // Periodicity has been broken, we stop the algorithm.
-        break;
-      }
-      
-      slotDuration = it->second - startAlloc;
-      
-      if(allocDuration + m_guardTime > slotDuration)
-      {
-        if(blocks == 0)
         {
-          // We go on until we eventually find the first available slot that fits our SP.
-          // Note that this also cover the condition where no slot satisfies the requirement. 
-          ++it;
-          continue;
-        }
-        else
-        {
-          // If we already allocated one or more periodic SPs, now the periodicity 
-          // is broken and we need to stop the algorithm.
+          // Periodicity has been broken, we stop the algorithm.
           break;
         }
-      }
-    
+
+      slotDuration = it->second - startAlloc;
+
+      if (allocDuration + m_guardTime > slotDuration)
+        {
+          if (blocks == 0)
+            {
+              // go on until eventually find the first available slot that fits this SP
+              // note that this also cover the condition where no slot satisfies the requirement
+              ++it;
+              continue;
+            }
+          else
+            {
+              // if one or more periodic SPs already allocated, now the periodicity
+              // is broken and the algorithm stops
+              break;
+            }
+        }
+
       blocks++;
       startAlloc += spInterval;
-             
-      // Immediately check the next periodic periodic allocation, with respect to the
-      // current available slot that we are using  
-      
+
+      // immediately check the next periodic allocation, with respect to the
+      // current available slot that we are using
+
       if (startAlloc == it->second)
-      {
-        // If the next SP should start at the end of the current slot, we cannot add it and the algorithm stops.
-        break;        
-      }
-      else if (startAlloc < it->second)
-      {
-        // If the the next SP should start in the current slot, we immediately check if there is 
-        // enough free time to place it, otherwise the algorithm stops.
-        if (startAlloc + allocDuration + m_guardTime > it->second)
         {
+          // if the next SP should start at the end of the current slot, 
+          // it cannot be added and the algorithm stops
           break;
-        }    
-      }
+        }
+      else if (startAlloc < it->second)
+        {
+          // if the the next SP should start in the current slot, immediately check if there is
+          // enough free time to place it, otherwise the algorithm stops
+          if (startAlloc + allocDuration + m_guardTime > it->second)
+            {
+              break;
+            }
+        }
       else
-      {
-        // We pass to the next slot only if startAlloc goes beyond the end of the current one. 
-        ++it;
-      }
+        {
+          // pass to the next slot only if startAlloc goes beyond the end of the current one
+          ++it;
+        }
     }
-    
-    return blocks;
+
+  return blocks;
 }
 
 void
