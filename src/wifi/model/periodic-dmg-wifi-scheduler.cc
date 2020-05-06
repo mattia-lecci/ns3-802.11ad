@@ -382,6 +382,83 @@ PeriodicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const Dmg
   NS_LOG_FUNCTION (this);
 
   StatusCode status;
+  uint32_t newDuration;
+  if (info.GetAllocationFormat () == ISOCHRONOUS)
+    {
+      newDuration = GetAllocationDuration (dmgTspec.GetMinimumAllocation (), dmgTspec.GetMaximumAllocation ());
+    }
+  else if (info.GetAllocationFormat () == ASYNCHRONOUS)
+    {
+      // for asynchronous allocations, the Maximum Allocation field is reserved (IEEE 802.11ad 8.4.2.136) 
+      newDuration = dmgTspec.GetMinimumAllocation ();
+    }
+  else
+    {
+      NS_FATAL_ERROR ("Allocation Format not supported");
+    }
+
+  AllocationFieldListI allocation;
+  // Retrieve the allocation for which a modification has been requested
+  for (allocation = m_addtsAllocationList.begin (); allocation != m_addtsAllocationList.end ();)
+    {
+      if ((allocation->GetAllocationID () == info.GetAllocationID ())
+          && (allocation->GetSourceAid () == sourceAid) && (allocation->GetDestinationAid () == info.GetDestinationAid ()))
+        {
+          break;
+        }
+      else
+        {
+          ++allocation;
+        }
+    }
+
+  if (allocation == m_addtsAllocationList.end ())
+    {
+      NS_FATAL_ERROR ("Required allocation does not exist.");
+    }
+
+  uint32_t currentDuration = allocation->GetAllocationBlockDuration ();
+  NS_LOG_DEBUG ("current duration=" << currentDuration << ", new duration=" << newDuration);
+  uint32_t timeDifference;
+  if (newDuration > currentDuration)
+    {
+      NS_LOG_DEBUG ("This feature is not supported.");
+      // The request cannot be accepted; maintaining old allocation duration
+      // No need to update allocation start time and remaining DTI time 
+      status.SetFailure ();
+    }
+  else
+    {
+      NS_LOG_DEBUG ("Reduction of the duration is always allowed. Proceed to update the available slots...");
+      timeDifference = currentDuration - newDuration;
+      allocation->SetAllocationBlockDuration (newDuration);
+      status.SetSuccess ();
+      
+      uint32_t startAlloc = allocation->GetAllocationStart ();
+      uint32_t endAlloc = allocation->GetAllocationStart () + allocation->GetAllocationBlockDuration () + m_guardTime;
+      
+      uint16_t allocPeriod = allocation->GetAllocationBlockPeriod ();
+      if (allocPeriod != 0)
+        {
+          // If the allocation to modify is periodic, we retrieve the number of blocks
+          // and update the available slots in the DTI accordingly.
+          // TODO: update also the number of blocks if the new duration allows to 
+          // add further blocks
+          uint8_t blocks = allocation->GetNumberOfBlocks();
+          for (uint8_t i = 0; i < blocks; i++)
+            {
+              NS_LOG_DEBUG ("Modify SP Block [" << +i << "] at " << startAlloc << " till " << endAlloc);
+              UpdateAvailableSlots (startAlloc, endAlloc, timeDifference);
+              startAlloc += allocPeriod;
+              endAlloc += allocPeriod;
+            }
+        }
+      else
+        {
+          UpdateAvailableSlots (startAlloc, endAlloc, timeDifference);          
+        }
+
+    }
 
   return status;
 }
