@@ -38,20 +38,9 @@ TypeId
 PeriodicDmgWifiScheduler::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::PeriodicDmgWifiScheduler")
-      .SetParent<DmgWifiScheduler> ()
-      .SetGroupName ("Wifi")
-      .AddConstructor<PeriodicDmgWifiScheduler> ()
-
-      .AddAttribute ("MinBroadcastCbapDuration", "The minimum duration in microseconds of a broadcast CBAP in the DTI",
-                     UintegerValue (4096),
-                     MakeUintegerAccessor (&PeriodicDmgWifiScheduler::m_minBroadcastCbapDuration),
-                     MakeUintegerChecker<uint32_t> ())
-      .AddAttribute ("InterAllocationDistance", "The time distance in microseconds between two adjacent allocations "
-                     "This distance will be allocated as broadcast CBAP",
-                     UintegerValue (10),
-                     MakeUintegerAccessor (&PeriodicDmgWifiScheduler::m_interAllocationDistance),
-                     MakeUintegerChecker<uint32_t> (10, 65535))
-  ;
+    .SetParent<DmgWifiScheduler> ()
+    .SetGroupName ("Wifi")
+    .AddConstructor<PeriodicDmgWifiScheduler> ();
   return tid;
 }
 
@@ -183,10 +172,6 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
       // spInterval is going to be passed to AddAllocationPeriod to specify the 
       // distance between consecutive periodic SPs
       uint32_t spInterval = uint32_t (m_biDuration.GetMicroSeconds () / allocPeriod);
-      if (spInterval - allocDuration < m_minBroadcastCbapDuration)
-        {
-          NS_FATAL_ERROR ("These settings cannot guarantee minimum CBAP duration.");
-        }
 
       NS_LOG_DEBUG ("Allocation Period " << uint32_t (allocPeriod) << " AllocDuration " << allocDuration << " Multiple " << isMultiple);
       NS_LOG_DEBUG ("Schedule one SP every " << spInterval);
@@ -507,7 +492,8 @@ void
 PeriodicDmgWifiScheduler::AddBroadcastCbapAllocations (void)
 {
   NS_LOG_FUNCTION (this);
-  /* Addts allocation list is copied to the allocation list */
+  
+  // Addts allocation list is copied to the allocation list 
 
   m_allocationList = m_addtsAllocationList;
   AllocationFieldList broadcastCbapList;

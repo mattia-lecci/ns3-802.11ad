@@ -99,9 +99,7 @@ private:
    */
   void UpdateAvailableSlots (uint32_t startAllocation, uint32_t endAlloc, uint32_t difference = 0);
 
-  uint32_t m_minBroadcastCbapDuration;          //!< The minimum duration of a broadcast CBAP to be present in the DTI.
-  uint32_t m_interAllocationDistance;           //!< The distance between two allocations to be used as broadcast CBAP.
-  std::vector<std::pair<uint32_t, uint32_t>> m_availableSlots;       //!< List of available time chunks in the DTI.
+  std::vector<std::pair<uint32_t, uint32_t> > m_availableSlots;       //!< List of available time chunks in the DTI.
 
 };
 
