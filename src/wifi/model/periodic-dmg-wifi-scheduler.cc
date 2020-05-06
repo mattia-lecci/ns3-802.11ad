@@ -99,6 +99,46 @@ void
 PeriodicDmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, uint32_t duration, bool isToAdd)
 {
   NS_LOG_FUNCTION (this << duration << isToAdd);
+  
+  // This method is called upon a DelTsRequest or after the cleanup of 
+  // non-pseudostatic allocations.
+  // In this version of the periodic scheduler, existing allocations are not shifted 
+  // to fill the created gaps but only the vector listing the available slots is updated.
+  // For this reason, the current input parameters are useless.
+   
+  auto addtsListCopy = m_addtsAllocationList;
+  
+  // sort the copy to simplify the process of going through the allocation list
+  sort (addtsListCopy.begin (),
+        addtsListCopy.end (),
+        [](const AllocationField& lhs, const AllocationField& rhs){
+      return lhs.GetAllocationStart () < rhs.GetAllocationStart ();
+    });
+  
+  uint32_t startSlot = 0;
+  std::vector<std::pair<uint32_t, uint32_t> > newDTI; 
+  
+  for (const auto & allocation: addtsListCopy)
+  {
+    // this loop goes through the list of allocations, spotting all the available
+    // slots and adding them to the list
+    if (startSlot < allocation.GetAllocationStart())
+    {
+      newDTI.push_back (std::make_pair (startSlot, allocation.GetAllocationStart()));
+    }
+    
+    startSlot = allocation.GetAllocationStart() + allocation.GetAllocationBlockDuration() + m_guardTime;
+  }
+  
+  // the following check ensure that if there is a trailing available slot in the DTI,
+  // it will be correctly considered and added to the list.
+  if (startSlot < m_dtiDuration.GetMicroSeconds ())
+  {
+    newDTI.push_back (std::make_pair (startSlot,  m_dtiDuration.GetMicroSeconds ()));
+  }
+  
+  m_availableSlots = newDTI;
+  
 }
 
 uint32_t
