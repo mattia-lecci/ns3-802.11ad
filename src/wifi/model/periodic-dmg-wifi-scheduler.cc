@@ -288,38 +288,84 @@ PeriodicDmgWifiScheduler::VerifyAvailableSlots(uint32_t allocDuration, uint32_t 
 }
 
 void
-PeriodicDmgWifiScheduler::UpdateAvailableSlots(uint32_t startAllocation, uint32_t endAlloc)
+PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAllocation, uint32_t endAlloc, uint32_t difference)
 {
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION (this);
 
-    std::vector<std::pair<uint32_t, uint32_t>> newDTI;
-
-    for (auto it = m_availableSlots.begin() ; it != m_availableSlots.end(); ++it)
+  std::vector<std::pair<uint32_t, uint32_t> > newDTI;
+  
+  if (difference > 0)
     {
+      // something has changed in the allocation list, need to change the list of 
+      // available slots accordingly
+      bool search = true;
+      for (const auto & slot: m_availableSlots)
+        {
 
-      if (it->first > endAlloc || it->second < startAllocation)
-      {
-        newDTI.push_back(*it);
-        continue;
-      }
+          if (slot.first < startAllocation)
+            {
+              newDTI.push_back (slot);
+              continue;
+            }
 
-      if(it->first == startAllocation)
-      {
-        newDTI.push_back(std::make_pair(endAlloc, it->second));
-      }
-      else if (it->first < startAllocation && it->second > endAlloc)
-      {
-        newDTI.push_back(std::make_pair(it->first, startAllocation));
-        newDTI.push_back(std::make_pair(endAlloc, it->second));
-      }
+          if (endAlloc < slot.first)
+            {
+              // the following snippet ensure that the search is carried on until 
+              // we find the empty gap created by the allocation time reduction
+              // and we add it to the list of available slots 
+              if (search)
+                {
+                  if (difference == (slot.first - endAlloc))
+                    {
+                      // this make sure that two adjacent available slots are merged 
+                      newDTI.push_back (std::make_pair (endAlloc, slot.second));
+                      search = false;
+                    }
+                  else if (difference < (slot.first - endAlloc))
+                    {
+                      // this condition is verified when there is one or more allocations 
+                      // between the gap and the following available slot
+                      newDTI.push_back (std::make_pair (endAlloc, endAlloc + difference));
+                      newDTI.push_back (slot);
+                      search = false;
+                    }
+                  NS_ASSERT_MSG(difference <= (slot.first - endAlloc), "Something broke in runtime, check the update of the available slots.");
+                }
+              else
+                {
+                  newDTI.push_back (slot);
+                }
+            }
+        }
+    }
+  else
+    {
+      for (const auto & slot: m_availableSlots)
+        {
+          if (slot.first > endAlloc || slot.second < startAllocation)
+            {
+              newDTI.push_back (slot);
+              continue;
+            }
+          
+          if (slot.first == startAllocation)
+            {
+              newDTI.push_back (std::make_pair (endAlloc, slot.second));
+            }
+          else if (slot.first < startAllocation && slot.second > endAlloc)
+            {
+              newDTI.push_back (std::make_pair (slot.first, startAllocation));
+              newDTI.push_back (std::make_pair (endAlloc, slot.second));
+            }
+        }
     }
 
-    for (auto it = newDTI.begin() ; it != newDTI.end(); ++it)
-    {
-      NS_LOG_DEBUG("Available slot from " << it->first << " to " << it->second);
-    }
+  m_availableSlots = newDTI;
 
-    m_availableSlots = newDTI;
+  for (const auto & slot : m_availableSlots)
+    {
+      NS_LOG_DEBUG ("Available slot from " << slot.first << " to " << slot.second);
+    }
 
 }
 

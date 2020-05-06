@@ -96,8 +96,9 @@ private:
    * Update the list of available time slots in the DTI.
    * \param startAllocation start time of the allocation that has to be excluded from the available time.
    * \param endAlloc end time of the allocation that has to be excluded from the available time.
+   * \param difference if not equal to 0, it represents how much an allocation has been reduced.
    */
-  void UpdateAvailableSlots(uint32_t startAllocation, uint32_t endAlloc);
+  void UpdateAvailableSlots (uint32_t startAllocation, uint32_t endAlloc, uint32_t difference = 0);
 
   uint32_t m_minBroadcastCbapDuration;          //!< The minimum duration of a broadcast CBAP to be present in the DTI.
   uint32_t m_interAllocationDistance;           //!< The distance between two allocations to be used as broadcast CBAP.
