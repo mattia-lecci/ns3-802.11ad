@@ -114,7 +114,6 @@ uint32_t msduAggregationSize = 7935;          /* The maximum aggregation size fo
 uint32_t mpduAggregationSize = 262143;        /* The maximum aggregation size for A-MPDU [bytes]. */
 double simulationTime = 10;                   /* Simulation time [s]. */
 bool csv = false;                             /* Enable CSV output. */
-bool reportDataSnr = true;                    /* Enable report of Data Packets SNR. */
 uint8_t allocationId = 1;                     /* The allocation ID of the DMG Tspec element to create */
 
 /* NUmber of SP allocations */
@@ -394,25 +393,10 @@ DataTransmissionIntervalStarted (Ptr<DmgStaWifiMac> wifiMac, Mac48Address addres
 }
 
 void
-MacRxOk (Ptr<DmgWifiMac> wifiMac, Ptr<OutputStreamWrapper> stream,
-         WifiMacType type, Ptr<const Packet> packet, Mac48Address address, double snrValue)
+MacRxOk (Ptr<DmgWifiMac> wifiMac, WifiMacType type, Ptr<const Packet> packet, 
+         Mac48Address address, double snrValue)
 {
   macRxDataOk.at (wifiMac->GetAddress ()) += 1;
-  if ((type == WIFI_MAC_QOSDATA) && reportDataSnr)
-    {
-      *stream->GetStream () << Simulator::Now ().GetNanoSeconds () << ","
-                            << address << ","
-                            << wifiMac->GetAddress () << ","
-                            << snrValue << endl;
-    }
-  else if ((type == WIFI_MAC_EXTENSION_DMG_BEACON) || (type == WIFI_MAC_CTL_DMG_SSW)
-           || (type == WIFI_MAC_CTL_DMG_SSW_FBCK) || (type == WIFI_MAC_CTL_DMG_SSW_ACK))
-    {
-      *stream->GetStream () << Simulator::Now ().GetNanoSeconds () << ","
-                            << address << ","
-                            << wifiMac->GetAddress () << ","
-                            << snrValue << endl;
-    }
 }
 
 void
@@ -474,7 +458,6 @@ main (int argc, char *argv[])
   cmd.AddValue ("phyMode", "802.11ad PHY Mode", phyMode);
   // cmd.AddValue ("verbose", "turn on all WifiNetDevice log components", verbose);
   cmd.AddValue ("simulationTime", "Simulation time [s]", simulationTime);
-  // cmd.AddValue ("reportDataSnr", "Report SNR for data packets = True or for BF Control Packets = False", reportDataSnr);
   // cmd.AddValue ("qdChannelFolder", "The name of the folder containing the QD-Channel files", qdChannelFolder);
   // cmd.AddValue ("numSTAs", "The number of DMG STA", numSTAs);
   // cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
@@ -697,10 +680,6 @@ main (int argc, char *argv[])
   Ptr<OutputStreamWrapper> e2eResults = ascii.CreateFileStream ("results.csv");
   *e2eResults->GetStream () << "TxPkts,TxBytes,RxPkts,RxBytes,AvgThroughput,AvgDelay,AvgJitter" << endl;
 
-  /* Get SNR Traces */
-  Ptr<OutputStreamWrapper> snrStream = ascii.CreateFileStream ("snrValues.csv");
-  *snrStream->GetStream () << "Time,Src,Dst,Snr" << endl;
-
   Ptr<WifiNetDevice> wifiNetDevice;
   Ptr<DmgStaWifiMac> staWifiMac;
   Ptr<WifiRemoteStationManager> remoteStationManager;
@@ -714,7 +693,7 @@ main (int argc, char *argv[])
       macTxDataOk.insert (make_pair (staWifiMac->GetAddress (), 0));
       macRxDataOk.insert (make_pair (staWifiMac->GetAddress (), 0));
       remoteStationManager = wifiNetDevice->GetRemoteStationManager ();
-      remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, staWifiMac, snrStream));
+      remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, staWifiMac));
       remoteStationManager->TraceConnectWithoutContext ("MacTxOK", MakeBoundCallback (&MacTxOk, staWifiMac));
       remoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeBoundCallback (&MacTxDataFailed, staWifiMac));
       staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, staWifiNodes.Get (i), staWifiMac));
@@ -742,7 +721,7 @@ main (int argc, char *argv[])
   parameters->srcNodeID = wifiNetDevice->GetNode ()->GetId ();
   parameters->wifiMac = apWifiMac;
   apWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parameters));
-  remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, apWifiMac, snrStream));
+  remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, apWifiMac));
 
   /* Install FlowMonitor on all nodes */
   FlowMonitorHelper flowmon;
