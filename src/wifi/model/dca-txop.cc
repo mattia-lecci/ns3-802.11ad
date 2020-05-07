@@ -275,6 +275,46 @@ DcaTxop::StartAccessIfNeeded (void)
 }
 
 void
+DcaTxop::RestoreAllocation (void)
+{
+  NS_LOG_FUNCTION (this);
+  PacketInformation info;
+  StoredPacketsCI iter = m_storedPackets.begin ();
+  if (iter == m_storedPackets.end ())
+    {
+      NS_LOG_DEBUG ("No allocations to restore");
+      return;
+    }
+
+  if (m_allocationID == 0)
+    {
+      /* Broadcast CBAP: Restore parameters and packets from the first available allocation */
+      info = iter->second;
+      m_currentPacket = info.first;
+      m_currentHdr = info.second;
+      NS_LOG_DEBUG ("Restored packet with seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
+      m_storedPackets.erase (iter);
+    }
+  else
+    {
+      /* SP or non-broadcast CBAP: Restore parameters and packets from the provided allocation */
+      iter = m_storedPackets.find (AddressPair (m_low->GetAddress (), m_peerStation));
+      if (iter != m_storedPackets.end ())
+        {
+          info = iter->second;
+          m_currentPacket = info.first;
+          m_currentHdr = info.second;
+          NS_LOG_DEBUG ("Restored packet with seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
+          m_storedPackets.erase (iter);
+        }
+      else
+        {
+          NS_LOG_DEBUG ("No allocation was stored with these parameters");
+        }
+    }
+}
+
+void
 DcaTxop::StartAllocationPeriod (AllocationType allocationType, AllocationID allocationID,
                                 Mac48Address peerStation, Time allocationDuration)
 {
@@ -286,15 +326,8 @@ DcaTxop::StartAllocationPeriod (AllocationType allocationType, AllocationID allo
   m_transmissionStarted = Simulator::Now ();
 
   /* Check if we have stored packet for this allocation period */
-  StoredPacketsCI it = m_storedPackets.find (m_allocationID);
-  if (it != m_storedPackets.end ())
-    {
-      PacketInformation info = it->second;
-      m_currentPacket = info.first;
-      m_currentHdr = info.second;
-    }
-
-  StartAccessIfNeeded ();
+  RestoreAllocation ();
+  RestartAccessIfNeeded ();
 }
 
 void
@@ -305,18 +338,11 @@ DcaTxop::EndAllocationPeriod (void)
   /* Store parameters related to this Allocation period which include MSDU/A-MSDU */
   if (m_currentPacket != 0)
     {
-      NS_LOG_DEBUG ("Store packet with seq=0x" << std::hex << m_currentHdr.GetSequenceControl ()
-                    << " for AllocationID=" << +m_allocationID);
-      m_storedPackets[m_allocationID] = std::make_pair (m_currentPacket, m_currentHdr);
+      NS_LOG_DEBUG ("Store packet with seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
+      NS_ASSERT_MSG (m_low->GetAddress () == m_currentHdr.GetAddr2 (), "Current Src address should equal Hdr Src address");
+      m_storedPackets.insert (std::make_pair (AddressPair (m_currentHdr.GetAddr2 (), m_currentHdr.GetAddr1 ()),
+                              PacketInformation (m_currentPacket, m_currentHdr)));
       m_currentPacket = 0;
-    }
-  else
-    {
-      StoredPacketsI it = m_storedPackets.find (m_allocationID);
-      if (it != m_storedPackets.end ())
-        {
-          m_storedPackets.erase (it);
-        }
     }
 }
 
@@ -459,7 +485,7 @@ DcaTxop::NotifyAccessGranted (void)
       m_fragmentNumber = 0;
       NS_LOG_DEBUG ("dequeued size=" << m_currentPacket->GetSize () <<
                     ", to=" << m_currentHdr.GetAddr1 () <<
-                    ", seq=" << m_currentHdr.GetSequenceControl ());
+                    ", seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
     }
 
   if (m_stationManager->HasDmgSupported ())

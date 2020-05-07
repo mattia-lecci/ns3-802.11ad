@@ -520,10 +520,10 @@ MacLow::HasStoredAmpduExpired (void) const
 }
 
 void
-MacLow::RemoveCurrrentAllocation (void)
+MacLow::RemoveCurrentAllocation (void)
 {
   m_restoredSuspendedTransmission = true;
-  m_allocationPeriodsTable.erase (m_currentAllocationID);
+  m_allocationPeriodsTable.erase (AddressPair (m_currentSrcAddress, m_currentDstAddress));
 }
 
 void
@@ -539,6 +539,9 @@ MacLow::ResumeTransmission (Time duration, Ptr<DcaTxop> dca)
   m_currentTxVector = m_currentAllocation.txVector;
   m_ampdu = m_currentAllocation.isAmpdu;
 
+  /* Remove Allocation from allocation table as we restored it */
+  m_allocationPeriodsTable.erase (AddressPair (m_currentSrcAddress, m_currentDstAddress));
+
   /* Restore Aggregate Queue contents */
   if (m_ampdu && m_currentHdr.IsQosData ())
     {
@@ -549,7 +552,11 @@ MacLow::ResumeTransmission (Time duration, Ptr<DcaTxop> dca)
     }
 
   m_txParams.SetMaximumTransmissionDuration (duration);
-  NS_LOG_DEBUG ("IsAmpdu=" << m_currentAllocation.isAmpdu
+  NS_LOG_DEBUG ("Resuming tx of packet=" << m_currentPacket
+                << ", currentAllocID=" << +m_currentAllocationID
+                << ", sourceAddress=" << m_currentSrcAddress
+                << ", destAddress=" << m_currentDstAddress
+                << ", IsAmpdu=" << m_currentAllocation.isAmpdu
                 << ", PacketSize=" << m_currentAllocation.packet->GetSize ()
                 << ", seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
 
@@ -571,49 +578,76 @@ MacLow::ResumeTransmission (Time duration, Ptr<DcaTxop> dca)
     }
   else
     {
+      NS_LOG_DEBUG ("There is not enough time to complete this DMG transaction for Packet=" << m_currentPacket);
+      StoreAllocationParameters ();
       m_transmissionSuspended = true;
     }
-
-  /* Remove Allocation from allocation list as we restored it */
-  m_allocationPeriodsTable.erase (m_currentAllocationID);
 }
 
 void
-MacLow::ChangeAllocationPacketsAddress (AllocationID allocationId, Mac48Address destAdd)
+MacLow::ChangeAllocationPacketsAddress (Mac48Address currentSrc, Mac48Address currentDst, Mac48Address destAdd)
 {
-  NS_LOG_FUNCTION (this << uint16_t (allocationId) << destAdd);
+  NS_LOG_FUNCTION (this << currentSrc << currentDst << destAdd);
   /* Find the stored parameters and packets for the provided allocation */
-  AllocationPeriodsTableI it = m_allocationPeriodsTable.find (m_currentAllocationID);
+  AllocationPeriodsTableI it = m_allocationPeriodsTable.find (AddressPair (currentSrc, currentDst));
   if (it != m_allocationPeriodsTable.end ())
     {
-      NS_LOG_DEBUG ("Changing Receiver Address for Packets stored for AllocationID=" << uint16_t (allocationId));
+      NS_LOG_DEBUG ("Changing Receiver Address for Packets stored with srcAddress=" << currentSrc
+                    << ", dstAddress=" << currentDst);
       it->second.hdr.SetAddr1 (destAdd);
     }
   else
     {
-      NS_LOG_DEBUG ("No allocation parameters stored for AllocationID=" << uint16_t (allocationId));
+      NS_LOG_DEBUG ("No parameters stored for this allocation");
     }
 }
 
 void
-MacLow::RestoreAllocationParameters (AllocationID allocationId)
+MacLow::RestoreAllocationParameters (AllocationID allocationId, Mac48Address srcAddress, Mac48Address dstAddress)
 {
-  NS_LOG_FUNCTION (this << uint16_t (allocationId));
+  NS_LOG_FUNCTION (this << +allocationId << srcAddress << dstAddress);
   m_transmissionSuspended = false;
   m_allocationStored = false;
   m_currentAllocationID = allocationId;
-  /* Find the stored parameters and packets for the provided allocation */
-  AllocationPeriodsTableCI it = m_allocationPeriodsTable.find (m_currentAllocationID);
-  if (it != m_allocationPeriodsTable.end ())
+  m_currentSrcAddress = srcAddress;
+  m_currentDstAddress = dstAddress;
+  AllocationPeriodsTableCI iter = m_allocationPeriodsTable.begin ();
+
+  if (iter == m_allocationPeriodsTable.end ())
     {
-      NS_LOG_DEBUG ("Restored allocation parameters for AllocationID=" << uint16_t (allocationId));
-      m_currentAllocation = it->second;
+      NS_LOG_DEBUG ("No suspended allocations to restore");
+      m_restoredSuspendedTransmission = true;
+      return;
+    }
+
+  if (m_currentAllocationID == BROADCAST_CBAP)
+    {
+      /* Broadcast CBAP: Restore parameters and packets from the first available allocation */
+      m_currentAllocation = iter->second;
+      NS_LOG_DEBUG ("Restored allocation parameters with srcAddress=" << m_currentAllocation.hdr.GetAddr2 ()
+                    << ", dstAddress=" << m_currentAllocation.hdr.GetAddr1 ()
+                    << ", seq=0x" << std::hex <<  m_currentAllocation.hdr.GetSequenceControl () << std::dec);
+      NS_ASSERT_MSG (m_currentSrcAddress == m_currentAllocation.hdr.GetAddr2 (), "Current Src address should equal Hdr Src address");
+      m_currentDstAddress = m_currentAllocation.hdr.GetAddr1 ();
       m_restoredSuspendedTransmission = false;
     }
   else
     {
-      NS_LOG_DEBUG ("No allocation parameters stored for AllocationID=" << uint16_t (allocationId));
-      m_restoredSuspendedTransmission = true;
+      /* SP or non-broadcast CBAP: Restore parameters and packets from the provided allocation */
+      iter = m_allocationPeriodsTable.find (AddressPair (m_currentSrcAddress, m_currentDstAddress));
+      if (iter != m_allocationPeriodsTable.end ())
+        {
+          m_currentAllocation = iter->second;
+          NS_LOG_DEBUG ("Restored allocation parameters with srcAddress=" << m_currentSrcAddress
+                        << ", dstAddress=" << m_currentDstAddress
+                        << ", seq=0x" << std::hex <<  m_currentAllocation.hdr.GetSequenceControl () << std::dec);
+          m_restoredSuspendedTransmission = false;
+        }
+      else
+        {
+          NS_LOG_DEBUG ("No allocation parameters have been stored for this allocation");
+          m_restoredSuspendedTransmission = true;
+        }
     }
 }
 
@@ -641,9 +675,16 @@ MacLow::StoreAllocationParameters (void)
         {
           m_currentAllocation.aggregateQueue = 0;
         }
-      m_allocationPeriodsTable[m_currentAllocationID] = m_currentAllocation;
+      NS_ASSERT_MSG (m_currentSrcAddress == m_currentHdr.GetAddr2 (), "Current Src address should be equal to Hdr Src address");
+      AllocationPeriodsTableCI iter = m_allocationPeriodsTable.find (AddressPair (m_currentSrcAddress, m_currentHdr.GetAddr1 ()));
+      NS_ASSERT_MSG (iter == m_allocationPeriodsTable.end (), "Attempting to store existing allocation parameters");
+      m_allocationPeriodsTable.insert (std::make_pair (AddressPair (m_currentSrcAddress, m_currentHdr.GetAddr1 ()), m_currentAllocation));
       m_allocationStored = true;
-      NS_LOG_DEBUG ("IsAmpdu=" << m_currentAllocation.isAmpdu
+      NS_LOG_DEBUG ("Storing packet=" << m_currentPacket
+                    << ", currentAllocID=" << +m_currentAllocationID
+                    << ", sourceAddress=" << m_currentSrcAddress
+                    << ", destAddress=" << m_currentHdr.GetAddr1 ()
+                    << ", IsAmpdu=" << m_currentAllocation.isAmpdu
                     << ", PacketSize=" << m_currentAllocation.packet->GetSize ()
                     << ", seq=0x" << std::hex << m_currentHdr.GetSequenceControl () << std::dec);
 

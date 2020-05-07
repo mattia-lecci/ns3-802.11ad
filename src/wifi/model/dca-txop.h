@@ -330,6 +330,11 @@ public:
    * End Current Contention Period.
    */
   void EndAllocationPeriod (void);
+  /**
+   * Restore packet and header parameters for the suspended transmission
+   * by source and destination MAC addresses.
+   */
+  void RestoreAllocation (void);
 
 protected:
   ///< DcfState associated class
@@ -454,8 +459,9 @@ protected:
   uint8_t m_fragmentNumber; //!< the fragment number
 
   /* Store packet and header for Allocation Period */
+  typedef std::pair<Mac48Address, Mac48Address> AddressPair;
   typedef std::pair<Ptr<const Packet>, WifiMacHeader> PacketInformation;
-  typedef std::map<AllocationID, PacketInformation> StoredPackets;
+  typedef std::map<AddressPair, PacketInformation> StoredPackets;
   typedef StoredPackets::iterator StoredPacketsI;
   typedef StoredPackets::const_iterator StoredPacketsCI;
   StoredPackets m_storedPackets;    //!< Stored packets based on allocation ID.
