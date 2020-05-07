@@ -13,7 +13,7 @@ def main():
     ############################
 
     script = "evaluate_scheduler_qd_dense_scenario"
-    cmp_name = "basic-vs-cbaponly"        # define a campaign name in order to create different corresponding to a specific configuration
+    cmp_name = "basic-vs-cbaponly-v2"        # define a campaign name in order to create different corresponding to a specific configuration
     ns_path = os.path.join(os.path.dirname(os.path.realpath(__file__)))
     campaign_dir = "./campaigns/"+cmp_name
     sem.parallelrunner.MAX_PARALLEL_PROCESSES = 32
