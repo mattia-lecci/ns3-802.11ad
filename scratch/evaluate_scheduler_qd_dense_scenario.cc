@@ -255,7 +255,7 @@ ComputeServicePeriodDuration (const uint64_t &dataBitRate, const uint64_t &phyMo
   NS_LOG_FUNCTION (dataBitRate << phyModeDataRate);
   double numberBIs = Seconds (1).GetMicroSeconds () / double (apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
   uint32_t spDuration = ceil (dataBitRate / double (phyModeDataRate) / numberBIs * 1e6);
-  return spDuration;
+  return spDuration + 1500;
 }
 
 DmgTspecElement
@@ -378,7 +378,8 @@ SLSCompleted (Ptr<Parameters> parameters,
 void
 DataTransmissionIntervalStarted (Ptr<DmgStaWifiMac> wifiMac, Mac48Address address, Time)
 {
-  if (wifiMac->IsAssociated ())
+  /* Avoiding beamforming training in a CBAP for the moment */
+  /*if (wifiMac->IsAssociated ())
     {
       uint16_t counter = biCounter[address];
       counter++;
@@ -389,6 +390,7 @@ DataTransmissionIntervalStarted (Ptr<DmgStaWifiMac> wifiMac, Mac48Address addres
         }
       biCounter[address] = counter;
     }
+    */
 }
 
 void

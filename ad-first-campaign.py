@@ -15,7 +15,7 @@ def main():
     script = "evaluate_scheduler_qd_dense_scenario"
     cmp_name = "basic-vs-cbaponly"        # define a campaign name in order to create different corresponding to a specific configuration
     ns_path = os.path.join(os.path.dirname(os.path.realpath(__file__)))
-    campaign_dir = "../campaigns/"+cmp_name
+    campaign_dir = "./campaigns/"+cmp_name
     sem.parallelrunner.MAX_PARALLEL_PROCESSES = 32
     print ("ns3-path=", ns_path)
     print ("campaign-dir=", campaign_dir)
@@ -24,7 +24,7 @@ def main():
     #################
 
     campaign = sem.CampaignManager.new(ns_path, script, campaign_dir,
-        runner_type="SimulationRunner",
+        runner_type="ParallelRunner",
         check_repo=False,
         skip_config=True,
         optimized=False,
@@ -35,13 +35,13 @@ def main():
     # Parameter space
     #################
 
-    nruns = 1
+    nruns = 10
     dataRate = "100Mbps"
     mcs = "DMG_MCS4"
-    simulationTime = 2.0
+    simulationTime = 10.0
     logComponentsStr = ":"
     mpduAggregationList = [0, 262143]
-    interAllocationList = [10, 1000]
+    interAllocationList = [10, 1500]
     schedulerList = ["ns3::CbapOnlyDmgWifiScheduler", "ns3::BasicDmgWifiScheduler"]
 
     param_combinations = OrderedDict ({
