@@ -52,12 +52,13 @@ def main():
         "interAllocation": interAllocationList,
         "dataRate": dataRate,
         "phyMode": mcs,
+        "RngRun": list(range(nruns))
     })
 
     # Run simulations
     #################
     print("Run simulations with param_combination " + str(param_combinations))
-    campaign.run_missing_simulations (param_combinations, runs=nruns)
+    campaign.run_missing_simulations (param_combinations)
 
     print("Simulations done.")
 
