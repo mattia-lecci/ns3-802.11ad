@@ -46,13 +46,14 @@ public:
 protected:
   virtual void DoDispose (void);
   /**
+   * Evaluate the duration of the allocation based on the minumum and maximum duration constraints
    * \param minAllocation The minimum acceptable allocation in us for each allocation period.
    * \param maxAllocation The desired allocation in us for each allocation period.
    * \return The allocation duration for the allocation period.
    */
   virtual uint32_t GetAllocationDuration (uint32_t minAllocation, uint32_t maxAllocation);
   /**
-   * Implement the policy that accept, reject a new ADDTS request.
+   * Implement the policy that accepts or rejects a new ADDTS request.
    * \param sourceAid The AID of the requesting STA.
    * \param dmgTspec The DMG Tspec element of the ADDTS request.
    * \param info The DMG Allocation Info element of the request.
@@ -60,11 +61,12 @@ protected:
    */
   virtual StatusCode AddNewAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info);
   /**
-   * Implement the policy that accept, reject a modification request.
+   * Implement the policy that accepts or rejects a modification request.
+   * The current version supports only requests of reduction of the duration of the allocations.
    * \param sourceAid The AID of the requesting STA.
    * \param dmgTspec The DMG Tspec element of the ADDTS request.
    * \param info The DMG Allocation Info element of the request.
-   * \return The Status Code to be included in the ADDTS response.
+   * \return The StatusCode to be included in the ADDTS response.
    */
   virtual StatusCode ModifyExistingAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info);
   /**
@@ -85,20 +87,23 @@ protected:
 
 private:
   /**
-   * Verify how many blocks (in our case, one SP correspond to one block) we can guarantee to a periodic request.
+   * Verify how many blocks (in our case, one SP corresponds to one block) we can guarantee to a periodic request.
    * \param allocDuration the duration associated to the SPs.
    * \param spInterval time between two consecutive periodic SPs.
    * \return number of blocks that can be allocated in the DTI
    */
   uint8_t GetAvailableBlocks (uint32_t allocDuration, uint32_t spInterval);
   /**
-   * Update the list of available time slots in the DTI.
+   * Update the list of available time slots in the DTI. 
+   * The current version supports only the reduction of pre-existing allocations.
    * \param startAlloc start time of the allocation that has to be excluded from the available time.
    * \param endAlloc end time of the allocation that has to be excluded from the available time.
    * \param difference if not equal to 0, it represents how much an allocation has been reduced.
    */
   void UpdateAvailableSlots (uint32_t startAlloc, uint32_t endAlloc, uint32_t difference = 0);
-
+  
+  // std::pair<uint32_t, uint32_t> is a struct used to store the start and 
+  // end time (first and second member of the pair, respectively) of the available time chunks
   std::vector<std::pair<uint32_t, uint32_t> > m_availableSlots;       //!< List of available time chunks in the DTI.
 
 };

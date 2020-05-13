@@ -71,6 +71,8 @@ PeriodicDmgWifiScheduler::UpdateStartAndRemainingTime (void)
     {
       // no existing allocations
       m_remainingDtiTime = m_dtiDuration.GetMicroSeconds ();
+      // clear the list of available slots: if no allocations have been scheduled, then the DTI is completely available
+      m_availableSlots.clear();
       m_availableSlots.push_back (std::make_pair (0, m_dtiDuration.GetMicroSeconds ()));
     }
   else
@@ -79,7 +81,7 @@ PeriodicDmgWifiScheduler::UpdateStartAndRemainingTime (void)
       m_remainingDtiTime = 0;
       for (const auto & slot: m_availableSlots)
         {
-          m_remainingDtiTime += (slot.second - slot.first);
+          m_remainingDtiTime += (slot.second - slot.first + 1);
         }
     }
 }
@@ -134,7 +136,7 @@ uint32_t
 PeriodicDmgWifiScheduler::GetAllocationDuration (uint32_t minAllocation, uint32_t maxAllocation)
 {
   NS_LOG_FUNCTION (this << minAllocation << maxAllocation);
-  return ((minAllocation + maxAllocation) / 2);
+  return maxAllocation;
 }
 
 StatusCode
@@ -155,6 +157,12 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
   if (info.GetAllocationFormat () == ISOCHRONOUS)
     {
       allocDuration = GetAllocationDuration (dmgTspec.GetMinimumAllocation (), dmgTspec.GetMaximumAllocation ());
+      if (allocDuration < dmgTspec.GetMinimumAllocation ())
+        {
+          NS_LOG_DEBUG ("Unable to guarantee minimum duration.");
+          status.SetFailure ();
+          return;
+        }
     }
   else if (info.GetAllocationFormat () == ASYNCHRONOUS)
     {
@@ -190,7 +198,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
       uint8_t counter = 0;
 
       uint8_t blocks = GetAvailableBlocks (allocDuration, spInterval);
-
+      
       if (blocks > 1)
         {
           while (counter < blocks)
