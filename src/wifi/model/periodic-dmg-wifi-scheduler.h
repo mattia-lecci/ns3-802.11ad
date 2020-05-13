@@ -101,7 +101,7 @@ private:
    * \param difference if not equal to 0, it represents how much an allocation has been reduced.
    */
   void UpdateAvailableSlots (uint32_t startAlloc, uint32_t endAlloc, uint32_t difference = 0);
-  
+
   // std::pair<uint32_t, uint32_t> is a struct used to store the start and 
   // end time (first and second member of the pair, respectively) of the available time chunks
   std::vector<std::pair<uint32_t, uint32_t> > m_availableSlots;       //!< List of available time chunks in the DTI.

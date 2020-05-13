@@ -72,7 +72,7 @@ PeriodicDmgWifiScheduler::UpdateStartAndRemainingTime (void)
       // no existing allocations
       m_remainingDtiTime = m_dtiDuration.GetMicroSeconds ();
       // clear the list of available slots: if no allocations have been scheduled, then the DTI is completely available
-      m_availableSlots.clear();
+      m_availableSlots.clear ();
       m_availableSlots.push_back (std::make_pair (0, m_dtiDuration.GetMicroSeconds ()));
     }
   else
@@ -106,30 +106,34 @@ PeriodicDmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, 
       return lhs.GetAllocationStart () < rhs.GetAllocationStart ();
     });
 
-  uint32_t startSlot = 0;
-  std::vector<std::pair<uint32_t, uint32_t> > newDti; 
+  uint32_t startAlloc, endAlloc;
+
+  // clear m_availableSlots and refill it based on the updated m_addtsAllocationList
+  m_availableSlots.clear ();
+  m_availableSlots.push_back (std::make_pair (0, m_dtiDuration.GetMicroSeconds ()));
 
   for (const auto & allocation: addtsListCopy)
     {
-      // this loop goes through the list of allocations, spotting all the available
-      // slots and adding them to the list
-      if (startSlot < allocation.GetAllocationStart ())
+      startAlloc = allocation.GetAllocationStart ();
+      endAlloc = startAlloc + allocation.GetAllocationBlockDuration () + m_guardTime;
+      if (allocation.GetNumberOfBlocks () > 1)
         {
-          newDti.push_back (std::make_pair (startSlot, allocation.GetAllocationStart ()));
+          // if the number of blocks allocated is > 1, the allocation is periodic and must be dealt with accordingly
+          uint8_t blocks = allocation.GetNumberOfBlocks ();
+          while (blocks > 0)
+            {
+              UpdateAvailableSlots (startAlloc, endAlloc);
+              startAlloc += allocation.GetAllocationBlockPeriod ();
+              endAlloc += allocation.GetAllocationBlockPeriod ();
+              // AllocationBlockPeriod represents the time between the start of two consecutive time blocks belonging to the same allocation
+              blocks -= 1;
+            }
         }
-
-      startSlot = allocation.GetAllocationStart () + allocation.GetAllocationBlockDuration () + m_guardTime;
+      else
+        {
+          UpdateAvailableSlots (startAlloc, endAlloc);
+        }
     }
-
-  // the following check ensure that if there is a trailing available slot in the DTI,
-  // it will be correctly considered and added to the list.
-  if (startSlot < m_dtiDuration.GetMicroSeconds ())
-    {
-      newDti.push_back (std::make_pair (startSlot,  m_dtiDuration.GetMicroSeconds ()));
-    }
-
-  m_availableSlots = newDti;
-
 }
 
 uint32_t
@@ -146,14 +150,14 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 
   StatusCode status;
   uint32_t allocDuration;
-  
+
   if (m_availableSlots.begin () == m_availableSlots.end ())
     {
       NS_LOG_DEBUG ("There are no free available slots in the DTI.");
       status.SetFailure ();
-      return;
+      return status;
     }
-  
+
   if (info.GetAllocationFormat () == ISOCHRONOUS)
     {
       allocDuration = GetAllocationDuration (dmgTspec.GetMinimumAllocation (), dmgTspec.GetMaximumAllocation ());
@@ -161,7 +165,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
         {
           NS_LOG_DEBUG ("Unable to guarantee minimum duration.");
           status.SetFailure ();
-          return;
+          return status;
         }
     }
   else if (info.GetAllocationFormat () == ASYNCHRONOUS)
@@ -173,7 +177,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
     {
       NS_FATAL_ERROR ("Allocation Format not supported");
     }
-  
+
   // Implementation of an admission policy for newly received requests. 
   uint16_t allocPeriod = dmgTspec.GetAllocationPeriod ();
   if (allocPeriod != 0)
@@ -198,7 +202,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
       uint8_t counter = 0;
 
       uint8_t blocks = GetAvailableBlocks (allocDuration, spInterval);
-      
+
       if (blocks > 1)
         {
           while (counter < blocks)
