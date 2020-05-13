@@ -93,11 +93,11 @@ private:
   uint8_t GetAvailableBlocks (uint32_t allocDuration, uint32_t spInterval);
   /**
    * Update the list of available time slots in the DTI.
-   * \param startAllocation start time of the allocation that has to be excluded from the available time.
+   * \param startAlloc start time of the allocation that has to be excluded from the available time.
    * \param endAlloc end time of the allocation that has to be excluded from the available time.
    * \param difference if not equal to 0, it represents how much an allocation has been reduced.
    */
-  void UpdateAvailableSlots (uint32_t startAllocation, uint32_t endAlloc, uint32_t difference = 0);
+  void UpdateAvailableSlots (uint32_t startAlloc, uint32_t endAlloc, uint32_t difference = 0);
 
   std::vector<std::pair<uint32_t, uint32_t> > m_availableSlots;       //!< List of available time chunks in the DTI.
 

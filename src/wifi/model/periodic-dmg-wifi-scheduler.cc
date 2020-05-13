@@ -105,7 +105,7 @@ PeriodicDmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, 
     });
 
   uint32_t startSlot = 0;
-  std::vector<std::pair<uint32_t, uint32_t> > newDTI; 
+  std::vector<std::pair<uint32_t, uint32_t> > newDti; 
 
   for (const auto & allocation: addtsListCopy)
     {
@@ -113,7 +113,7 @@ PeriodicDmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, 
       // slots and adding them to the list
       if (startSlot < allocation.GetAllocationStart ())
         {
-          newDTI.push_back (std::make_pair (startSlot, allocation.GetAllocationStart ()));
+          newDti.push_back (std::make_pair (startSlot, allocation.GetAllocationStart ()));
         }
 
       startSlot = allocation.GetAllocationStart () + allocation.GetAllocationBlockDuration () + m_guardTime;
@@ -123,10 +123,10 @@ PeriodicDmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, 
   // it will be correctly considered and added to the list.
   if (startSlot < m_dtiDuration.GetMicroSeconds ())
     {
-      newDTI.push_back (std::make_pair (startSlot,  m_dtiDuration.GetMicroSeconds ()));
+      newDti.push_back (std::make_pair (startSlot,  m_dtiDuration.GetMicroSeconds ()));
     }
 
-  m_availableSlots = newDTI;
+  m_availableSlots = newDti;
 
 }
 
@@ -144,6 +144,14 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 
   StatusCode status;
   uint32_t allocDuration;
+  
+  if (m_availableSlots.begin () == m_availableSlots.end ())
+    {
+      NS_LOG_DEBUG ("There are no free available slots in the DTI.");
+      status.SetFailure ();
+      return;
+    }
+  
   if (info.GetAllocationFormat () == ISOCHRONOUS)
     {
       allocDuration = GetAllocationDuration (dmgTspec.GetMinimumAllocation (), dmgTspec.GetMaximumAllocation ());
@@ -157,7 +165,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
     {
       NS_FATAL_ERROR ("Allocation Format not supported");
     }
-
+  
   // Implementation of an admission policy for newly received requests. 
   uint16_t allocPeriod = dmgTspec.GetAllocationPeriod ();
   if (allocPeriod != 0)
@@ -213,12 +221,6 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
     }
   else
     {
-
-      if (m_availableSlots.begin () == m_availableSlots.end ())
-        {
-          NS_LOG_DEBUG ("There are no free available slots in the DTI.");
-          status.SetFailure ();
-        }
 
       uint32_t endAlloc;
       uint32_t slotDur;
@@ -278,6 +280,7 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
               // go on until eventually find the first available slot that fits this SP
               // note that this also cover the condition where no slot satisfies the requirement
               ++it;
+              startAlloc = it->first;
               continue;
             }
           else
@@ -320,11 +323,11 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
 }
 
 void
-PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAllocation, uint32_t endAlloc, uint32_t difference)
+PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t endAlloc, uint32_t difference)
 {
   NS_LOG_FUNCTION (this);
 
-  std::vector<std::pair<uint32_t, uint32_t> > newDTI;
+  std::vector<std::pair<uint32_t, uint32_t> > newDti;
 
   if (difference > 0)
     {
@@ -334,9 +337,9 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAllocation, uint32
       for (const auto & slot: m_availableSlots)
         {
 
-          if (slot.first < startAllocation)
+          if (slot.first < startAlloc)
             {
-              newDTI.push_back (slot);
+              newDti.push_back (slot);
               continue;
             }
 
@@ -350,22 +353,22 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAllocation, uint32
                   if (difference == (slot.first - endAlloc))
                     {
                       // this make sure that two adjacent available slots are merged 
-                      newDTI.push_back (std::make_pair (endAlloc, slot.second));
+                      newDti.push_back (std::make_pair (endAlloc, slot.second));
                       search = false;
                     }
                   else if (difference < (slot.first - endAlloc))
                     {
                       // this condition is verified when there is one or more allocations 
                       // between the gap and the following available slot
-                      newDTI.push_back (std::make_pair (endAlloc, endAlloc + difference));
-                      newDTI.push_back (slot);
+                      newDti.push_back (std::make_pair (endAlloc, endAlloc + difference));
+                      newDti.push_back (slot);
                       search = false;
                     }
                   NS_ASSERT_MSG (difference <= (slot.first - endAlloc), "Something broke in runtime, check the update of the available slots.");
                 }
               else
                 {
-                  newDTI.push_back (slot);
+                  newDti.push_back (slot);
                 }
             }
         }
@@ -374,25 +377,25 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAllocation, uint32
     {
       for (const auto & slot: m_availableSlots)
         {
-          if (slot.first > endAlloc || slot.second < startAllocation)
+          if (slot.first > endAlloc || slot.second < startAlloc)
             {
-              newDTI.push_back (slot);
+              newDti.push_back (slot);
               continue;
             }
 
-          if (slot.first == startAllocation)
+          if (slot.first == startAlloc)
             {
-              newDTI.push_back (std::make_pair (endAlloc, slot.second));
+              newDti.push_back (std::make_pair (endAlloc, slot.second));
             }
-          else if (slot.first < startAllocation && slot.second > endAlloc)
+          else if (slot.first < startAlloc && slot.second > endAlloc)
             {
-              newDTI.push_back (std::make_pair (slot.first, startAllocation));
-              newDTI.push_back (std::make_pair (endAlloc, slot.second));
+              newDti.push_back (std::make_pair (slot.first, startAlloc));
+              newDti.push_back (std::make_pair (endAlloc, slot.second));
             }
         }
     }
 
-  m_availableSlots = newDTI;
+  m_availableSlots = newDti;
 
   for (const auto & slot : m_availableSlots)
     {
