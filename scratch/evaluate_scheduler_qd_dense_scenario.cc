@@ -69,6 +69,8 @@
  *
  * Simulation Output:
  * The simulation generates the following traces:
+ * 1. APP layer metrics for each Traffic Stream.
+ * 2. PCAP traces for each station (if enabled).
  *
  */
 
@@ -84,7 +86,7 @@ Ptr<QdPropagationLossModel> lossModelRaytracing;
 
 struct Parameters : public SimpleRefCount<Parameters>
 {
-  uint32_t srcNodeID;
+  uint32_t srcNodeId;
   Ptr<DmgWifiMac> wifiMac;
 };
 
@@ -113,15 +115,7 @@ uint32_t maxPackets = 0;                      /* Maximum Number of Packets */
 uint32_t msduAggregationSize = 7935;          /* The maximum aggregation size for A-MSDU [bytes]. */
 uint32_t mpduAggregationSize = 262143;        /* The maximum aggregation size for A-MPDU [bytes]. */
 double simulationTime = 10;                   /* Simulation time [s]. */
-bool csv = false;                             /* Enable CSV output. */
 uint8_t allocationId = 1;                     /* The allocation ID of the DMG Tspec element to create */
-
-/* NUmber of SP allocations */
-uint16_t numSPs = 6;
-
-/*** Beamforming CBAP ***/
-uint16_t biThreshold = 10;                    /* BI Threshold to trigger TxSS TXOP. */
-map<Mac48Address, uint16_t> biCounter;   /* Number of beacon intervals that have passed. */
 
 /**  Applications **/
 CommunicationPairList communicationPairList;  /* List of communicating devices. */
@@ -185,34 +179,20 @@ void
 CalculateThroughput (void)
 {
   double totalThr = 0;
-  Ptr<Node> node;
   double thr;
-  if (!csv)
-    {
-      string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - 0.1, 1) +
-                        " - " + to_string_with_precision<double> (Simulator::Now ().GetSeconds (), 1);
-      cout << left << setw (12) << duration;
 
-      for (CommunicationPairListI it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
-        {
-          node = it->second.srcApp->GetNode ();
-          thr = CalculateSingleStreamThroughput (it->second.packetSink, it->second.totalRx, it->second.throughput);
-          totalThr += thr;
-          cout << left << setw (12) << thr;
-        }
-      cout << left << setw (12) << totalThr << endl;
-    }
-  else
+  string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - 0.1, 1) +
+                    " - " + to_string_with_precision<double> (Simulator::Now ().GetSeconds (), 1);
+  cout << left << setw (12) << duration;
+
+  for (CommunicationPairListI it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
     {
-      cout << to_string_with_precision<double> (Simulator::Now ().GetSeconds (), 1);
-      for (CommunicationPairListI it = communicationPairList.begin (); it != communicationPairList.end (); it++)
-        {
-          thr = CalculateSingleStreamThroughput (it->second.packetSink, it->second.totalRx, it->second.throughput);
-          totalThr += thr;
-          cout << ", " << thr;
-        }
-      cout << ", " << totalThr << endl;
+      thr = CalculateSingleStreamThroughput (it->second.packetSink, it->second.totalRx, it->second.throughput);
+      totalThr += thr;
+      cout << left << setw (12) << thr;
     }
+  cout << left << setw (12) << totalThr << endl;
+
   Simulator::Schedule (MilliSeconds (100), &CalculateThroughput);
 }
 
@@ -249,19 +229,19 @@ ADDTSResponseReceived (Ptr<Node> node, Mac48Address address, StatusCode status, 
 }
 
 uint32_t
-ComputeServicePeriodDuration (const uint64_t &dataBitRate, const uint64_t &phyModeDataRate)
+ComputeServicePeriodDuration (const uint64_t &appDataRate, const uint64_t &phyModeDataRate)
 {
-  NS_LOG_FUNCTION (dataBitRate << phyModeDataRate);
+  NS_LOG_FUNCTION (appDataRate << phyModeDataRate);
   double numberBIs = Seconds (1).GetMicroSeconds () / double (apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
-  uint32_t spDuration = ceil (dataBitRate / double (phyModeDataRate) / numberBIs * 1e6);
+  uint32_t spDuration = ceil (appDataRate / double (phyModeDataRate) / numberBIs * 1e6);
   return spDuration + 1500;
 }
 
 DmgTspecElement
 GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation)
 {
-  /* Simple assert for the moment */
   NS_LOG_FUNCTION (+allocId << isPseudoStatic << minAllocation << maxAllocation);
+  /* Simple assert for the moment */
   NS_ASSERT_MSG (minAllocation <= maxAllocation, "Minimum Allocation cannot be greater than Maximum Allocation");
   NS_ASSERT_MSG (maxAllocation <= MAX_SP_BLOCK_DURATION, "Maximum Allocation exceeds Max SP block duration");
   DmgTspecElement element;
@@ -282,11 +262,9 @@ void
 StationAssociated (Ptr<Node> node, Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
 {
   NS_LOG_FUNCTION (node << staWifiMac << address << aid);
-  if (!csv)
-    {
-      NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << address
-                    << ", AID=" << aid);
-    }
+  NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << address
+                << ", AID=" << aid);
+
   /* Send ADDTS request to the PCP/AP */
   CommunicationPairListI it = communicationPairList.find (node);
   if (it != communicationPairList.end ())
@@ -303,10 +281,9 @@ StationAssociated (Ptr<Node> node, Ptr<DmgStaWifiMac> staWifiMac, Mac48Address a
 void
 StationDeAssociated (Ptr<Node> node, Ptr<DmgWifiMac> staWifiMac, Mac48Address address)
 {
-  if (!csv)
-    {
-      NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " deassociated from DMG PCP/AP=" << address);
-    }
+  NS_LOG_FUNCTION (node << staWifiMac << address);
+  NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " deassociated from DMG PCP/AP=" << address);
+
   CommunicationPairListI it = communicationPairList.find (node);
   if (it != communicationPairList.end ())
     {
@@ -375,21 +352,9 @@ SLSCompleted (Ptr<Parameters> parameters,
 }
 
 void
-DataTransmissionIntervalStarted (Ptr<DmgStaWifiMac> wifiMac, Mac48Address address, Time)
+DataTransmissionIntervalStarted (Mac48Address address, Time dtiDuration)
 {
-  /* Avoiding beamforming training in a CBAP for the moment */
-  /*if (wifiMac->IsAssociated ())
-    {
-      uint16_t counter = biCounter[address];
-      counter++;
-      if (counter == biThreshold)
-        {
-          wifiMac->InitiateTxssCbap (wifiMac->GetBssid ());
-          counter = 0;
-        }
-      biCounter[address] = counter;
-    }
-    */
+  NS_LOG_DEBUG ("DTI started, duration=" << dtiDuration);
 }
 
 void
@@ -416,12 +381,12 @@ main (int argc, char *argv[])
 {
   uint32_t bufferSize = 131072;                   /* TCP Send/Receive Buffer Size [bytes]. */
   uint32_t queueSize = 1000;                      /* Wifi MAC Queue Size [packets]. */
-  string appDataRate = "300Mbps";                    /* Application data rate. */
+  string appDataRate = "300Mbps";                 /* Application data rate. */
   bool frameCapture = false;                      /* Use a frame capture model. */
   double frameCaptureMargin = 10;                 /* Frame capture margin [dB]. */
   bool verbose = false;                           /* Print Logging Information. */
   bool pcapTracing = false;                       /* Enable PCAP Tracing. */
-  uint16_t numSTAs = 8;                          /* The number of DMG STAs. */
+  uint16_t numSTAs = 8;                           /* The number of DMG STAs. */
   map<string, string> tcpVariants;                /* List of the TCP Variants */
   string qdChannelFolder = "DenseScenario";       /* The name of the folder containing the QD-Channel files. */
   string logComponentsStr = "";                   /* Components to be logged from tLogStart to tLogEnd separated by ':' */
@@ -463,7 +428,6 @@ main (int argc, char *argv[])
   // cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("scheduler", "The type of scheduler to use in the simulation", schedulerType);
   cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
-  // cmd.AddValue ("csv", "Enable CSV output instead of plain text. This mode will suppress all the messages related statistics and events.", csv);
   cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
   // cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
   // cmd.AddValue ("tLogEnd", "Log end [s]", tLogEnd);
@@ -703,11 +667,9 @@ main (int argc, char *argv[])
       staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeCallback (&ServicePeriodEnded));
 
       Ptr<Parameters> parameters = Create<Parameters> ();
-      parameters->srcNodeID = wifiNetDevice->GetNode ()->GetId ();
+      parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
       parameters->wifiMac = staWifiMac;
       staWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parameters));
-      staWifiMac->TraceConnectWithoutContext ("DTIStarted", MakeBoundCallback (&DataTransmissionIntervalStarted, staWifiMac));
-      biCounter[staWifiMac->GetAddress ()] = 0;
     }
 
   /* Connect DMG PCP/AP traces */
@@ -718,8 +680,9 @@ main (int argc, char *argv[])
   macRxDataOk.insert (make_pair (apWifiMac->GetAddress (), 0));
   remoteStationManager = wifiNetDevice->GetRemoteStationManager ();
   Ptr<Parameters> parameters = Create<Parameters> ();
-  parameters->srcNodeID = wifiNetDevice->GetNode ()->GetId ();
+  parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
   parameters->wifiMac = apWifiMac;
+  apWifiMac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DataTransmissionIntervalStarted));
   apWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parameters));
   remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, apWifiMac));
 
@@ -728,18 +691,15 @@ main (int argc, char *argv[])
   Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
 
   /* Print Output */
-  if (!csv)
+  cout << "Application Layer Throughput per Communicating Pair [Mbps]" << endl;
+  cout << left << setw (12) << "Time [s]";
+  string columnName;
+  for (CommunicationPairListCI it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
     {
-      cout << "Application Layer Throughput per Communicating Pair [Mbps]" << endl;
-      cout << left << setw (12) << "Time [s]";
-      string columnName;
-      for (CommunicationPairListCI it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
-        {
-          columnName = "SrcNodeId=" + to_string (it->second.srcApp->GetNode ()->GetId ());
-          cout << left << setw (12) << columnName;
-        }
-      cout << left << setw (12) << " Total" << endl;
+      columnName = "SrcNodeId=" + to_string (it->second.srcApp->GetNode ()->GetId ());
+      cout << left << setw (12) << columnName;
     }
+  cout << left << setw (12) << " Total" << endl;
 
   /* Schedule Throughput Calulcations */
   Simulator::Schedule (Seconds (0.1), &CalculateThroughput);
@@ -748,78 +708,65 @@ main (int argc, char *argv[])
   Simulator::Run ();
   Simulator::Destroy ();
 
-  if (!csv)
+  /* Print per flow statistics */
+  monitor->CheckForLostPackets ();
+  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
+  FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
+  for (map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
     {
-      /* Print per flow statistics */
-      monitor->CheckForLostPackets ();
-      Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
-      FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
-      for (map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
-        {
-          Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-          cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")" << endl;
-          cout << "  Tx Packets: " << i->second.txPackets << endl;
-          cout << "  Tx Bytes:   " << i->second.txBytes << endl;
-          cout << "  Rx Packets: " << i->second.rxPackets << endl;
-          cout << "  Rx Bytes:   " << i->second.rxBytes << endl;
-        }
-
-      /* Print Application Layer Results Summary */
-      cout << "\nApplication Layer Statistics:" << endl;
-      Ptr<OnOffApplication> onoff;
-      Ptr<BulkSendApplication> bulk;
-      uint16_t communicationLinks = 1;
-      double aggregateThr = 0;
-      double thr;
-      for (CommunicationPairListCI it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
-        {
-          cout << "Communication Link (" << communicationLinks << ") Statistics:" << endl;
-          if (applicationType == "onoff")
-            {
-              onoff = StaticCast<OnOffApplication> (it->second.srcApp);
-              cout << "  Tx Packets: " << onoff->GetTotalTxPackets () << endl;
-              cout << "  Tx Bytes:   " << onoff->GetTotalTxBytes () << endl;
-              *e2eResults->GetStream () << onoff->GetTotalTxPackets () << ","
-                                        << onoff->GetTotalTxBytes () << ",";
-            }
-          else
-            {
-              bulk = StaticCast<BulkSendApplication> (it->second.srcApp);
-              cout << "  Tx Packets: " << bulk->GetTotalTxPackets () << endl;
-              cout << "  Tx Bytes:   " << bulk->GetTotalTxBytes () << endl;
-              *e2eResults->GetStream () << bulk->GetTotalTxPackets () << ","
-                                        << bulk->GetTotalTxBytes () << ",";
-            }
-          Ptr<PacketSink> packetSink = StaticCast<PacketSink> (it->second.packetSink);
-          thr = packetSink->GetTotalRx () * 8.0 / ((simulationTime - it->second.startTime.GetSeconds ()) * 1e6);
-          aggregateThr += thr;
-          cout << "  Rx Packets: " << packetSink->GetTotalReceivedPackets () << endl;
-          cout << "  Rx Bytes:   " << packetSink->GetTotalRx () << endl;
-          cout << "  Throughput: " << thr << " Mbps" << endl;
-          cout << "  Avg Delay:  " << packetSink->GetAverageDelay ().GetSeconds () << " s" << endl;
-          cout << "  Avg Delay:  " << packetSink->GetAverageDelay ().GetMicroSeconds () << " us" << endl;
-          cout << "  Avg Jitter: " << packetSink->GetAverageJitter ().GetSeconds () << " s" << endl;
-          cout << "  Avg Jitter: " << packetSink->GetAverageJitter ().GetMicroSeconds () << " us" << endl;
-
-          *e2eResults->GetStream () << packetSink->GetTotalReceivedPackets () << "," << packetSink->GetTotalRx () << ","
-                                    << thr << "," << packetSink->GetAverageDelay ().GetSeconds () << ","
-                                    << packetSink->GetAverageJitter ().GetSeconds () << endl;
-
-          communicationLinks++;
-        }
-      cout << "\nAggregate Throughput: " << aggregateThr << endl;  
-
-      /* Print MAC layer Stats */
-      /* cout << "\nMAC Layer Statistics:" << endl;
-      for (PacketCountMap::const_iterator it = macTxDataOk.begin (); it != macTxDataOk.end (); ++it)
-        {
-          NS_LOG_UNCOND ("DMG Station: " << it->first);
-          NS_LOG_UNCOND ("Tx Packets: " << it->second);
-          NS_LOG_UNCOND ("Tx Failed : " << macTxDataFailed.at (it->first));
-          NS_LOG_UNCOND ("Rx Packets: " << macRxDataOk.at (it->first));
-        }
-      */
+      Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+      cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")" << endl;
+      cout << "  Tx Packets: " << i->second.txPackets << endl;
+      cout << "  Tx Bytes:   " << i->second.txBytes << endl;
+      cout << "  Rx Packets: " << i->second.rxPackets << endl;
+      cout << "  Rx Bytes:   " << i->second.rxBytes << endl;
     }
+
+  /* Print Application Layer Results Summary */
+  cout << "\nApplication Layer Statistics:" << endl;
+  Ptr<OnOffApplication> onoff;
+  Ptr<BulkSendApplication> bulk;
+  Ptr<PacketSink> packetSink;
+  uint16_t communicationLinks = 1;
+  double aggregateThr = 0;
+  double thr;
+  for (CommunicationPairListCI it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
+    {
+      cout << "Communication Link (" << communicationLinks << ") Statistics:" << endl;
+      if (applicationType == "onoff")
+        {
+          onoff = StaticCast<OnOffApplication> (it->second.srcApp);
+          cout << "  Tx Packets: " << onoff->GetTotalTxPackets () << endl;
+          cout << "  Tx Bytes:   " << onoff->GetTotalTxBytes () << endl;
+          *e2eResults->GetStream () << onoff->GetTotalTxPackets () << ","
+                                    << onoff->GetTotalTxBytes () << ",";
+        }
+      else
+        {
+          bulk = StaticCast<BulkSendApplication> (it->second.srcApp);
+          cout << "  Tx Packets: " << bulk->GetTotalTxPackets () << endl;
+          cout << "  Tx Bytes:   " << bulk->GetTotalTxBytes () << endl;
+          *e2eResults->GetStream () << bulk->GetTotalTxPackets () << ","
+                                    << bulk->GetTotalTxBytes () << ",";
+        }
+      packetSink = StaticCast<PacketSink> (it->second.packetSink);
+      thr = packetSink->GetTotalRx () * 8.0 / ((simulationTime - it->second.startTime.GetSeconds ()) * 1e6);
+      aggregateThr += thr;
+      cout << "  Rx Packets: " << packetSink->GetTotalReceivedPackets () << endl;
+      cout << "  Rx Bytes:   " << packetSink->GetTotalRx () << endl;
+      cout << "  Throughput: " << thr << " Mbps" << endl;
+      cout << "  Avg Delay:  " << packetSink->GetAverageDelay ().GetSeconds () << " s" << endl;
+      cout << "  Avg Delay:  " << packetSink->GetAverageDelay ().GetMicroSeconds () << " us" << endl;
+      cout << "  Avg Jitter: " << packetSink->GetAverageJitter ().GetSeconds () << " s" << endl;
+      cout << "  Avg Jitter: " << packetSink->GetAverageJitter ().GetMicroSeconds () << " us" << endl;
+
+      *e2eResults->GetStream () << packetSink->GetTotalReceivedPackets () << "," << packetSink->GetTotalRx () << ","
+                                << thr << "," << packetSink->GetAverageDelay ().GetSeconds () << ","
+                                << packetSink->GetAverageJitter ().GetSeconds () << endl;
+
+      communicationLinks++;
+    }
+  cout << "\nAggregate Throughput: " << aggregateThr << endl;  
 
   return 0;
 }
