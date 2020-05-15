@@ -146,12 +146,12 @@ PeriodicDmgWifiScheduler::GetAllocationDuration (uint32_t minAllocation, uint32_
 StatusCode
 PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this << +sourceAid);
 
   StatusCode status;
   uint32_t allocDuration;
 
-  if (m_availableSlots.begin () == m_availableSlots.end ())
+  if (m_availableSlots.empty ())
     {
       NS_LOG_DEBUG ("There are no free available slots in the DTI.");
       status.SetFailure ();
@@ -193,8 +193,10 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
       // distance between consecutive periodic SPs
       uint32_t spInterval = uint32_t (m_biDuration.GetMicroSeconds () / allocPeriod);
 
-      NS_LOG_DEBUG ("Allocation Period " << uint32_t (allocPeriod) << " AllocDuration " << allocDuration << " Multiple " << isMultiple);
-      NS_LOG_DEBUG ("Schedule one SP every " << spInterval);
+      NS_LOG_DEBUG ("Allocation Period " << allocPeriod 
+      << " AllocDuration " << allocDuration 
+      << " Multiple " << isMultiple
+      << " - Schedule one SP every " << spInterval);
 
       uint32_t startPeriodicAllocation = m_availableSlots[0].first;
       uint32_t startFirstAllocation = startPeriodicAllocation;
@@ -268,7 +270,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 uint8_t
 PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t spInterval)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this << allocDuration << spInterval);
 
   auto it = m_availableSlots.begin ();
   uint32_t startAlloc = it->first;
@@ -305,6 +307,12 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
 
       blocks++;
       startAlloc += spInterval;
+      
+      if (blocks == 255)
+        {
+          // Number of blocks described by an octet: only up to 255 blocks
+          break;
+        }
 
       // immediately check the next periodic allocation, with respect to the
       // current available slot that we are using
@@ -337,7 +345,7 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
 void
 PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t endAlloc, uint32_t difference)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this << startAlloc << endAlloc << difference);
 
   std::vector<std::pair<uint32_t, uint32_t> > newDti;
 
@@ -357,7 +365,7 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t en
 
           if (endAlloc < slot.first)
             {
-              // the following snippet ensure that the search is carried on until 
+              // the following snippet ensures that the search is carried on until 
               // we find the empty gap created by the allocation time reduction
               // and we add it to the list of available slots 
               if (search)
@@ -419,7 +427,7 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t en
 StatusCode
 PeriodicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const DmgTspecElement &dmgTspec, const DmgAllocationInfo &info)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this << +sourceAid);
 
   StatusCode status;
   uint32_t newDuration;
@@ -442,7 +450,8 @@ PeriodicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const Dmg
   for (allocation = m_addtsAllocationList.begin (); allocation != m_addtsAllocationList.end ();)
     {
       if ((allocation->GetAllocationID () == info.GetAllocationID ())
-          && (allocation->GetSourceAid () == sourceAid) && (allocation->GetDestinationAid () == info.GetDestinationAid ()))
+          && (allocation->GetSourceAid () == sourceAid) 
+          && (allocation->GetDestinationAid () == info.GetDestinationAid ()))
         {
           break;
         }
@@ -452,10 +461,7 @@ PeriodicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const Dmg
         }
     }
 
-  if (allocation == m_addtsAllocationList.end ())
-    {
-      NS_FATAL_ERROR ("Required allocation does not exist.");
-    }
+  NS_ABORT_MSG_IF (allocation == m_addtsAllocationList.end (), "Required allocation does not exist.");
 
   uint32_t currentDuration = allocation->GetAllocationBlockDuration ();
   NS_LOG_DEBUG ("current duration=" << currentDuration << ", new duration=" << newDuration);
