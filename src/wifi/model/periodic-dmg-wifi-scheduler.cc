@@ -239,7 +239,6 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 
               endAlloc = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
                                                         sourceAid, info.GetDestinationAid (), it->first, allocDuration);
-
               // The following function modifies m_availableSlots, on which this
               // loop is iterating. Commonly, it is a bad practice but, as we break 
               // the loop if we enter this condition, the damage is avoided.
@@ -252,9 +251,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
               status.SetFailure ();
             }
         }
-
     }
-
   return status;
 }
 
@@ -265,20 +262,22 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
 
   auto it = m_availableSlots.begin ();
   uint32_t startAlloc = it->first;
-  uint32_t slotDuration = 0;
+  uint32_t remainingSlotDuration = 0;
   uint8_t blocks = 0;
 
   while (it != m_availableSlots.end ())
     {
       if (startAlloc < it->first)
         {
-          // Periodicity has been broken, we stop the algorithm.
+          // The next periodic SP should be positioned before the beginning of the 
+          // next available slot: this translates in a broken periodicity, and the 
+          // algorithm stops.
           break;
         }
 
-      slotDuration = it->second - startAlloc;
+      remainingSlotDuration = it->second - startAlloc;
 
-      if (allocDuration + m_guardTime > slotDuration)
+      if (allocDuration + m_guardTime > remainingSlotDuration)
         {
           if (blocks == 0)
             {
@@ -305,27 +304,10 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
           break;
         }
 
-      // immediately check the next periodic allocation, with respect to the
-      // current available slot that we are using
-
-      if (startAlloc == it->second)
+      // if next allocation period exceeds the current available slot's boundaries
+      // proceed to the next one
+      if (startAlloc > it->second)
         {
-          // if the next SP should start at the end of the current slot, 
-          // it cannot be added and the algorithm stops
-          break;
-        }
-      else if (startAlloc < it->second)
-        {
-          // if the the next SP should start in the current slot, immediately check if there is
-          // enough free time to place it, otherwise the algorithm stops
-          if (startAlloc + allocDuration + m_guardTime > it->second)
-            {
-              break;
-            }
-        }
-      else
-        {
-          // pass to the next slot only if startAlloc goes beyond the end of the current one
           ++it;
         }
     }
@@ -360,7 +342,7 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t en
     }
   
   // update m_remainingDtiTime for consistency 
-  m_remainingDtiTime -= (allocDuration + m_guardTime);
+  m_remainingDtiTime -= (endAlloc - startAlloc);
   
   m_availableSlots = newDti;
 
