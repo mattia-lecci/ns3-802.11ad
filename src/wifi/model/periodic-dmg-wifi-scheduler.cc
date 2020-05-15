@@ -81,7 +81,7 @@ PeriodicDmgWifiScheduler::UpdateStartAndRemainingTime (void)
       m_remainingDtiTime = 0;
       for (const auto & slot: m_availableSlots)
         {
-          m_remainingDtiTime += (slot.second - slot.first + 1);
+          m_remainingDtiTime += (slot.second - slot.first);
         }
     }
 }
@@ -111,27 +111,22 @@ PeriodicDmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, 
   // clear m_availableSlots and refill it based on the updated m_addtsAllocationList
   m_availableSlots.clear ();
   m_availableSlots.push_back (std::make_pair (0, m_dtiDuration.GetMicroSeconds ()));
+  // reset m_remainingDtiTime as well
+  m_remainingDtiTime = m_dtiDuration.GetMicroSeconds ();
 
   for (const auto & allocation: addtsListCopy)
     {
       startAlloc = allocation.GetAllocationStart ();
       endAlloc = startAlloc + allocation.GetAllocationBlockDuration () + m_guardTime;
-      if (allocation.GetNumberOfBlocks () > 1)
-        {
-          // if the number of blocks allocated is > 1, the allocation is periodic and must be dealt with accordingly
-          uint8_t blocks = allocation.GetNumberOfBlocks ();
-          while (blocks > 0)
-            {
-              UpdateAvailableSlots (startAlloc, endAlloc);
-              startAlloc += allocation.GetAllocationBlockPeriod ();
-              endAlloc += allocation.GetAllocationBlockPeriod ();
-              // AllocationBlockPeriod represents the time between the start of two consecutive time blocks belonging to the same allocation
-              blocks -= 1;
-            }
-        }
-      else
+      // if the number of blocks allocated is > 1, the allocation is periodic 
+      uint8_t blocks = allocation.GetNumberOfBlocks ();
+      while (blocks > 0)
         {
           UpdateAvailableSlots (startAlloc, endAlloc);
+          startAlloc += allocation.GetAllocationBlockPeriod ();
+          endAlloc += allocation.GetAllocationBlockPeriod ();
+          // AllocationBlockPeriod represents the time between the start of two consecutive time blocks belonging to the same allocation
+          blocks -= 1;
         }
     }
 }
@@ -216,9 +211,6 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 
               startPeriodicAllocation += spInterval;
               counter++;
-
-              // update remaining DTI time for consistency
-              m_remainingDtiTime -= (allocDuration + m_guardTime);
             }
 
           AddAllocationPeriod (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
@@ -247,7 +239,6 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 
               endAlloc = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
                                                         sourceAid, info.GetDestinationAid (), it->first, allocDuration);
-              m_remainingDtiTime -= (allocDuration + m_guardTime);
 
               // The following function modifies m_availableSlots, on which this
               // loop is iterating. Commonly, it is a bad practice but, as we break 
@@ -367,7 +358,10 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t en
           newDti.push_back (std::make_pair (endAlloc, slot.second));
         }
     }
-
+  
+  // update m_remainingDtiTime for consistency 
+  m_remainingDtiTime -= (allocDuration + m_guardTime);
+  
   m_availableSlots = newDti;
 
   for (const auto & slot : m_availableSlots)
@@ -424,7 +418,8 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t en
             }
         }
     }
-
+  
+  m_remainingDtiTime += difference;
   m_availableSlots = newDti;
 
   for (const auto & slot : m_availableSlots)
@@ -492,30 +487,21 @@ PeriodicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const Dmg
 
       uint32_t startAlloc = allocation->GetAllocationStart ();
       uint32_t endAlloc = allocation->GetAllocationStart () + allocation->GetAllocationBlockDuration () + m_guardTime;
-
       uint16_t allocPeriod = allocation->GetAllocationBlockPeriod ();
-      if (allocPeriod != 0)
+  
+      // If the number of blocks is > 0 we have to update the available slots in the DTI accordingly.
+      // TODO: update also the number of blocks if the new duration allows to 
+      // add further blocks
+      uint8_t blocks = allocation->GetNumberOfBlocks ();
+      while (blocks > 0)
         {
-          // If the allocation to modify is periodic, we retrieve the number of blocks
-          // and update the available slots in the DTI accordingly.
-          // TODO: update also the number of blocks if the new duration allows to 
-          // add further blocks
-          uint8_t blocks = allocation->GetNumberOfBlocks ();
-          for (uint8_t i = 0; i < blocks; i++)
-            {
-              NS_LOG_DEBUG ("Modify SP Block [" << +i << "] at " << startAlloc << " till " << endAlloc);
-              UpdateAvailableSlots (startAlloc, endAlloc, timeDifference);
-              startAlloc += allocPeriod;
-              endAlloc += allocPeriod;
-            }
-        }
-      else
-        {
+          NS_LOG_DEBUG ("Modify SP Block at " << startAlloc << " till " << endAlloc);
           UpdateAvailableSlots (startAlloc, endAlloc, timeDifference);
+          startAlloc += allocPeriod;
+          endAlloc += allocPeriod;
+          blocks -= 1;
         }
-
     }
-
   return status;
 }
 
