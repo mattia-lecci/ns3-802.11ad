@@ -106,14 +106,14 @@ private:
    * Update the list of available time slots in the DTI based on some changes in previously allocated slots. 
    * The current version supports only the reduction of pre-existing allocations.
    * \param startAlloc start time of the allocation that has to be excluded from the available time.
-   * \param endAlloc end time of the allocation that has to be excluded from the available time.
+   * \param newEndAlloc new end time of the allocation that has been modified.
    * \param difference it represents how much an allocation has been reduced.
    */
-  void UpdateAvailableSlots (uint32_t startAlloc, uint32_t endAlloc, uint32_t difference);
+  void UpdateAvailableSlots (uint32_t startAlloc, uint32_t newEndAlloc, uint32_t difference);
 
   // std::pair<uint32_t, uint32_t> is a struct used to store the start and 
   // end time (first and second member of the pair, respectively) of the available time chunks
-  std::vector<std::pair<uint32_t, uint32_t> > m_availableSlots;       //!< List of available time chunks in the DTI.
+  std::list<std::pair<uint32_t, uint32_t> > m_availableSlots;       //!< List of available time chunks in the DTI.
 
 };
 
