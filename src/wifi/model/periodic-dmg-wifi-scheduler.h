@@ -88,11 +88,13 @@ protected:
 private:
   /**
    * Verify how many blocks (in our case, one SP corresponds to one block) we can guarantee to a periodic request.
+   * In case of non-periodic request (spInterval = 0 and maxBlocksNumber = 1), check if the request fits in the DTI.
    * \param allocDuration the duration associated to the SPs.
-   * \param spInterval time between two consecutive periodic SPs.
-   * \return number of blocks that can be allocated in the DTI
+   * \param spInterval time between two consecutive periodic SPs (= 0 if single non-periodic request).
+   * \param maxBlocksNumber maximum numbero of blocks allowed (= MAX_NUM_BLOCKS if periodic, = 1 if non-periodic)
+   * \return list corresponding to the starting time of each block to be allocated
    */
-  uint8_t GetAvailableBlocks (uint32_t allocDuration, uint32_t spInterval);
+  std::vector<uint32_t> GetAvailableBlocks (uint32_t allocDuration, uint32_t spInterval, uint8_t maxBlocksNumber);
   /**
    * Update the list of available time slots in the DTI. 
    * The current version supports only the reduction of pre-existing allocations.

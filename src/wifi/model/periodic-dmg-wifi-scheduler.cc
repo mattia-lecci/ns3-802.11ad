@@ -173,101 +173,78 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
       NS_FATAL_ERROR ("Allocation Format not supported");
     }
 
-  // Implementation of an admission policy for newly received requests. 
   uint16_t allocPeriod = dmgTspec.GetAllocationPeriod ();
+  std::vector<uint32_t> blocks;
+  uint32_t spInterval = 0;
+  
   if (allocPeriod != 0)
     {
-      // Proceed with the allocation of periodic SPs 
-      bool isMultiple = dmgTspec.IsAllocationPeriodMultipleBI ();
-      if (isMultiple)
-        {
-          NS_FATAL_ERROR ("Multiple BI periodicity is not supported yet.");
-        }
-
+      NS_ABORT_MSG_IF (dmgTspec.IsAllocationPeriodMultipleBI (), "Multiple BI periodicity is not supported.");
       // spInterval is going to be passed to AddAllocationPeriod to specify the 
       // distance between consecutive periodic SPs
-      uint32_t spInterval = uint32_t (m_biDuration.GetMicroSeconds () / allocPeriod);
+      spInterval = uint32_t (m_biDuration.GetMicroSeconds () / allocPeriod);
 
       NS_LOG_DEBUG ("Allocation Period " << allocPeriod 
       << " AllocDuration " << allocDuration 
-      << " Multiple " << isMultiple
       << " - Schedule one SP every " << spInterval);
 
-      uint32_t startPeriodicAllocation = m_availableSlots[0].first;
-      uint32_t startFirstAllocation = startPeriodicAllocation;
-      uint32_t endAlloc;
-      uint8_t counter = 0;
-
-      uint8_t blocks = GetAvailableBlocks (allocDuration, spInterval);
-
-      if (blocks > 1)
+      blocks = GetAvailableBlocks (allocDuration, spInterval, MAX_NUM_BLOCKS);
+      
+      if (blocks.size() <= 1)
         {
-          while (counter < blocks)
-            {
-              NS_LOG_DEBUG ("Reserve from " << startPeriodicAllocation << " for " << allocDuration);
-
-              endAlloc = startPeriodicAllocation + allocDuration + m_guardTime;
-              UpdateAvailableSlots (startPeriodicAllocation, endAlloc);
-
-              startPeriodicAllocation += spInterval;
-              counter++;
-            }
-
-          AddAllocationPeriod (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
-                               sourceAid, info.GetDestinationAid (),
-                               startFirstAllocation, allocDuration, spInterval, blocks);
-          status.SetSuccess ();
-        }
-      else
-        {
-          // if we cannot guarantee AT LEAST TWO periodic SPs, the request is rejected.
+          // if we cannot guarantee AT LEAST TWO periodic SPs, the request is rejected
           status.SetFailure ();
+          return status;
         }
-
     }
-  else
+    else
     {
-
-      uint32_t endAlloc;
-      uint32_t slotDur;
-      for (auto it = m_availableSlots.begin (); it != m_availableSlots.end (); ++it)
+      blocks = GetAvailableBlocks (allocDuration, 0, 1);
+      if (blocks.size() == 0)
         {
-          slotDur = it->second - it->first;
-
-          if (slotDur > allocDuration)
-            {
-
-              endAlloc = AllocateSingleContiguousBlock (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
-                                                        sourceAid, info.GetDestinationAid (), it->first, allocDuration);
-              // The following function modifies m_availableSlots, on which this
-              // loop is iterating. Commonly, it is a bad practice but, as we break 
-              // the loop if we enter this condition, the damage is avoided.
-              UpdateAvailableSlots (it->first, endAlloc);
-              status.SetSuccess ();
-              break;
-            }
-          else
-            {
-              status.SetFailure ();
-            }
+          // if we cannot guarantee the SP allocation, the request is rejected
+          status.SetFailure ();
+          return status;
         }
     }
+    
+  uint32_t startAlloc = blocks[0];
+  uint32_t endAlloc;
+  uint8_t counter = 0;
+  
+  while (counter < blocks.size())
+    {
+      NS_LOG_DEBUG ("Reserve from " << startAlloc << " for " << allocDuration);
+
+      endAlloc = startAlloc + allocDuration + m_guardTime;
+      UpdateAvailableSlots (startAlloc, endAlloc);
+
+      startAlloc += spInterval;
+      counter++;
+    }
+
+  AddAllocationPeriod (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
+                       sourceAid, info.GetDestinationAid (),
+                       blocks[0], allocDuration, spInterval, blocks.size());
+  
+  status.SetSuccess ();
+  
   return status;
 }
 
-uint8_t
-PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t spInterval)
+std::vector<uint32_t>
+PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t spInterval, uint8_t maxBlocksNumber)
 {
   NS_LOG_FUNCTION (this << allocDuration << spInterval);
 
   auto it = m_availableSlots.begin ();
-  uint32_t startAlloc = it->first;
+  uint32_t startNextAlloc = it->first;
   uint32_t remainingSlotDuration = 0;
-  uint8_t blocks = 0;
+  std::vector<uint32_t> blocks;
 
   while (it != m_availableSlots.end ())
     {
-      if (startAlloc < it->first)
+      if (startNextAlloc < it->first)
         {
           // The next periodic SP should be positioned before the beginning of the 
           // next available slot: this translates in a broken periodicity, and the 
@@ -275,16 +252,16 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
           break;
         }
 
-      remainingSlotDuration = it->second - startAlloc;
+      remainingSlotDuration = it->second - startNextAlloc;
 
       if (allocDuration + m_guardTime > remainingSlotDuration)
         {
-          if (blocks == 0)
+          if (blocks.size() == 0)
             {
               // go on until eventually find the first available slot that fits this SP
               // note that this also cover the condition where no slot satisfies the requirement
               ++it;
-              startAlloc = it->first;
+              startNextAlloc = it->first;
               continue;
             }
           else
@@ -295,10 +272,10 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
             }
         }
 
-      blocks++;
-      startAlloc += spInterval;
+      blocks.push_back(startNextAlloc);
+      startNextAlloc += spInterval;
       
-      if (blocks == 255)
+      if (blocks.size() == maxBlocksNumber)
         {
           // Number of blocks described by an octet: only up to 255 blocks
           break;
@@ -306,7 +283,7 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
 
       // if next allocation period exceeds the current available slot's boundaries
       // proceed to the next one
-      if (startAlloc > it->second)
+      if (startNextAlloc > it->second)
         {
           ++it;
         }
