@@ -301,16 +301,16 @@ void OnOffApplication::SendPacket ()
 
   NS_ASSERT (m_sendEvent.IsExpired ());
 
-  static uint32_t m_seq = 0;
-  SeqTsHeader header;
-  header.SetSeq (m_seq++);
-  NS_ABORT_IF (m_pktSize < header.GetSerializedSize ());
-  Ptr<Packet> packet = Create<Packet> (m_pktSize - header.GetSerializedSize ());
-  packet->AddHeader (header);
-  NS_ABORT_IF (packet->GetSize () != m_pktSize);
-  NS_LOG_UNCOND ("Tx seq=" << header.GetSeq () << ", at time=" << header.GetTs ());
+//  static uint32_t m_seq = 0;
+//  SeqTsHeader header;
+//  header.SetSeq (m_seq++);
+//  NS_ABORT_IF (m_pktSize < header.GetSerializedSize ());
+//  Ptr<Packet> packet = Create<Packet> (m_pktSize - header.GetSerializedSize ());
+//  packet->AddHeader (header);
+//  NS_ABORT_IF (packet->GetSize () != m_pktSize);
+//  NS_LOG_UNCOND ("TRX: " << header.GetSeq () << " " << header.GetTs ().GetSeconds ());
 
-// Ptr<Packet> packet = Create<Packet> (m_pktSize);
+  Ptr<Packet> packet = Create<Packet> (m_pktSize);
   m_txTrace (packet);
   m_socket->Send (packet);
   m_totBytes += m_pktSize;
