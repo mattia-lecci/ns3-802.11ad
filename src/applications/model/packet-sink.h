@@ -144,9 +144,7 @@ private:
 
   /// Traced Callback: received packets, source address.
   TracedCallback<Ptr<const Packet>, const Address &> m_rxTrace;
-  Time m_delayAccumulator;       //!< Accumulate the delay of the currently received packet
-  Time m_jitterAccumulator;      //!< Accumulate the jitter if the currently received packet
-  Time m_currentDelay;           //!< Current delay value in order to measure jitter
+  Time accummulator;
 };
 
 } // namespace ns3

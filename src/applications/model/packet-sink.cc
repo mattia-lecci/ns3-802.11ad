@@ -73,6 +73,9 @@ PacketSink::PacketSink ()
     m_jitterAccumulator (Seconds (0))   
 {
   NS_LOG_FUNCTION (this);
+  m_socket = 0;
+  m_totalRx = 0;
+  m_totalPackets = 0;
 }
 
 PacketSink::~PacketSink ()
@@ -208,33 +211,20 @@ PacketSink::HandleRead (Ptr<Socket> socket)
                        << " total Rx " << m_totalRx << " bytes");
         }
 
-      /* If we have a SeqTs header we don't need to check for a Timestamp tag  */
-      SeqTsHeader header;
-      if (packet->PeekHeader (header) > 0)
-        {
-          NS_LOG_DEBUG ("Rx seq=" << header.GetSeq () << ", Tx at time=" << header.GetTs ().GetSeconds ());
-          Time delay = Simulator::Now () - header.GetTs ();
-          /* Accumulate Delay value */
-          m_delayAccumulator += delay;
-          if (m_currentDelay != 0)
-            {
-              /* Accumulate Jitter value */
-              m_jitterAccumulator += Seconds (std::abs (m_currentDelay.GetSeconds () - delay.GetSeconds ()));
-            }
-          m_currentDelay = delay;
-        }
-      else
-        {
-          /* Otherwise, look for the presence of a Timestamp tag */
-          TimestampTag timestamp;
-          if (packet->FindFirstMatchingByteTag (timestamp))
-            {
-              Time tx = timestamp.GetTimestamp ();
-              m_delayAccumulator += Simulator::Now () - tx;
-            }
-        }
+//      SeqTsHeader header;
+//      packet->RemoveHeader (header);
+//      NS_LOG_UNCOND ("RCV: " << header.GetSeq () << " " << header.GetTs ().GetSeconds ());
 
       m_rxTrace (packet, from);
+
+      TimestampTag timestamp;
+      // Should never not be found since the sender is adding it, but
+      // you never know.
+      if (packet->FindFirstMatchingByteTag (timestamp))
+        {
+          Time tx = timestamp.GetTimestamp ();
+          accummulator += Simulator::Now () - tx;
+        }
       m_totalPackets++;
     }
 }
@@ -244,7 +234,7 @@ PacketSink::GetAverageDelay (void) const
 {
   if (m_totalPackets != 0)
     {
-      return m_delayAccumulator/m_totalPackets;
+      return accummulator/m_totalPackets;
     }
   else
     {
