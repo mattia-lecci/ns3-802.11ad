@@ -30,6 +30,7 @@
 #include "ns3/trace-source-accessor.h"
 #include "ns3/tcp-socket-factory.h"
 #include "bulk-send-application.h"
+#include "timestamp-tag.h"
 
 namespace ns3 {
 
@@ -194,7 +195,10 @@ void BulkSendApplication::SendData (void)
         }
 
       NS_LOG_LOGIC ("sending packet at " << Simulator::Now ());
+      TimestampTag timestamp;
+      timestamp.SetTimestamp (Simulator::Now ());
       Ptr<Packet> packet = Create<Packet> (toSend);
+      packet->AddByteTag (timestamp);
       int actual = m_socket->Send (packet);
       if (actual > 0)
         {
