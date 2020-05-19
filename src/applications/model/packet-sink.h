@@ -82,17 +82,11 @@ public:
    */
   uint64_t GetTotalRx () const;
   /**
-   * \return the total number of received packets
+   * \return the total number of received
    */
   uint64_t GetTotalReceivedPackets (void) const;
-  /**
-   * \return the average delay value 
-   */
+
   Time GetAverageDelay (void) const;
-  /**
-   * \return the average jitter value 
-   */
-  Time GetAverageJitter (void) const;
   /**
    * \return pointer to listening socket
    */
