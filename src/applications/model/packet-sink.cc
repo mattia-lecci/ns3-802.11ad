@@ -66,11 +66,6 @@ PacketSink::GetTypeId (void)
 }
 
 PacketSink::PacketSink ()
-  : m_socket (0),
-    m_totalRx (0),
-    m_totalPackets (0),
-    m_delayAccumulator (Seconds (0)),
-    m_jitterAccumulator (Seconds (0))   
 {
   NS_LOG_FUNCTION (this);
   m_socket = 0;
@@ -78,13 +73,12 @@ PacketSink::PacketSink ()
   m_totalPackets = 0;
 }
 
-PacketSink::~PacketSink ()
+PacketSink::~PacketSink()
 {
   NS_LOG_FUNCTION (this);
 }
 
-uint64_t 
-PacketSink::GetTotalRx () const
+uint64_t PacketSink::GetTotalRx () const
 {
   NS_LOG_FUNCTION (this);
   return m_totalRx;
@@ -104,7 +98,7 @@ PacketSink::GetListeningSocket (void) const
   return m_socket;
 }
 
-std::list<Ptr<Socket>>
+std::list<Ptr<Socket> >
 PacketSink::GetAcceptedSockets (void) const
 {
   NS_LOG_FUNCTION (this);
@@ -123,8 +117,7 @@ void PacketSink::DoDispose (void)
 
 
 // Application Methods
-void 
-PacketSink::StartApplication ()    // Called at time specified by Start
+void PacketSink::StartApplication ()    // Called at time specified by Start
 {
   NS_LOG_FUNCTION (this);
   // Create the socket if not already
@@ -161,8 +154,7 @@ PacketSink::StartApplication ()    // Called at time specified by Start
     MakeCallback (&PacketSink::HandlePeerError, this));
 }
 
-void
-PacketSink::StopApplication ()     // Called at time specified by Stop
+void PacketSink::StopApplication ()     // Called at time specified by Stop
 {
   NS_LOG_FUNCTION (this);
   while(!m_socketList.empty ()) //these are accepted sockets, close them
@@ -178,8 +170,7 @@ PacketSink::StopApplication ()     // Called at time specified by Stop
     }
 }
 
-void 
-PacketSink::HandleRead (Ptr<Socket> socket)
+void PacketSink::HandleRead (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);
   Ptr<Packet> packet;
@@ -242,36 +233,18 @@ PacketSink::GetAverageDelay (void) const
     }
 }
 
-Time
-PacketSink::GetAverageJitter (void) const
-{
-  if (m_totalPackets != 0)
-    {
-      /* The number of jitter measurements collected 
-         is always the total number of packets - 1 */
-      return m_jitterAccumulator/(m_totalPackets-1); 
-    }
-  else
-    {
-      return Seconds (0);
-    }  
-}
-
-void 
-PacketSink::HandlePeerClose (Ptr<Socket> socket)
+void PacketSink::HandlePeerClose (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);
 }
  
-void 
-PacketSink::HandlePeerError (Ptr<Socket> socket)
+void PacketSink::HandlePeerError (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);
 }
  
 
-void 
-PacketSink::HandleAccept (Ptr<Socket> s, const Address& from)
+void PacketSink::HandleAccept (Ptr<Socket> s, const Address& from)
 {
   NS_LOG_FUNCTION (this << s << from);
   s->SetRecvCallback (MakeCallback (&PacketSink::HandleRead, this));
