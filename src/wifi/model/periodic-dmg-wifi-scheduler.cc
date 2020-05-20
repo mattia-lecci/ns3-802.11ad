@@ -208,7 +208,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
     }
 
   uint32_t endAlloc;
-  for (uint8_t i = 0; i < blocks.size (); ++i)
+  for (uint8_t i = 0; i < blocks.size(); ++i)
     {
       NS_LOG_DEBUG ("Reserve from " << blocks[i] << " for " << allocDuration);
       endAlloc = blocks[i] + allocDuration + m_guardTime;
@@ -305,15 +305,12 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t en
       if (startSlot == startAlloc)
         {
           it->first = endAlloc;
-          // m_availableSlots.insert (it, std::make_pair (endAlloc, endSlot));
-          // it = m_availableSlots.erase (it);
           break;
         }
       else if (startSlot < startAlloc && endSlot > endAlloc)
         {
           it->first = endAlloc;
           m_availableSlots.insert (it, std::make_pair (startSlot, startAlloc));
-          // m_availableSlots.insert (it, std::make_pair (endAlloc, endSlot));
           break;
         }
     }
@@ -333,7 +330,6 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t ne
   NS_LOG_FUNCTION (this << startAlloc << newEndAlloc << difference);
 
   uint32_t startSlot;
-  // uint32_t endSlot;
 
   // something has changed in the allocation list, need to change the list of 
   // available slots accordingly
@@ -341,7 +337,6 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t ne
   for (auto it = m_availableSlots.begin (); it != m_availableSlots.end (); ++it)
     {
       startSlot = it->first;
-      // endSlot = it->second;
 
       if (startSlot < startAlloc)
         {
@@ -359,8 +354,6 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t ne
                 {
                   // two adjacent available slots are merged 
                   it->first = newEndAlloc;
-                  // m_availableSlots.insert (it, std::make_pair (newEndAlloc, endSlot));
-                  // it = m_availableSlots.erase (it);
                   keepSearching = false;
                   break;
                 }
