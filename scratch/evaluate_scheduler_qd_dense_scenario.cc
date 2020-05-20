@@ -15,7 +15,6 @@
 #include "ns3/network-module.h"
 #include "ns3/spectrum-module.h"
 #include "ns3/wifi-module.h"
-#include "ns3/system-path.h"
 #include "common-functions.h"
 #include <iomanip>
 #include <sstream>
@@ -109,7 +108,7 @@ uint32_t msduAggregationSize = 7935;               /* The maximum aggregation si
 uint32_t mpduAggregationSize = 262143;             /* The maximum aggregation size for A-MPDU [bytes]. */
 double simulationTime = 10;                        /* Simulation time [s]. */
 uint8_t allocationId = 1;                          /* The allocation ID of the DMG Tspec element to create */
-uint16_t thrLogPeriodicity = 100;                  /* The log periodicity for the throughput of every STA [ms] */
+uint16_t thrLogPeriodicity = 100;                  /* The log periodicity for the throughput of each STA [ms] */
 
 /** Applications **/
 CommunicationPairList communicationPairList;  /* List of communicating devices. */
@@ -205,17 +204,17 @@ CalculateThroughput (void)
 {
   double totalThr = 0;
   double thr;
-  std::string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - 0.1, 1) +
-                         " - " + to_string_with_precision<double> (Simulator::Now ().GetSeconds (), 1);
+  std::string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - (double (thrLogPeriodicity) / 1e3), 2) +
+                         " - " + to_string_with_precision<double> (Simulator::Now ().GetSeconds (), 2) + ", ";
   std::string thrString;
 
   for (auto it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
     {
       thr = CalculateSingleStreamThroughput (it->second.packetSink, it->second.totalRx);
       totalThr += thr;
-      thrString += to_string_with_precision<double> (thr) + " ";
+      thrString += to_string_with_precision<double> (thr, 3) + ", ";
     }
-  NS_LOG_UNCOND (duration << " " << thrString << " " << totalThr);
+  NS_LOG_UNCOND (duration << thrString << totalThr);
 
   Simulator::Schedule (MilliSeconds (thrLogPeriodicity), &CalculateThroughput);
 }
@@ -410,7 +409,7 @@ main (int argc, char *argv[])
   double frameCaptureMargin = 10;                 /* Frame capture margin [dB]. */
   bool verbose = false;                           /* Print Logging Information. */
   bool pcapTracing = false;                       /* Enable PCAP Tracing. */
-  uint16_t numSTAs = 10;                          /* The number of DMG STAs. */
+  uint16_t numStas = 10;                          /* The number of DMG STAs. */
   std::map<std::string, std::string> tcpVariants; /* List of the TCP Variants */
   std::string qdChannelFolder = "DenseScenario";  /* The name of the folder containing the QD-Channel files. */
   std::string logComponentsStr = "";              /* Components to be logged from tLogStart to tLogEnd separated by ':' */
@@ -447,7 +446,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("verbose", "turn on all WifiNetDevice log components", verbose);
   cmd.AddValue ("simulationTime", "Simulation time [s]", simulationTime);
   cmd.AddValue ("qdChannelFolder", "The name of the folder containing the QD-Channel files", qdChannelFolder);
-  cmd.AddValue ("numSTAs", "The number of DMG STA", numSTAs);
+  cmd.AddValue ("numSTAs", "The number of DMG STA", numStas);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("scheduler", "The type of scheduler to use in the simulation", schedulerType);
   cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
@@ -465,8 +464,8 @@ main (int argc, char *argv[])
   /* Enable Log of specific components from tLogStart to tLogEnd */  
   std::vector<std::string> logComponents = SplitString (logComponentsStr, ':');
   EnableMyTraces (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
-  LogComponentEnable ("EvaluateScheduler", LOG_LEVEL_ALL);
 
+  /* Compute system path in order to import correctly DmgFiles */
   std::string systemPath = SystemPath::FindSelfDirectory ();
   std::vector<std::string> pathComponents = SplitString (systemPath, '/');
   std::string inputPath = GetInputPath (pathComponents);
@@ -528,9 +527,9 @@ main (int argc, char *argv[])
   /* Create 1 DMG PCP/AP */
   NodeContainer apWifiNode;
   apWifiNode.Create (1);
-  /* Create numSTAs DMG STAs */
+  /* Create numStas DMG STAs */
   NodeContainer staWifiNodes;
-  staWifiNodes.Create (numSTAs);
+  staWifiNodes.Create (numStas);
 
   /**** WifiHelper is a meta-helper: it helps to create helpers ****/
   DmgWifiHelper wifiHelper;
@@ -697,15 +696,15 @@ main (int argc, char *argv[])
   Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
 
   /* Print Output */
-  std::cout << "Application Layer Throughput per Communicating Pair [Mbps]" << std::endl;
-  std::cout << std::left << std::setw (12) << "Time [s]";
+  NS_LOG_UNCOND ("Application Layer Throughput per Communicating Pair [Mbps]");
+  std::string rowOutput = "Time [s],";
   std::string columnName;
   for (auto it = communicationPairList.cbegin (); it != communicationPairList.cend (); ++it)
     {
-      columnName = "SrcNodeId=" + std::to_string (it->second.srcApp->GetNode ()->GetId ());
-      std::cout << std::left << std::setw (12) << columnName;
+      columnName = " SrcNodeId=" + std::to_string (it->second.srcApp->GetNode ()->GetId ()) + ",";
+      rowOutput += columnName;
     }
-  std::cout << std::left << std::setw (12) << " Total" << std::endl;
+  NS_LOG_UNCOND (rowOutput + " Total");
 
   /* Schedule Throughput Calulcations */
   Simulator::Schedule (MilliSeconds (thrLogPeriodicity), &CalculateThroughput);
