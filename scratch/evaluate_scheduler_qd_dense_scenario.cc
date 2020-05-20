@@ -432,29 +432,28 @@ main (int argc, char *argv[])
 
   /* Command line argument parser setup. */
   CommandLine cmd;
-  // cmd.AddValue ("applicationType", "Type of the Tx Application: onoff or bulk", applicationType);
-  // cmd.AddValue ("packetSize", "Application packet size [bytes]", packetSize);
+  cmd.AddValue ("applicationType", "Type of the Tx Application: onoff or bulk", applicationType);
+  cmd.AddValue ("packetSize", "Application packet size [bytes]", packetSize);
   cmd.AddValue ("dataRate", "Application data rate", appDataRate);
-  // cmd.AddValue ("maxPackets", "Maximum number of packets to send", maxPackets);
-  // cmd.AddValue ("tcpVariant", "Transport protocol to use: TcpHighSpeed, TcpVegas, TcpNewReno, TcpWestwood, TcpWestwoodPlus", tcpVariant);
-  // cmd.AddValue ("socketType", "Socket type (default: ns3::UdpSocketFactory)", socketType);
-  // cmd.AddValue ("bufferSize", "TCP Buffer Size (Send/Receive) [bytes]", bufferSize);
-  // cmd.AddValue ("msduAggregation", "The maximum aggregation size for A-MSDU [bytes]", msduAggregationSize);
+  cmd.AddValue ("tcpVariant", "Transport protocol to use: TcpHighSpeed, TcpVegas, TcpNewReno, TcpWestwood, TcpWestwoodPlus", tcpVariant);
+  cmd.AddValue ("socketType", "Socket type (default: ns3::UdpSocketFactory)", socketType);
+  cmd.AddValue ("bufferSize", "TCP Buffer Size (Send/Receive) [bytes]", bufferSize);
+  cmd.AddValue ("msduAggregation", "The maximum aggregation size for A-MSDU [bytes]", msduAggregationSize);
   cmd.AddValue ("mpduAggregation", "The maximum aggregation size for A-MPDU [bytes]", mpduAggregationSize);
-  // cmd.AddValue ("queueSize", "The maximum size of the Wifi MAC Queue [packets]", queueSize);
-  // cmd.AddValue ("frameCapture", "Use a frame capture model", frameCapture);
-  // cmd.AddValue ("frameCaptureMargin", "Frame capture model margin [dB]", frameCaptureMargin);
+  cmd.AddValue ("queueSize", "The maximum size of the Wifi MAC Queue [packets]", queueSize);
+  cmd.AddValue ("frameCapture", "Use a frame capture model", frameCapture);
+  cmd.AddValue ("frameCaptureMargin", "Frame capture model margin [dB]", frameCaptureMargin);
   cmd.AddValue ("phyMode", "802.11ad PHY Mode", phyMode);
-  // cmd.AddValue ("verbose", "turn on all WifiNetDevice log components", verbose);
+  cmd.AddValue ("verbose", "turn on all WifiNetDevice log components", verbose);
   cmd.AddValue ("simulationTime", "Simulation time [s]", simulationTime);
-  // cmd.AddValue ("qdChannelFolder", "The name of the folder containing the QD-Channel files", qdChannelFolder);
-  // cmd.AddValue ("numSTAs", "The number of DMG STA", numSTAs);
-  // cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
+  cmd.AddValue ("qdChannelFolder", "The name of the folder containing the QD-Channel files", qdChannelFolder);
+  cmd.AddValue ("numSTAs", "The number of DMG STA", numSTAs);
+  cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("scheduler", "The type of scheduler to use in the simulation", schedulerType);
   cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
   cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
-  // cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
-  // cmd.AddValue ("tLogEnd", "Log end [s]", tLogEnd);
+  cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
+  cmd.AddValue ("tLogEnd", "Log end [s]", tLogEnd);
   cmd.Parse (argc, argv);
 
   /* Global params: no fragmentation, no RTS/CTS, fixed rate for all packets */
