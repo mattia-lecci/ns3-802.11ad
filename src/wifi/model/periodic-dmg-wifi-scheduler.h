@@ -91,7 +91,7 @@ private:
    * In case of non-periodic request (spInterval = 0 and maxBlocksNumber = 1), check if the request fits in the DTI.
    * \param allocDuration the duration associated to the SPs.
    * \param spInterval time between two consecutive periodic SPs (= 0 if single non-periodic request).
-   * \param maxBlocksNumber maximum numbero of blocks allowed (= MAX_NUM_BLOCKS if periodic, = 1 if non-periodic)
+   * \param maxBlocksNumber maximum number of blocks allowed (= MAX_NUM_BLOCKS if periodic, = 1 if non-periodic)
    * \return list corresponding to the starting time of each block to be allocated
    */
   std::vector<uint32_t> GetAvailableBlocks (uint32_t allocDuration, uint32_t spInterval, uint8_t maxBlocksNumber);

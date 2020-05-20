@@ -120,13 +120,12 @@ PeriodicDmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, 
       endAlloc = startAlloc + allocation.GetAllocationBlockDuration () + m_guardTime;
       // if the number of blocks allocated is > 1, the allocation is periodic 
       uint8_t blocks = allocation.GetNumberOfBlocks ();
-      while (blocks > 0)
+      for (uint8_t i = 0; i < blocks; ++i)
         {
           UpdateAvailableSlots (startAlloc, endAlloc);
           startAlloc += allocation.GetAllocationBlockPeriod ();
           endAlloc += allocation.GetAllocationBlockPeriod ();
           // AllocationBlockPeriod represents the time between the start of two consecutive time blocks belonging to the same allocation
-          blocks -= 1;
         }
     }
 }
@@ -176,7 +175,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
   uint16_t allocPeriod = dmgTspec.GetAllocationPeriod ();
   std::vector<uint32_t> blocks;
   uint32_t spInterval = 0;
-  
+
   if (allocPeriod != 0)
     {
       NS_ABORT_MSG_IF (dmgTspec.IsAllocationPeriodMultipleBI (), "Multiple BI periodicity is not supported.");
@@ -185,57 +184,50 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
       spInterval = uint32_t (m_biDuration.GetMicroSeconds () / allocPeriod);
 
       NS_LOG_DEBUG ("Allocation Period " << allocPeriod 
-      << " AllocDuration " << allocDuration 
-      << " - Schedule one SP every " << spInterval);
+                                         << " AllocDuration " << allocDuration
+                                         << " - Schedule one SP every " << spInterval);
 
       blocks = GetAvailableBlocks (allocDuration, spInterval, MAX_NUM_BLOCKS);
-      
-      if (blocks.size() <= 1)
+
+      if (blocks.size () <= 1)
         {
           // if we cannot guarantee AT LEAST TWO periodic SPs, the request is rejected
           status.SetFailure ();
           return status;
         }
     }
-    else
+  else
     {
       blocks = GetAvailableBlocks (allocDuration, 0, 1);
-      if (blocks.size() == 0)
+      if (blocks.size () == 0)
         {
           // if we cannot guarantee the SP allocation, the request is rejected
           status.SetFailure ();
           return status;
         }
     }
-    
-  uint32_t startAlloc = blocks[0];
+
   uint32_t endAlloc;
-  uint8_t counter = 0;
-  
-  while (counter < blocks.size())
+  for (uint8_t i = 0; i < blocks.size (); ++i)
     {
-      NS_LOG_DEBUG ("Reserve from " << startAlloc << " for " << allocDuration);
-
-      endAlloc = startAlloc + allocDuration + m_guardTime;
-      UpdateAvailableSlots (startAlloc, endAlloc);
-
-      startAlloc += spInterval;
-      counter++;
+      NS_LOG_DEBUG ("Reserve from " << blocks[i] << " for " << allocDuration);
+      endAlloc = blocks[i] + allocDuration + m_guardTime;
+      UpdateAvailableSlots (blocks[i], endAlloc);
     }
 
   AddAllocationPeriod (info.GetAllocationID (), info.GetAllocationType (), info.IsPseudoStatic (),
                        sourceAid, info.GetDestinationAid (),
-                       blocks[0], allocDuration, spInterval, blocks.size());
-  
+                       blocks[0], allocDuration, spInterval, blocks.size ());
+
   status.SetSuccess ();
-  
+
   return status;
 }
 
 std::vector<uint32_t>
 PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t spInterval, uint8_t maxBlocksNumber)
 {
-  NS_LOG_FUNCTION (this << allocDuration << spInterval);
+  NS_LOG_FUNCTION (this << allocDuration << spInterval << +maxBlocksNumber);
 
   auto it = m_availableSlots.begin ();
   uint32_t startNextAlloc = it->first;
@@ -246,7 +238,7 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
     {
       if (startNextAlloc < it->first)
         {
-          // The next periodic SP should be positioned before the beginning of the 
+          // The next periodic SP block is positioned before the beginning of the 
           // next available slot: this translates in a broken periodicity, and the 
           // algorithm stops.
           break;
@@ -256,7 +248,7 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
 
       if (allocDuration + m_guardTime > remainingSlotDuration)
         {
-          if (blocks.size() == 0)
+          if (blocks.size () == 0)
             {
               // go on until eventually find the first available slot that fits this SP
               // note that this also cover the condition where no slot satisfies the requirement
@@ -272,10 +264,10 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
             }
         }
 
-      blocks.push_back(startNextAlloc);
+      blocks.push_back (startNextAlloc);
       startNextAlloc += spInterval;
-      
-      if (blocks.size() == maxBlocksNumber)
+
+      if (blocks.size () == maxBlocksNumber)
         {
           // Number of blocks described by an octet: only up to 255 blocks
           break;
@@ -300,11 +292,11 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t en
   uint32_t startSlot;
   uint32_t endSlot;
 
-  for (auto it = m_availableSlots.begin(); it != m_availableSlots.end(); ++it)
+  for (auto it = m_availableSlots.begin (); it != m_availableSlots.end (); ++it)
     {
-      startSlot = (*it).first;
-      endSlot = (*it).second;
-      
+      startSlot = it->first;
+      endSlot = it->second;
+
       if (startSlot > endAlloc || endSlot < startAlloc)
         {
           continue;
@@ -312,19 +304,20 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t en
 
       if (startSlot == startAlloc)
         {
-          m_availableSlots.insert(it, std::make_pair (endAlloc, endSlot));
-          it = m_availableSlots.erase(it);
+          it->first = endAlloc;
+          // m_availableSlots.insert (it, std::make_pair (endAlloc, endSlot));
+          // it = m_availableSlots.erase (it);
           break;
         }
       else if (startSlot < startAlloc && endSlot > endAlloc)
         {
-          m_availableSlots.insert(it, std::make_pair (startSlot, startAlloc));
-          m_availableSlots.insert(it, std::make_pair (endAlloc, endSlot));
-          it = m_availableSlots.erase(it);
+          it->first = endAlloc;
+          m_availableSlots.insert (it, std::make_pair (startSlot, startAlloc));
+          // m_availableSlots.insert (it, std::make_pair (endAlloc, endSlot));
           break;
         }
     }
-  
+
   // update m_remainingDtiTime for consistency 
   m_remainingDtiTime -= (endAlloc - startAlloc);
 
@@ -338,18 +331,18 @@ void
 PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t newEndAlloc, uint32_t difference)
 {
   NS_LOG_FUNCTION (this << startAlloc << newEndAlloc << difference);
-  
+
   uint32_t startSlot;
-  uint32_t endSlot;
+  // uint32_t endSlot;
 
   // something has changed in the allocation list, need to change the list of 
   // available slots accordingly
   bool keepSearching = true;
-  for (auto it = m_availableSlots.begin(); it != m_availableSlots.end(); ++it)
+  for (auto it = m_availableSlots.begin (); it != m_availableSlots.end (); ++it)
     {
-      startSlot = (*it).first;
-      endSlot = (*it).second;
-      
+      startSlot = it->first;
+      // endSlot = it->second;
+
       if (startSlot < startAlloc)
         {
           continue;
@@ -364,9 +357,10 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t ne
             {
               if (difference == (startSlot - newEndAlloc))
                 {
-                  // this make sure that two adjacent available slots are merged 
-                  m_availableSlots.insert(it, std::make_pair (newEndAlloc, endSlot));
-                  it = m_availableSlots.erase(it);
+                  // two adjacent available slots are merged 
+                  it->first = newEndAlloc;
+                  // m_availableSlots.insert (it, std::make_pair (newEndAlloc, endSlot));
+                  // it = m_availableSlots.erase (it);
                   keepSearching = false;
                   break;
                 }
@@ -374,7 +368,7 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t ne
                 {
                   // this condition is verified when there is one or more allocations 
                   // between the gap and the following available slot
-                  m_availableSlots.insert(it, std::make_pair (newEndAlloc, newEndAlloc + difference));
+                  m_availableSlots.insert (it, std::make_pair (newEndAlloc, newEndAlloc + difference));
                   keepSearching = false;
                   break;
                 }
@@ -382,7 +376,7 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t ne
             }
         }
     }
-  
+
   m_remainingDtiTime += difference;
 
   for (const auto & slot : m_availableSlots)
@@ -451,18 +445,17 @@ PeriodicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const Dmg
       uint32_t startAlloc = allocation->GetAllocationStart ();
       uint32_t endAlloc = allocation->GetAllocationStart () + allocation->GetAllocationBlockDuration () + m_guardTime;
       uint16_t allocPeriod = allocation->GetAllocationBlockPeriod ();
-  
+
       // If the number of blocks is > 0 we have to update the available slots in the DTI accordingly.
       // TODO: update also the number of blocks if the new duration allows to 
       // add further blocks
       uint8_t blocks = allocation->GetNumberOfBlocks ();
-      while (blocks > 0)
+      for (uint8_t i = 0; i < blocks; ++i)
         {
           NS_LOG_DEBUG ("Modify SP Block: starts at " << startAlloc << " and lasts till " << endAlloc);
           UpdateAvailableSlots (startAlloc, endAlloc, timeDifference);
           startAlloc += allocPeriod;
           endAlloc += allocPeriod;
-          blocks -= 1;
         }
     }
   return status;
