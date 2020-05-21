@@ -73,7 +73,7 @@ PeriodicDmgWifiScheduler::UpdateStartAndRemainingTime (void)
       m_remainingDtiTime = m_dtiDuration.GetMicroSeconds ();
       // clear the list of available slots: if no allocations have been scheduled, then the DTI is completely available
       m_availableSlots.clear ();
-      m_availableSlots.push_back (std::make_pair (0, m_dtiDuration.GetMicroSeconds ()));
+      m_availableSlots.push_back (std::make_pair (0, m_remainingDtiTime));
     }
   else
     {
@@ -108,19 +108,18 @@ PeriodicDmgWifiScheduler::AdjustExistingAllocations (AllocationFieldListI iter, 
 
   uint32_t startAlloc, endAlloc;
 
+  // reset m_remainingDtiTime
+  m_remainingDtiTime = m_dtiDuration.GetMicroSeconds ();
   // clear m_availableSlots and refill it based on the updated m_addtsAllocationList
   m_availableSlots.clear ();
-  m_availableSlots.push_back (std::make_pair (0, m_dtiDuration.GetMicroSeconds ()));
-  // reset m_remainingDtiTime as well
-  m_remainingDtiTime = m_dtiDuration.GetMicroSeconds ();
+  m_availableSlots.push_back (std::make_pair (0, m_remainingDtiTime));
 
   for (const auto & allocation: addtsListCopy)
     {
       startAlloc = allocation.GetAllocationStart ();
       endAlloc = startAlloc + allocation.GetAllocationBlockDuration () + m_guardTime;
       // if the number of blocks allocated is > 1, the allocation is periodic 
-      uint8_t blocks = allocation.GetNumberOfBlocks ();
-      for (uint8_t i = 0; i < blocks; ++i)
+      for (uint8_t i = 0; i < allocation.GetNumberOfBlocks (); ++i)
         {
           UpdateAvailableSlots (startAlloc, endAlloc);
           startAlloc += allocation.GetAllocationBlockPeriod ();
@@ -143,7 +142,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
   NS_LOG_FUNCTION (this << +sourceAid);
 
   StatusCode status;
-  uint32_t allocDuration;
+  uint32_t allocDuration, minimumAllocation;
 
   if (m_availableSlots.empty ())
     {
@@ -155,6 +154,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
   if (info.GetAllocationFormat () == ISOCHRONOUS)
     {
       allocDuration = GetAllocationDuration (dmgTspec.GetMinimumAllocation (), dmgTspec.GetMaximumAllocation ());
+      minimumAllocation = dmgTspec.GetMinimumAllocation ();
       if (allocDuration < dmgTspec.GetMinimumAllocation ())
         {
           NS_LOG_DEBUG ("Unable to guarantee minimum duration.");
@@ -166,6 +166,7 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
     {
       // for asynchronous allocations, the Maximum Allocation field is reserved (IEEE 802.11ad 8.4.2.136)
       allocDuration = dmgTspec.GetMinimumAllocation ();
+      minimumAllocation = allocDuration;
     }
   else
     {
@@ -191,9 +192,22 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 
       if (blocks.size () <= 1)
         {
-          // if we cannot guarantee AT LEAST TWO periodic SPs, the request is rejected
-          status.SetFailure ();
-          return status;
+          if (info.GetAllocationFormat () == ISOCHRONOUS && minimumAllocation < allocDuration)
+            {
+              // Get number of available blocks using minimum allocation duration 
+              blocks = GetAvailableBlocks (minimumAllocation, spInterval, MAX_NUM_BLOCKS); 
+              if (blocks.size () <= 1)
+                {
+                  // if we cannot guarantee AT LEAST TWO periodic SPs, the request is rejected
+                  status.SetFailure ();
+                  return status;
+                }
+            }
+          else
+            {
+              status.SetFailure ();
+              return status;
+            }
         }
     }
   else
@@ -201,14 +215,26 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
       blocks = GetAvailableBlocks (allocDuration, 0, 1);
       if (blocks.size () == 0)
         {
-          // if we cannot guarantee the SP allocation, the request is rejected
-          status.SetFailure ();
-          return status;
+          if (info.GetAllocationFormat () == ISOCHRONOUS && minimumAllocation < allocDuration)
+            {
+              // Get number of available blocks using minimum allocation duration 
+              blocks = GetAvailableBlocks (minimumAllocation, 0, 1); 
+              if (blocks.size () == 0)
+                {
+                  status.SetFailure ();
+                  return status;
+                }
+            }
+          else
+            {
+              status.SetFailure ();
+              return status;
+            }
         }
     }
 
   uint32_t endAlloc;
-  for (uint8_t i = 0; i < blocks.size(); ++i)
+  for (uint8_t i = 0; i < blocks.size (); ++i)
     {
       NS_LOG_DEBUG ("Reserve from " << blocks[i] << " for " << allocDuration);
       endAlloc = blocks[i] + allocDuration + m_guardTime;
@@ -289,8 +315,7 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t en
 {
   NS_LOG_FUNCTION (this << startAlloc << endAlloc);
 
-  uint32_t startSlot;
-  uint32_t endSlot;
+  uint32_t startSlot, endSlot;
 
   for (auto it = m_availableSlots.begin (); it != m_availableSlots.end (); ++it)
     {
@@ -307,12 +332,31 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t en
           it->first = endAlloc;
           break;
         }
-      else if (startSlot < startAlloc && endSlot > endAlloc)
+      else if (startSlot < startAlloc)
         {
-          it->first = endAlloc;
-          m_availableSlots.insert (it, std::make_pair (startSlot, startAlloc));
-          break;
+          if (endSlot > endAlloc)
+            {
+              it->first = endAlloc;
+              m_availableSlots.insert (it, std::make_pair (startSlot, startAlloc));
+              break;
+            }
+          else if (endSlot == endAlloc)
+            {
+              it->second = startAlloc;
+              break;
+            }
+          else
+            {
+              // endAlloc could never be greater than endSlot, as this condition is already checked
+              // upon calling GetAvailableBlocks inside AddNewAllocation.
+              NS_FATAL_ERROR ("(endAlloc > endSlot) : by construction, this shouldn't have happened.");
+            }
         }
+      else 
+        {
+          NS_FATAL_ERROR ("RUNTIME ERROR.");
+        }
+
     }
 
   // update m_remainingDtiTime for consistency 
@@ -367,6 +411,10 @@ PeriodicDmgWifiScheduler::UpdateAvailableSlots (uint32_t startAlloc, uint32_t ne
                 }
               NS_ASSERT_MSG (difference <= (startSlot - newEndAlloc), "Something broke in runtime, check the update of the available slots.");
             }
+        }
+      else
+        {
+          NS_FATAL_ERROR ("An increase in SP block duration is not supported yet.");
         }
     }
 
@@ -442,8 +490,7 @@ PeriodicDmgWifiScheduler::ModifyExistingAllocation (uint8_t sourceAid, const Dmg
       // If the number of blocks is > 0 we have to update the available slots in the DTI accordingly.
       // TODO: update also the number of blocks if the new duration allows to 
       // add further blocks
-      uint8_t blocks = allocation->GetNumberOfBlocks ();
-      for (uint8_t i = 0; i < blocks; ++i)
+      for (uint8_t i = 0; i < allocation->GetNumberOfBlocks (); ++i)
         {
           NS_LOG_DEBUG ("Modify SP Block: starts at " << startAlloc << " and lasts till " << endAlloc);
           UpdateAvailableSlots (startAlloc, endAlloc, timeDifference);
