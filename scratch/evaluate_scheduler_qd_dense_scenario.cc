@@ -108,6 +108,7 @@ uint32_t msduAggregationSize = 7935;               /* The maximum aggregation si
 uint32_t mpduAggregationSize = 262143;             /* The maximum aggregation size for A-MPDU [bytes]. */
 double simulationTime = 10;                        /* Simulation time [s]. */
 uint8_t allocationId = 1;                          /* The allocation ID of the DMG Tspec element to create */
+uint16_t allocationPeriod = 0;                     /* The periodicity of the requested SP allocation, 0 if not periodic */
 Time thrLogPeriodicity = MilliSeconds (100);       /* The log periodicity for the throughput of each STA [ms] */
 
 /** Applications **/
@@ -276,7 +277,7 @@ ComputeServicePeriodDuration (const uint64_t &appDataRate, const uint64_t &phyMo
 }
 
 DmgTspecElement
-GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation)
+GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation, uint16_t period)
 {
   NS_LOG_FUNCTION (+allocId << isPseudoStatic << minAllocation << maxAllocation);
   /* Simple assert for the moment */
@@ -290,9 +291,17 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
   info.SetAsPseudoStatic (isPseudoStatic);
   info.SetDestinationAid (AID_AP);
   element.SetDmgAllocationInfo (info);
+  if (period > 0)
+    {
+      minAllocation /= period;
+      maxAllocation /= period;
+      element.SetAllocationPeriod (period, false); // false: The allocation period must not be a multiple of the BI
+    }
+  NS_LOG_UNCOND ("New min Allocation=" << minAllocation);
   element.SetMinimumAllocation (minAllocation);
   element.SetMaximumAllocation (maxAllocation);
   element.SetMinimumDuration (minAllocation);
+
   return element;
 }
 
@@ -308,7 +317,7 @@ StationAssociated (Ptr<Node> node, Ptr<DmgStaWifiMac> staWifiMac, Mac48Address a
   if (it != communicationPairList.end ())
     {
       uint32_t spDuration = ComputeServicePeriodDuration (it->second.appDataRate, WifiMode (phyMode).GetPhyRate ());
-      staWifiMac->CreateAllocation (GetDmgTspecElement (allocationId, true, spDuration, spDuration));
+      staWifiMac->CreateAllocation (GetDmgTspecElement (allocationId, true, spDuration, spDuration, allocationPeriod));
     }
   else
     {
@@ -460,6 +469,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("numSTAs", "The number of DMG STA", numStas);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("scheduler", "The type of scheduler to use in the simulation", schedulerType);
+  cmd.AddValue ("period", "The periodicity of the requested SP allocation, 0 if not periodic", allocationPeriod);
   cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
   cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
   cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
