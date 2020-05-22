@@ -65,6 +65,7 @@ std::string applicationType = "onoff";                       /* Type of the Tx a
 std::string socketType = "ns3::UdpSocketFactory";            /* Socket Type (TCP/UDP) */
 std::string schedulerType = "ns3::CbapOnlyDmgWifiScheduler"; /* Type of scheduler to be used */
 Time thrLogPeriodicity = MilliSeconds (100);                 /* The log periodicity for the throughput of each STA [ms] */
+uint16_t allocationPeriod = 0;                               /* The periodicity of the requested SP allocation, 0 if not periodic */
 uint64_t totalRx = 0;
 Ptr<PacketSink> packetSink;
 Ptr<OnOffApplication> onoff;
@@ -217,7 +218,7 @@ MacRxOk (Ptr<DmgWifiMac> wifiMac, Ptr<OutputStreamWrapper> stream,
 }
 
 DmgTspecElement
-GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation)
+GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation, uint16_t period)
 {
   /* Simple assert for the moment */
   NS_ABORT_MSG_IF (minAllocation > maxAllocation, "Minimum Allocation cannot be greater than Maximum Allocation");
@@ -230,9 +231,17 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
   info.SetAsPseudoStatic (isPseudoStatic);
   info.SetDestinationAid (AID_AP);
   element.SetDmgAllocationInfo (info);
+  if (period > 0)
+    {
+      minAllocation /= period;
+      maxAllocation /= period;
+      element.SetAllocationPeriod (period, false); // false: The allocation period must not be a multiple of the BI
+    }
+  NS_LOG_UNCOND ("New min Allocation=" << minAllocation);
   element.SetMinimumAllocation (minAllocation);
   element.SetMaximumAllocation (maxAllocation);
   element.SetMinimumDuration (minAllocation);
+
   return element;
 } 
 
@@ -242,8 +251,7 @@ StationAssociated (Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t
   NS_LOG_DEBUG ("DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
                 << ", AID= " << aid);
     
-  staWifiMac->CreateAllocation (GetDmgTspecElement (1, true, 1000, 1000));
-  Simulator::Schedule (Seconds (1.0), &DmgStaWifiMac::CreateAllocation, staWifiMac, GetDmgTspecElement (1, true, 10000, 10000));
+  staWifiMac->CreateAllocation (GetDmgTspecElement (1, true, 10000, 10000, allocationPeriod));
 }
 
 void
@@ -365,6 +373,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
   cmd.AddValue ("scheduler", "The type of scheduler to use in the simulation", schedulerType);
+  cmd.AddValue ("period", "The periodicity of the requested SP allocation, 0 if not periodic", allocationPeriod);
   cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
   cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
   cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
