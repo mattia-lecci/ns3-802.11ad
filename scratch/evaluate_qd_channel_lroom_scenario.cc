@@ -64,7 +64,7 @@ NS_LOG_COMPONENT_DEFINE ("LRoom");
 std::string applicationType = "onoff";                       /* Type of the Tx application */
 std::string socketType = "ns3::UdpSocketFactory";            /* Socket Type (TCP/UDP) */
 std::string schedulerType = "ns3::CbapOnlyDmgWifiScheduler"; /* Type of scheduler to be used */
-uint16_t thrLogPeriodicity = 100;                            /* The log periodicity for the throughput of each STA [ms] */
+Time thrLogPeriodicity = MilliSeconds (100);                 /* The log periodicity for the throughput of each STA [ms] */
 uint64_t totalRx = 0;
 Ptr<PacketSink> packetSink;
 Ptr<OnOffApplication> onoff;
@@ -165,9 +165,9 @@ std::string to_string_with_precision (const T a_value, const int n = 6)
 double
 CalculateSingleStreamThroughput (Ptr<PacketSink> sink, uint64_t &lastTotalRx)
 {
-  double rxBits = (sink->GetTotalRx () - lastTotalRx) * 8.0; /* Total Rx Bits in the last period */
-  double rxBitsPerSec = rxBits * (1e3 / thrLogPeriodicity);  /* Total Rx bits per second */
-  double thr =  rxBitsPerSec / 1e6;                          /* Convert from Bps to Mbps */
+  double rxBits = (sink->GetTotalRx () - lastTotalRx) * 8.0; /* Total Rx Bits in the last period with length thrLogPeriodicity */
+  double rxBitsPerSec = rxBits * (1.0 / thrLogPeriodicity.GetSeconds ()); /* Total Rx bits per second */
+  double thr =  rxBitsPerSec / 1e6;                                       /* Conversion from Bps to Mbps */
   lastTotalRx = sink->GetTotalRx ();
   return thr;
 }
@@ -175,13 +175,15 @@ CalculateSingleStreamThroughput (Ptr<PacketSink> sink, uint64_t &lastTotalRx)
 void
 CalculateThroughput (void)
 {
+  /* calculate the throughput over the last window with length thrLogPeriodicity */
   double thr = CalculateSingleStreamThroughput (packetSink, totalRx);
 
-  std::string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - (double (thrLogPeriodicity) / 1e3), 2)
+  /* duration is the time period which corresponds to the logged throughput values */
+  std::string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - thrLogPeriodicity.GetSeconds (), 2)
                          + " - " + to_string_with_precision<double> (Simulator::Now ().GetSeconds (), 2); 
   NS_LOG_UNCOND (duration << ", " << thr << ", " << lossModelRaytracing->GetCurrentTraceIndex ());
 
-  Simulator::Schedule (MilliSeconds (thrLogPeriodicity), &CalculateThroughput);
+  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);
 }
 
 void
@@ -614,7 +616,7 @@ main (int argc, char *argv[])
   /* Print Output */
   NS_LOG_UNCOND ("Time [s]," << " " << "Throughput [Mbps]," << " " << "Trace Idx");
   /* Schedule Throughput Calculations */
-  Simulator::Schedule (MilliSeconds (thrLogPeriodicity), &CalculateThroughput);
+  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);
 
   Simulator::Stop (Seconds (simulationTime + 0.101));
   Simulator::Run ();

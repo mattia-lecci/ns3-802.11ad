@@ -108,7 +108,7 @@ uint32_t msduAggregationSize = 7935;               /* The maximum aggregation si
 uint32_t mpduAggregationSize = 262143;             /* The maximum aggregation size for A-MPDU [bytes]. */
 double simulationTime = 10;                        /* Simulation time [s]. */
 uint8_t allocationId = 1;                          /* The allocation ID of the DMG Tspec element to create */
-uint16_t thrLogPeriodicity = 100;                  /* The log periodicity for the throughput of each STA [ms] */
+Time thrLogPeriodicity = MilliSeconds (100);       /* The log periodicity for the throughput of each STA [ms] */
 
 /** Applications **/
 CommunicationPairList communicationPairList;  /* List of communicating devices. */
@@ -192,9 +192,9 @@ ReceivedPacket (Ptr<Node> srcNode, Ptr<const Packet> packet, const Address &addr
 double
 CalculateSingleStreamThroughput (Ptr<PacketSink> sink, uint64_t &lastTotalRx)
 {
-  double rxBits = (sink->GetTotalRx () - lastTotalRx) * 8.0; /* Total Rx Bits in the last period */
-  double rxBitsPerSec = rxBits * (1e3 / thrLogPeriodicity);  /* Total Rx bits per second */
-  double thr =  rxBitsPerSec / 1e6;                          /* Convert from Bps to Mbps */
+  double rxBits = (sink->GetTotalRx () - lastTotalRx) * 8.0; /* Total Rx Bits in the last period with length thrLogPeriodicity */
+  double rxBitsPerSec = rxBits * (1.0 / thrLogPeriodicity.GetSeconds ()); /* Total Rx bits per second */
+  double thr = rxBitsPerSec / 1e6;                                        /* Conversion from Bps to Mbps */
   lastTotalRx = sink->GetTotalRx ();
   return thr;
 }
@@ -204,10 +204,12 @@ CalculateThroughput (void)
 {
   double totalThr = 0;
   double thr;
-  std::string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - (double (thrLogPeriodicity) / 1e3), 2) +
+  /* duration is the time period which corresponds to the logged throughput values */
+  std::string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - thrLogPeriodicity.GetSeconds (), 2) +
                          " - " + to_string_with_precision<double> (Simulator::Now ().GetSeconds (), 2) + ", ";
   std::string thrString;
 
+  /* calculate the throughput over the last window with length thrLogPeriodicity for each communication Pair */
   for (auto it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
     {
       thr = CalculateSingleStreamThroughput (it->second.packetSink, it->second.totalRx);
@@ -216,7 +218,7 @@ CalculateThroughput (void)
     }
   NS_LOG_UNCOND (duration << thrString << totalThr);
 
-  Simulator::Schedule (MilliSeconds (thrLogPeriodicity), &CalculateThroughput);
+  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);
 }
 
 void
@@ -707,7 +709,7 @@ main (int argc, char *argv[])
   NS_LOG_UNCOND (rowOutput + " Total");
 
   /* Schedule Throughput Calulcations */
-  Simulator::Schedule (MilliSeconds (thrLogPeriodicity), &CalculateThroughput);
+  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);
 
   Simulator::Stop (Seconds (simulationTime + 0.101));
   Simulator::Run ();
