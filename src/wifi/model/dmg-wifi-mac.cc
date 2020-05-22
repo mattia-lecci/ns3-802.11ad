@@ -384,7 +384,7 @@ DmgWifiMac::ScheduleServicePeriod (uint8_t blocks, Time spStart, Time spLength, 
           Simulator::Schedule (spStart, &DmgWifiMac::StartServicePeriod, this,
                                allocationID, spLength, peerAid, peerAddress, isSource);
           Simulator::Schedule (spStart + spLength, &DmgWifiMac::EndServicePeriod, this);
-          spStart += spLength + spPeriod + GUARD_TIME;
+          spStart += spPeriod;
         }
     }
   else
