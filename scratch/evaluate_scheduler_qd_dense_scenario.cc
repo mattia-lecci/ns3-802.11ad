@@ -119,8 +119,10 @@ typedef std::map<Mac48Address, uint64_t> PacketCountMap;
 PacketCountMap macTxDataFailed;
 PacketCountMap macTxDataOk;
 PacketCountMap macRxDataOk;
-
 Ptr<DmgApWifiMac> apWifiMac;
+
+/* Received packets output stream */
+Ptr<OutputStreamWrapper> receivedPktsTrace;
 
 template <typename T>
 std::string to_string_with_precision (const T a_value, const int n = 6)
@@ -181,13 +183,17 @@ void
 ReceivedPacket (Ptr<Node> srcNode, Ptr<const Packet> packet, const Address &address)
 {
   CommunicationPair &commPair = communicationPairList.at (srcNode);
+  Time delay, jitter;
   TimestampTag timestamp;
   if (packet->FindFirstMatchingByteTag (timestamp))
     {
-      Time delay = Simulator::Now () - timestamp.GetTimestamp ();
-      commPair.jitter += Seconds (std::abs (delay.GetSeconds () - commPair.lastDelayValue.GetSeconds ()));
+      delay = Simulator::Now () - timestamp.GetTimestamp ();
+      jitter = Seconds (std::abs (delay.GetSeconds () - commPair.lastDelayValue.GetSeconds ()));
+      commPair.jitter += jitter;
       commPair.lastDelayValue = delay;
     }
+  *receivedPktsTrace->GetStream () << srcNode->GetId () << "," << Simulator::Now ().GetSeconds () << ","
+                                   << packet->GetSize () << "," << delay.GetSeconds () << "," << jitter.GetSeconds () << std::endl;
 }
 
 double
@@ -288,7 +294,6 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
       maxAllocation /= period;
       element.SetAllocationPeriod (period, false); // false: The allocation period must not be a multiple of the BI
     }
-  NS_LOG_UNCOND ("New min Allocation=" << minAllocation);
   element.SetMinimumAllocation (minAllocation);
   element.SetMaximumAllocation (maxAllocation);
   element.SetMinimumDuration (minAllocation);
@@ -661,6 +666,8 @@ main (int argc, char *argv[])
   AsciiTraceHelper ascii;
   Ptr<OutputStreamWrapper> e2eResults = ascii.CreateFileStream ("results.csv");
   *e2eResults->GetStream () << "TxPkts,TxBytes,RxPkts,RxBytes,AvgThroughput,AvgDelay,AvgJitter" << std::endl;
+  receivedPktsTrace = ascii.CreateFileStream ("packetsTrace.csv");
+  *receivedPktsTrace->GetStream () << "SrcNodeId,Timestamp[s],PktSize[bytes],Delay[s],Jitter[s]" << std::endl;
 
   Ptr<WifiNetDevice> wifiNetDevice;
   Ptr<DmgStaWifiMac> staWifiMac;
@@ -716,7 +723,7 @@ main (int argc, char *argv[])
       columnName = " SrcNodeId=" + std::to_string (it->second.srcApp->GetNode ()->GetId ()) + ",";
       rowOutput += columnName;
     }
-  NS_LOG_UNCOND (rowOutput + " Total");
+  NS_LOG_UNCOND (rowOutput + " Aggregate");
 
   /* Schedule Throughput Calulcations */
   Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);

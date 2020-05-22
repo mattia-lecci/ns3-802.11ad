@@ -237,7 +237,6 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
       maxAllocation /= period;
       element.SetAllocationPeriod (period, false); // false: The allocation period must not be a multiple of the BI
     }
-  NS_LOG_UNCOND ("New min Allocation=" << minAllocation);
   element.SetMinimumAllocation (minAllocation);
   element.SetMaximumAllocation (maxAllocation);
   element.SetMinimumDuration (minAllocation);
