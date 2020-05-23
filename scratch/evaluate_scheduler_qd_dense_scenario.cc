@@ -111,6 +111,9 @@ uint8_t allocationId = 1;                          /* The allocation ID of the D
 uint16_t allocationPeriod = 0;                     /* The periodicity of the requested SP allocation, 0 if not periodic */
 Time thrLogPeriodicity = MilliSeconds (100);       /* The log periodicity for the throughput of each STA [ms] */
 
+typedef std::map<Mac48Address, uint32_t> Mac2IdMap;
+Mac2IdMap mac2IdMap;
+
 /** Applications **/
 CommunicationPairList communicationPairList;  /* List of communicating devices. */
 
@@ -123,6 +126,8 @@ Ptr<DmgApWifiMac> apWifiMac;
 
 /* Received packets output stream */
 Ptr<OutputStreamWrapper> receivedPktsTrace;
+/* SPs output stream */
+Ptr<OutputStreamWrapper> spTrace;
 
 template <typename T>
 std::string to_string_with_precision (const T a_value, const int n = 6)
@@ -228,16 +233,26 @@ CalculateThroughput (void)
   Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);
 }
 
+void 
+DtiStarted (Mac48Address apAddr, Time duration)
+{
+  NS_LOG_DEBUG ("DTI started at " << apAddr);
+  *spTrace->GetStream () << mac2IdMap.at (apAddr) << Simulator::Now ().GetSeconds () << true << std::endl;
+  *spTrace->GetStream () << mac2IdMap.at (apAddr) << (Simulator::Now () + duration).GetSeconds () << false << std::endl;
+}
+
 void
 ServicePeriodStarted (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
   NS_LOG_DEBUG ("Starting SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
+  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << Simulator::Now ().GetSeconds () << true << std::endl;
 }
 
 void
 ServicePeriodEnded (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
   NS_LOG_DEBUG ("Ending SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
+  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << Simulator::Now ().GetSeconds () << false << std::endl;
 }
 
 void
@@ -270,7 +285,7 @@ ComputeServicePeriodDuration (const uint64_t &appDataRate, const uint64_t &phyMo
   uint64_t biDurationUs = apWifiMac->GetBeaconInterval ().GetMicroSeconds ();
   uint32_t spDuration = ceil (dataRateRatio * biDurationUs);
 
-  return spDuration;
+  return spDuration + 1500;
 }
 
 DmgTspecElement
@@ -608,6 +623,11 @@ main (int argc, char *argv[])
   Ptr<WifiNetDevice> netDevice;
   devices.Add (apDevice);
   devices.Add (staDevices);
+  for (uint32_t i = 0; i < devices.GetN (); i++)
+    {
+      netDevice = StaticCast<WifiNetDevice> (devices.Get (i));
+      mac2IdMap[netDevice->GetMac ()->GetAddress ()] = netDevice->GetNode ()->GetId ();
+    }
 
   /* Setting mobility model for AP */
   MobilityHelper mobilityAp;
@@ -668,6 +688,8 @@ main (int argc, char *argv[])
   *e2eResults->GetStream () << "TxPkts,TxBytes,RxPkts,RxBytes,AvgThroughput,AvgDelay,AvgJitter" << std::endl;
   receivedPktsTrace = ascii.CreateFileStream ("packetsTrace.csv");
   *receivedPktsTrace->GetStream () << "SrcNodeId,Timestamp[s],PktSize[bytes],Delay[s],Jitter[s]" << std::endl;
+  spTrace = ascii.CreateFileStream ("spTrace.csv");
+  *spTrace->GetStream () << "SrcNodeId,Timestamp[s],isStart[bool]" << std::endl;
 
   Ptr<WifiNetDevice> wifiNetDevice;
   Ptr<DmgStaWifiMac> staWifiMac;
@@ -707,6 +729,7 @@ main (int argc, char *argv[])
   Ptr<Parameters> parameters = Create<Parameters> ();
   parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
   parameters->wifiMac = apWifiMac;
+  apWifiMac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DtiStarted));
   apWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parameters));
   remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, apWifiMac));
 
