@@ -237,22 +237,22 @@ void
 DtiStarted (Mac48Address apAddr, Time duration)
 {
   NS_LOG_DEBUG ("DTI started at " << apAddr);
-  *spTrace->GetStream () << mac2IdMap.at (apAddr) << Simulator::Now ().GetSeconds () << true << std::endl;
-  *spTrace->GetStream () << mac2IdMap.at (apAddr) << (Simulator::Now () + duration).GetSeconds () << false << std::endl;
+  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << Simulator::Now ().GetSeconds () << "," << true << std::endl;
+  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << (Simulator::Now () + duration).GetSeconds () << "," << false << std::endl;
 }
 
 void
 ServicePeriodStarted (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
   NS_LOG_DEBUG ("Starting SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
-  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << Simulator::Now ().GetSeconds () << true << std::endl;
+  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetSeconds () << "," << true << std::endl;
 }
 
 void
 ServicePeriodEnded (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
   NS_LOG_DEBUG ("Ending SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
-  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << Simulator::Now ().GetSeconds () << false << std::endl;
+  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetSeconds () << "," << false << std::endl;
 }
 
 void
