@@ -128,6 +128,8 @@ Ptr<DmgApWifiMac> apWifiMac;
 Ptr<OutputStreamWrapper> receivedPktsTrace;
 /* SPs output stream */
 Ptr<OutputStreamWrapper> spTrace;
+/* MAC queue size output stream */
+Ptr<OutputStreamWrapper> queueTrace;
 
 template <typename T>
 std::string to_string_with_precision (const T a_value, const int n = 6)
@@ -412,6 +414,12 @@ SLSCompleted (Ptr<Parameters> parameters,
 }
 
 void
+MacQueueChanged (Ptr<Node> srcNode, uint32_t oldQueueSize, uint32_t newQueueSize)
+{
+  *queueTrace->GetStream () << srcNode->GetId () << "," << Simulator::Now ().GetTimeStep () << "," << newQueueSize << std::endl;
+}
+
+void
 MacRxOk (Ptr<DmgWifiMac> wifiMac, WifiMacType type, 
          Mac48Address address, double snrValue)
 {
@@ -687,19 +695,25 @@ main (int argc, char *argv[])
   Ptr<OutputStreamWrapper> e2eResults = ascii.CreateFileStream ("results.csv");
   *e2eResults->GetStream () << "TxPkts,TxBytes,RxPkts,RxBytes,AvgThroughput,AvgDelay,AvgJitter" << std::endl;
   receivedPktsTrace = ascii.CreateFileStream ("packetsTrace.csv");
-  *receivedPktsTrace->GetStream () << "SrcNodeId,TxTimestamp[s],RxTimestamp[s],PktSize[bytes]" << std::endl;
+  *receivedPktsTrace->GetStream () << "SrcNodeId,TxTimestamp[ns],RxTimestamp[ns],PktSize[bytes]" << std::endl;
   spTrace = ascii.CreateFileStream ("spTrace.csv");
-  *spTrace->GetStream () << "SrcNodeId,Timestamp[s],isStart[bool]" << std::endl;
+  *spTrace->GetStream () << "SrcNodeId,Timestamp[ns],isStart[bool]" << std::endl;
+  queueTrace = ascii.CreateFileStream ("queueTrace.csv");
+  *queueTrace->GetStream () << "SrcNodeId,Timestamp[ns],queueSize[packets]" << std::endl;
 
   Ptr<WifiNetDevice> wifiNetDevice;
   Ptr<DmgStaWifiMac> staWifiMac;
   Ptr<WifiRemoteStationManager> remoteStationManager;
+  /* By default the generated traffic is associated to AC_BE */
+  /* Therefore we keep track of changes in the BE Queue */
+  Ptr<WifiMacQueue> beQueue;
 
   /* Connect DMG STA traces */
   for (uint32_t i = 0; i < staDevices.GetN (); i++)
     {
       wifiNetDevice = StaticCast<WifiNetDevice> (staDevices.Get (i));
       staWifiMac = StaticCast<DmgStaWifiMac> (wifiNetDevice->GetMac ());
+      beQueue = staWifiMac->GetBEQueue ()->GetQueue ();
       macTxDataFailed.insert (std::make_pair (staWifiMac->GetAddress (), 0));
       macTxDataOk.insert (std::make_pair (staWifiMac->GetAddress (), 0));
       macRxDataOk.insert (std::make_pair (staWifiMac->GetAddress (), 0));
@@ -712,6 +726,7 @@ main (int argc, char *argv[])
       staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, staWifiNodes.Get (i)));
       staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeCallback (&ServicePeriodStarted));
       staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeCallback (&ServicePeriodEnded));
+      beQueue->TraceConnectWithoutContext ("OccupancyChanged", MakeBoundCallback (&MacQueueChanged, staWifiNodes.Get (i)));
 
       Ptr<Parameters> parameters = Create<Parameters> ();
       parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
