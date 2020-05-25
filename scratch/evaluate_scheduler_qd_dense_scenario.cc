@@ -197,8 +197,8 @@ ReceivedPacket (Ptr<Node> srcNode, Ptr<const Packet> packet, const Address &addr
       commPair.jitter += jitter;
       commPair.lastDelayValue = delay;
     }
-  *receivedPktsTrace->GetStream () << srcNode->GetId () << "," << Simulator::Now ().GetSeconds () << ","
-                                   << packet->GetSize () << "," << delay.GetSeconds () << "," << jitter.GetSeconds () << std::endl;
+  *receivedPktsTrace->GetStream () << srcNode->GetId () << "," << timestamp.GetTimestamp ().GetTimeStep () << ","
+                                   << Simulator::Now ().GetTimeStep () << "," << packet->GetSize ()  << std::endl;
 }
 
 double
@@ -237,22 +237,22 @@ void
 DtiStarted (Mac48Address apAddr, Time duration)
 {
   NS_LOG_DEBUG ("DTI started at " << apAddr);
-  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << Simulator::Now ().GetSeconds () << "," << true << std::endl;
-  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << (Simulator::Now () + duration).GetSeconds () << "," << false << std::endl;
+  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << Simulator::Now ().GetTimeStep () << "," << true << std::endl;
+  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << (Simulator::Now () + duration).GetTimeStep () << "," << false << std::endl;
 }
 
 void
 ServicePeriodStarted (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
   NS_LOG_DEBUG ("Starting SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
-  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetSeconds () << "," << true << std::endl;
+  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetTimeStep () << "," << true << std::endl;
 }
 
 void
 ServicePeriodEnded (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
   NS_LOG_DEBUG ("Ending SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
-  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetSeconds () << "," << false << std::endl;
+  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetTimeStep () << "," << false << std::endl;
 }
 
 void
@@ -687,7 +687,7 @@ main (int argc, char *argv[])
   Ptr<OutputStreamWrapper> e2eResults = ascii.CreateFileStream ("results.csv");
   *e2eResults->GetStream () << "TxPkts,TxBytes,RxPkts,RxBytes,AvgThroughput,AvgDelay,AvgJitter" << std::endl;
   receivedPktsTrace = ascii.CreateFileStream ("packetsTrace.csv");
-  *receivedPktsTrace->GetStream () << "SrcNodeId,Timestamp[s],PktSize[bytes],Delay[s],Jitter[s]" << std::endl;
+  *receivedPktsTrace->GetStream () << "SrcNodeId,TxTimestamp[s],RxTimestamp[s],PktSize[bytes]" << std::endl;
   spTrace = ascii.CreateFileStream ("spTrace.csv");
   *spTrace->GetStream () << "SrcNodeId,Timestamp[s],isStart[bool]" << std::endl;
 
