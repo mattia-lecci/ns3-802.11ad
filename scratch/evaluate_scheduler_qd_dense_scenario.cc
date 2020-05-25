@@ -244,6 +244,20 @@ ServicePeriodEnded (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 }
 
 void
+ContentionPeriodStarted (Mac48Address address, TypeOfStation stationType)
+{
+  NS_LOG_DEBUG ("Starting CBAP at station=" << address << ", type of station=" << stationType);
+  *spTrace->GetStream () << 255 << "," << Simulator::Now ().GetTimeStep () << "," << true << std::endl;
+}
+
+void
+ContentionPeriodEnded (Mac48Address address, TypeOfStation stationType)
+{
+  NS_LOG_DEBUG ("Ending CBAP at station=" << address << ", type of station=" << stationType);
+  *spTrace->GetStream () << 255 << "," << Simulator::Now ().GetTimeStep () << "," << false << std::endl;
+}
+
+void
 ADDTSResponseReceived (Ptr<Node> node, Mac48Address address, StatusCode status, DmgTspecElement element)
 {
   // TODO: Add this code to DmgStaWifiMac class.
@@ -711,6 +725,8 @@ main (int argc, char *argv[])
   parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
   parameters->wifiMac = apWifiMac;
   apWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parameters));
+  apWifiMac->TraceConnectWithoutContext ("ContentionPeriodStarted", MakeCallback (&ContentionPeriodStarted));
+  apWifiMac->TraceConnectWithoutContext ("ContentionPeriodEnded", MakeCallback (&ContentionPeriodEnded));
   remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, apWifiMac));
 
   /* Install FlowMonitor on all nodes */

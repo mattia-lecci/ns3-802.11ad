@@ -875,6 +875,16 @@ protected:
   TracedCallback<Mac48Address, Mac48Address, bool> m_servicePeriodStartedCallback;
   TracedCallback<Mac48Address, Mac48Address, bool> m_servicePeriodEndedCallback;
 
+  /**
+   * TracedCallback signature for contention period initiation/termination.
+   *
+   * \param address The MAC address of the current station.
+   * \param stationType The type of station for the current node.
+   */
+  typedef void (* ContentionPeriodCallback)(Mac48Address address, TypeOfStation stationType);
+  TracedCallback<Mac48Address, TypeOfStation> m_contentionPeriodStartedCallback;
+  TracedCallback<Mac48Address, TypeOfStation> m_contentionPeriodEndedCallback;
+
   /* Association Traces */
   typedef void (* AssociationTracedCallback)(Mac48Address address, uint16_t aid);
   TracedCallback<Mac48Address, uint16_t> m_assocLogger;
