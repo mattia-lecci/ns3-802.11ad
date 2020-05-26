@@ -301,7 +301,7 @@ ComputeServicePeriodDuration (const uint64_t &appDataRate, const uint64_t &phyMo
   uint64_t biDurationUs = apWifiMac->GetBeaconInterval ().GetMicroSeconds ();
   uint32_t spDuration = ceil (dataRateRatio * biDurationUs);
 
-  return spDuration + 1500;
+  return spDuration * 1.3;
 }
 
 DmgTspecElement
