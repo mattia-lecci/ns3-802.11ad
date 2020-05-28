@@ -885,9 +885,7 @@ EdcaTxopN::RestartAccessIfNeeded (void)
         }
       else
         {
-          if ((m_currentPacket != 0
-               || !m_queue->IsEmpty () || m_baManager->HasPackets ())
-              && !m_dcf->IsAccessRequested ()
+          if ((m_currentPacket != 0 || !m_queue->IsEmpty () || m_baManager->HasPackets ())
               && m_accessAllowed
               && !m_low->IsTransmissionSuspended ())
             {
