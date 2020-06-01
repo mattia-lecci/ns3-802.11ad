@@ -2177,58 +2177,44 @@ Time
 MacLow::CalculateDmgTransactionDuration (Time packetDuration)
 {
   NS_LOG_FUNCTION (this << packetDuration);
-  Time duration = packetDuration;
-  if (m_txParams.MustWaitNormalAck ())
-    {
-      duration += GetAckDuration (m_currentHdr.GetAddr1 (), m_currentTxVector);
-    }
-  else if (m_txParams.MustWaitFastAck () || m_txParams.MustWaitSuperFastAck ())
-    {
-      duration += GetPifs ();
-    }
-  if (m_txParams.MustWaitBasicBlockAck ())
-    {
-      duration += GetSifs ();
-      WifiTxVector blockAckReqTxVector = GetBlockAckTxVector (m_currentHdr.GetAddr2 (), m_currentTxVector.GetMode ());
-      duration += GetBlockAckDuration (blockAckReqTxVector, BASIC_BLOCK_ACK);
-    }
-  else if (m_txParams.MustWaitCompressedBlockAck ())
-    {
-      duration += GetSifs ();
-      WifiTxVector blockAckReqTxVector = GetBlockAckTxVector (m_currentHdr.GetAddr2 (), m_currentTxVector.GetMode ());
-      duration += GetBlockAckDuration (blockAckReqTxVector, COMPRESSED_BLOCK_ACK);
-    }
-  return duration;
+  return CalculateDmgTransactionDuration (packetDuration, m_currentHdr, m_txParams);
 }
 
 Time
-MacLow::CalculateDmgTransactionDuration (Ptr<Packet> packet, WifiMacHeader &hdr)
+MacLow::CalculateDmgTransactionDuration (Ptr<Packet> packet, WifiMacHeader &hdr) 
 {
   NS_LOG_FUNCTION (this << packet << hdr);
   Time duration = m_phy->CalculateTxDuration (GetSize (packet, &hdr, m_ampdu),
                                               m_currentTxVector, m_phy->GetFrequency ());
-  if (m_txParams.MustWaitNormalAck ())
+  return CalculateDmgTransactionDuration (duration, hdr, m_txParams);
+}
+
+Time
+MacLow::CalculateDmgTransactionDuration (Time packetDuration, WifiMacHeader &hdr, MacLowTransmissionParameters &txParams) const
+{
+  NS_LOG_FUNCTION (this << packetDuration << hdr << txParams);
+  Time duration = packetDuration;
+  if (txParams.MustWaitNormalAck ())
     {
       duration += GetSifs ();
       duration += GetAckDuration (hdr.GetAddr1 (), m_currentTxVector);
     }
-  else if (m_txParams.MustWaitFastAck () || m_txParams.MustWaitSuperFastAck ())
+  else if (txParams.MustWaitFastAck () || txParams.MustWaitSuperFastAck ())
     {
       duration += GetPifs ();
     }
-  else if (m_txParams.MustWaitBasicBlockAck ())
+  else if (txParams.MustWaitBasicBlockAck ())
     {
       duration += GetSifs ();
-      WifiTxVector blockAckReqTxVector = GetBlockAckTxVector (m_currentHdr.GetAddr2 (), m_currentTxVector.GetMode ());
+      WifiTxVector blockAckReqTxVector = GetBlockAckTxVector (hdr.GetAddr2 (), m_currentTxVector.GetMode ());
       duration += GetBlockAckDuration (blockAckReqTxVector, BASIC_BLOCK_ACK);
     }
-  else if (m_txParams.MustWaitCompressedBlockAck ())
+  else if (txParams.MustWaitCompressedBlockAck ())
     {
       duration += GetSifs ();
-      WifiTxVector blockAckReqTxVector = GetBlockAckTxVector (m_currentHdr.GetAddr2 (), m_currentTxVector.GetMode ());
+      WifiTxVector blockAckReqTxVector = GetBlockAckTxVector (hdr.GetAddr2 (), m_currentTxVector.GetMode ());
       duration += GetBlockAckDuration (blockAckReqTxVector, COMPRESSED_BLOCK_ACK);
     }
-
   /* Convert to MicroSeconds since the duration in the headers are in MicroSeconds */
   return MicroSeconds (ceil ((double) duration.GetNanoSeconds () / 1000));
 }
@@ -3035,6 +3021,7 @@ MacLow::DeaggregateAmpduAndReceive (Ptr<Packet> aggregatedPacket, double rxSnr, 
 bool
 MacLow::StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peekedHdr, Ptr<Packet> aggregatedPacket, uint16_t size) const
 {
+  NS_LOG_FUNCTION (this << aggregatedPacket << peekedPacket << peekedHdr << size);
   if (peekedPacket == 0)
     {
       NS_LOG_DEBUG ("no more packets in queue");
@@ -3055,14 +3042,31 @@ MacLow::StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peeke
       aPPDUMaxTime = MicroSeconds (10000);
     }
 
+  WifiMacHeader hdr = m_currentHdr;
+  MacLowTransmissionParameters txParams = m_txParams;
+  uint32_t peekedSize = peekedPacket->GetSize () + peekedHdr.GetSize () + WIFI_MAC_FCS_LENGTH;
+  if (aggregatedPacket->GetSize () > edcaIt->second->GetMsduAggregator ()->GetMaxAmsduSize ())
+    txParams.EnableCompressedBlockAck ();
+  else
+    txParams.EnableAck ();
+
+  Time txDuration = m_phy->CalculateTxDuration (aggregatedPacket->GetSize () + peekedSize, m_currentTxVector, m_phy->GetFrequency ());
+  Time transactionDuration = CalculateDmgTransactionDuration (txDuration, hdr, txParams);
+
+  if (transactionDuration > txParams.GetMaximumTransmissionDuration ())
+    {
+      NS_LOG_DEBUG ("transaction duration exceeds maximum transmission duration");
+      return true;
+    }
+    
   //A STA shall not transmit a PPDU that has a duration that is greater than aPPDUMaxTime
-  if (m_phy->CalculateTxDuration (aggregatedPacket->GetSize () + peekedPacket->GetSize () + peekedHdr.GetSize () + WIFI_MAC_FCS_LENGTH, m_currentTxVector, m_phy->GetFrequency ()) > aPPDUMaxTime)
+  if (txDuration > aPPDUMaxTime)
     {
       NS_LOG_DEBUG ("no more packets can be aggregated to satisfy PPDU <= aPPDUMaxTime");
       return true;
     }
 
-  if (!edcaIt->second->GetMpduAggregator ()->CanBeAggregated (peekedPacket->GetSize () + peekedHdr.GetSize () + WIFI_MAC_FCS_LENGTH, aggregatedPacket, size))
+  if (!edcaIt->second->GetMpduAggregator ()->CanBeAggregated (peekedSize, aggregatedPacket, size))
     {
       NS_LOG_DEBUG ("no more packets can be aggregated because the maximum A-MPDU size has been reached");
       return true;
