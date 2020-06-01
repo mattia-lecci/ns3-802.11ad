@@ -541,17 +541,25 @@ public:
   void SetMacHigh (Ptr<WifiMac> mac);
   /**
    * Calculate DMG transaction duration including packet transmission + acknowledgement.
-   * \param packetDuration The duration of the packet to transmit
+   * \param packetDuration The duration of the packet to transmit.
+   * \return The total duration of the transaction.
    */
   Time CalculateDmgTransactionDuration (Time packetDuration);
   /**
    * Calculate DMG transaction duration including packet transmission + acknowledgement.
-   * \param packet
-   * \param hdr
-   * \return The total duration of the transaction
+   * \param packet The packet to be transmitted.
+   * \param hdr The header of the packet to be transmitted.
+   * \return The total duration of the transaction.
    */
   Time CalculateDmgTransactionDuration (Ptr<Packet> packet, WifiMacHeader &hdr);
-
+  /**
+   * Calculate DMG transaction duration including packet transmission + acknowledgement.
+   * \param packetDuration The duration of the packet to transmit.
+   * \param hdr The header of the packet to be transmitted.
+   * \param txParams The tx parameters for the packet to be transmitted.
+   * \return The total duration of the transaction.
+   */
+  Time CalculateDmgTransactionDuration (Time packetDuration, WifiMacHeader &hdr, MacLowTransmissionParameters &txParams) const;
   /**
    * Return a TXVECTOR for the DATA frame given the destination.
    * The function consults WifiRemoteStationManager, which controls the rate
