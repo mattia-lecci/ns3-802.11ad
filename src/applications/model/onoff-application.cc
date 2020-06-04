@@ -41,7 +41,7 @@
 #include "ns3/udp-socket-factory.h"
 #include "ns3/string.h"
 #include "ns3/pointer.h"
-#include "ns3/seq-ts-header.h"
+#include "timestamp-tag.h"
 
 namespace ns3 {
 
@@ -309,8 +309,10 @@ void OnOffApplication::SendPacket ()
 //  packet->AddHeader (header);
 //  NS_ABORT_IF (packet->GetSize () != m_pktSize);
 //  NS_LOG_UNCOND ("TRX: " << header.GetSeq () << " " << header.GetTs ().GetSeconds ());
-
+  TimestampTag timestamp;
+  timestamp.SetTimestamp (Simulator::Now ());
   Ptr<Packet> packet = Create<Packet> (m_pktSize);
+  packet->AddByteTag (timestamp);
   m_txTrace (packet);
   m_socket->Send (packet);
   m_totBytes += m_pktSize;
