@@ -218,7 +218,7 @@ EdcaTxopN::NotifyAccessGranted (void)
   if (m_stationManager->HasDmgSupported () && GetTypeOfStation () != DMG_ADHOC)
     {
       m_remainingDuration = m_allocationDuration - (Simulator::Now () - m_transmissionStarted);
-      if (m_remainingDuration.IsNegative ())
+      if (m_remainingDuration.IsNegative () || !m_low->IsTransmissionSuspended ())
         {
           m_accessAllowed = false;
           return;
@@ -885,9 +885,7 @@ EdcaTxopN::RestartAccessIfNeeded (void)
         }
       else
         {
-          if ((m_currentPacket != 0
-               || !m_queue->IsEmpty () || m_baManager->HasPackets ())
-              && !m_dcf->IsAccessRequested ()
+          if ((m_currentPacket != 0 || !m_queue->IsEmpty () || m_baManager->HasPackets ())
               && m_accessAllowed
               && !m_low->IsTransmissionSuspended ())
             {
