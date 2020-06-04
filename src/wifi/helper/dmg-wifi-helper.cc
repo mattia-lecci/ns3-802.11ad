@@ -169,6 +169,7 @@ DmgWifiHelper::DmgWifiHelper ()
 {
   SetRemoteStationManager ("ns3::ConstantRateWifiManager", "ControlMode", StringValue ("DMG_MCS4"),
                                                            "DataMode", StringValue ("DMG_MCS12"));
+  SetDmgScheduler ("ns3::CbapOnlyDmgWifiScheduler");
   SetStandard (WIFI_PHY_STANDARD_80211ad);
 }
 
