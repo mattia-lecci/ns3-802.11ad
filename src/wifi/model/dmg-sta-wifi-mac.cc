@@ -177,7 +177,7 @@ DmgStaWifiMac::GetTypeId (void)
                      "ns3::DmgWifiMac::AssociationTracedCallback")
     .AddTraceSource ("DeAssoc", "Association with an access point lost.",
                      MakeTraceSourceAccessor (&DmgStaWifiMac::m_deAssocLogger),
-                     "ns3::Mac48Address::TracedCallback")
+                     "ns3::DmgWifiMac::DeAssociationTracedCallback")
 
     /* DMG BSS peer and service discovery */
     .AddTraceSource ("InformationResponseReceived", "Received information response regarding specific station.",
@@ -1209,7 +1209,7 @@ DmgStaWifiMac::StartDataTransmissionInterval (void)
           for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
             {
               field = (*iter);
-              if (field.GetAllocationType () == SERVICE_PERIOD_ALLOCATION)
+              if (field.GetAllocationType () == SERVICE_PERIOD_ALLOCATION && IsAssociated ())
                 {
                   Time spStart = MicroSeconds (field.GetAllocationStart ());
                   Time spLength = MicroSeconds (field.GetAllocationBlockDuration ());
@@ -1592,7 +1592,7 @@ DmgStaWifiMac::StartFullDuplexRelay (AllocationID allocationID, Time length,
   m_peerStationAid = peerAid;
   m_peerStationAddress = peerAddress;
   m_moreData = true;
-  m_servicePeriodStartedCallback (GetAddress (), peerAddress);
+  m_servicePeriodStartedCallback (GetAddress (), peerAddress, isSource);
   /* Check current transmission link */
   if (m_relayLinkInfo.transmissionLink == DIRECT_LINK)
     {
