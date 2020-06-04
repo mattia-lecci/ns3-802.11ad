@@ -111,6 +111,9 @@ uint8_t allocationId = 1;                          /* The allocation ID of the D
 uint16_t allocationPeriod = 0;                     /* The periodicity of the requested SP allocation, 0 if not periodic */
 Time thrLogPeriodicity = MilliSeconds (100);       /* The log periodicity for the throughput of each STA [ms] */
 
+typedef std::map<Mac48Address, uint32_t> Mac2IdMap;
+Mac2IdMap mac2IdMap;
+
 /** Applications **/
 CommunicationPairList communicationPairList;  /* List of communicating devices. */
 
@@ -119,16 +122,14 @@ typedef std::map<Mac48Address, uint64_t> PacketCountMap;
 PacketCountMap macTxDataFailed;
 PacketCountMap macTxDataOk;
 PacketCountMap macRxDataOk;
-
 Ptr<DmgApWifiMac> apWifiMac;
 
-/* MAC layer Statistics */
-typedef map<Mac48Address, uint64_t> PacketCountMap;
-PacketCountMap macTxDataFailed;
-PacketCountMap macTxDataOk;
-PacketCountMap macRxDataOk;
-
-Ptr<DmgApWifiMac> apWifiMac;
+/* Received packets output stream */
+Ptr<OutputStreamWrapper> receivedPktsTrace;
+/* SPs output stream */
+Ptr<OutputStreamWrapper> spTrace;
+/* MAC queue size output stream */
+Ptr<OutputStreamWrapper> queueTrace;
 
 template <typename T>
 std::string to_string_with_precision (const T a_value, const int n = 6)
@@ -189,13 +190,17 @@ void
 ReceivedPacket (Ptr<Node> srcNode, Ptr<const Packet> packet, const Address &address)
 {
   CommunicationPair &commPair = communicationPairList.at (srcNode);
+  Time delay, jitter;
   TimestampTag timestamp;
   if (packet->FindFirstMatchingByteTag (timestamp))
     {
-      Time delay = Simulator::Now () - timestamp.GetTimestamp ();
-      commPair.jitter += Seconds (std::abs (delay.GetSeconds () - commPair.lastDelayValue.GetSeconds ()));
+      delay = Simulator::Now () - timestamp.GetTimestamp ();
+      jitter = Seconds (std::abs (delay.GetSeconds () - commPair.lastDelayValue.GetSeconds ()));
+      commPair.jitter += jitter;
       commPair.lastDelayValue = delay;
     }
+  *receivedPktsTrace->GetStream () << srcNode->GetId () << "," << timestamp.GetTimestamp ().GetTimeStep () << ","
+                                   << Simulator::Now ().GetTimeStep () << "," << packet->GetSize ()  << std::endl;
 }
 
 double
@@ -212,7 +217,6 @@ void
 CalculateThroughput (void)
 {
   double totalThr = 0;
-  Ptr<Node> node;
   double thr;
   /* duration is the time period which corresponds to the logged throughput values */
   std::string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - thrLogPeriodicity.GetSeconds (), 2) +
@@ -231,16 +235,26 @@ CalculateThroughput (void)
   Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);
 }
 
+void 
+DtiStarted (Mac48Address apAddr, Time duration)
+{
+  NS_LOG_DEBUG ("DTI started at " << apAddr);
+  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << Simulator::Now ().GetTimeStep () << "," << true << std::endl;
+  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << (Simulator::Now () + duration).GetTimeStep () << "," << false << std::endl;
+}
+
 void
 ServicePeriodStarted (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
   NS_LOG_DEBUG ("Starting SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
+  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetTimeStep () << "," << true << std::endl;
 }
 
 void
 ServicePeriodEnded (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
   NS_LOG_DEBUG ("Ending SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
+  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetTimeStep () << "," << false << std::endl;
 }
 
 void
@@ -287,7 +301,7 @@ ComputeServicePeriodDuration (const uint64_t &appDataRate, const uint64_t &phyMo
   uint64_t biDurationUs = apWifiMac->GetBeaconInterval ().GetMicroSeconds ();
   uint32_t spDuration = ceil (dataRateRatio * biDurationUs);
 
-  return spDuration;
+  return spDuration * 1.3;
 }
 
 DmgTspecElement
@@ -311,7 +325,6 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
       maxAllocation /= period;
       element.SetAllocationPeriod (period, false); // false: The allocation period must not be a multiple of the BI
     }
-  NS_LOG_UNCOND ("New min Allocation=" << minAllocation);
   element.SetMinimumAllocation (minAllocation);
   element.SetMaximumAllocation (maxAllocation);
   element.SetMinimumDuration (minAllocation);
@@ -415,6 +428,12 @@ SLSCompleted (Ptr<Parameters> parameters,
 }
 
 void
+MacQueueChanged (Ptr<Node> srcNode, uint32_t oldQueueSize, uint32_t newQueueSize)
+{
+  *queueTrace->GetStream () << srcNode->GetId () << "," << Simulator::Now ().GetTimeStep () << "," << newQueueSize << std::endl;
+}
+
+void
 MacRxOk (Ptr<DmgWifiMac> wifiMac, WifiMacType type, 
          Mac48Address address, double snrValue)
 {
@@ -499,7 +518,6 @@ main (int argc, char *argv[])
   /* Enable Log of specific components from tLogStart to tLogEnd */  
   std::vector<std::string> logComponents = SplitString (logComponentsStr, ':');
   EnableMyTraces (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
-  LogComponentEnable ("EvaluateScheduler", LOG_LEVEL_ALL);
 
   /* Compute system path in order to import correctly DmgFiles */
   std::string systemPath = SystemPath::FindSelfDirectory ();
@@ -627,6 +645,11 @@ main (int argc, char *argv[])
   Ptr<WifiNetDevice> netDevice;
   devices.Add (apDevice);
   devices.Add (staDevices);
+  for (uint32_t i = 0; i < devices.GetN (); i++)
+    {
+      netDevice = StaticCast<WifiNetDevice> (devices.Get (i));
+      mac2IdMap[netDevice->GetMac ()->GetAddress ()] = netDevice->GetNode ()->GetId ();
+    }
 
   /* Setting mobility model for AP */
   MobilityHelper mobilityAp;
@@ -685,16 +708,26 @@ main (int argc, char *argv[])
   AsciiTraceHelper ascii;
   Ptr<OutputStreamWrapper> e2eResults = ascii.CreateFileStream ("results.csv");
   *e2eResults->GetStream () << "TxPkts,TxBytes,RxPkts,RxBytes,AvgThroughput,AvgDelay,AvgJitter" << std::endl;
+  receivedPktsTrace = ascii.CreateFileStream ("packetsTrace.csv");
+  *receivedPktsTrace->GetStream () << "SrcNodeId,TxTimestamp[ns],RxTimestamp[ns],PktSize[bytes]" << std::endl;
+  spTrace = ascii.CreateFileStream ("spTrace.csv");
+  *spTrace->GetStream () << "SrcNodeId,Timestamp[ns],isStart[bool]" << std::endl;
+  queueTrace = ascii.CreateFileStream ("queueTrace.csv");
+  *queueTrace->GetStream () << "SrcNodeId,Timestamp[ns],queueSize[packets]" << std::endl;
 
   Ptr<WifiNetDevice> wifiNetDevice;
   Ptr<DmgStaWifiMac> staWifiMac;
   Ptr<WifiRemoteStationManager> remoteStationManager;
+  /* By default the generated traffic is associated to AC_BE */
+  /* Therefore we keep track of changes in the BE Queue */
+  Ptr<WifiMacQueue> beQueue;
 
   /* Connect DMG STA traces */
   for (uint32_t i = 0; i < staDevices.GetN (); i++)
     {
       wifiNetDevice = StaticCast<WifiNetDevice> (staDevices.Get (i));
       staWifiMac = StaticCast<DmgStaWifiMac> (wifiNetDevice->GetMac ());
+      beQueue = staWifiMac->GetBEQueue ()->GetQueue ();
       macTxDataFailed.insert (std::make_pair (staWifiMac->GetAddress (), 0));
       macTxDataOk.insert (std::make_pair (staWifiMac->GetAddress (), 0));
       macRxDataOk.insert (std::make_pair (staWifiMac->GetAddress (), 0));
@@ -707,6 +740,7 @@ main (int argc, char *argv[])
       staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, staWifiNodes.Get (i)));
       staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeCallback (&ServicePeriodStarted));
       staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeCallback (&ServicePeriodEnded));
+      beQueue->TraceConnectWithoutContext ("OccupancyChanged", MakeBoundCallback (&MacQueueChanged, staWifiNodes.Get (i)));
 
       Ptr<Parameters> parameters = Create<Parameters> ();
       parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
@@ -724,6 +758,7 @@ main (int argc, char *argv[])
   Ptr<Parameters> parameters = Create<Parameters> ();
   parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
   parameters->wifiMac = apWifiMac;
+  apWifiMac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DtiStarted));
   apWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parameters));
   apWifiMac->TraceConnectWithoutContext ("ContentionPeriodStarted", MakeCallback (&ContentionPeriodStarted));
   apWifiMac->TraceConnectWithoutContext ("ContentionPeriodEnded", MakeCallback (&ContentionPeriodEnded));
@@ -742,7 +777,7 @@ main (int argc, char *argv[])
       columnName = " SrcNodeId=" + std::to_string (it->second.srcApp->GetNode ()->GetId ()) + ",";
       rowOutput += columnName;
     }
-  NS_LOG_UNCOND (rowOutput + " Total");
+  NS_LOG_UNCOND (rowOutput + " Aggregate");
 
   /* Schedule Throughput Calulcations */
   Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);
