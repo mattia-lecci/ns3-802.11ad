@@ -1312,6 +1312,11 @@ public:
   LogNormalRandomVariable ();
 
   /**
+   * \brief Destructor.
+   */
+  virtual ~LogNormalRandomVariable();
+
+  /**
    * \brief Returns the mu value for the log-normal distribution returned by this RNG stream.
    * \return The mu value for the log-normal distribution returned by this RNG stream.
    */

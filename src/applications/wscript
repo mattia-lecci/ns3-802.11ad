@@ -15,11 +15,17 @@ def build(bld):
         'model/udp-echo-server.cc',
         'model/application-packet-probe.cc',
         'model/timestamp-tag.cc',
+        'model/gaming-streaming-server.cc',
+        'model/crazytaxi-streaming-server.cc',
+        'model/four-elements-streaming-server.cc',
+        'model/mixture-random-variable.cc',
+        'model/three-lognormal-random-variable.cc',
         'helper/bulk-send-helper.cc',
         'helper/on-off-helper.cc',
         'helper/packet-sink-helper.cc',
         'helper/udp-client-server-helper.cc',
         'helper/udp-echo-helper.cc',
+        'helper/gaming-traffic-helper.cc',
         ]
 
     applications_test = bld.create_ns3_module_test_library('applications')
@@ -42,11 +48,17 @@ def build(bld):
         'model/udp-echo-server.h',
         'model/application-packet-probe.h',
         'model/timestamp-tag.h',
+        'model/gaming-streaming-server.h',
+        'model/crazytaxi-streaming-server.h',
+        'model/four-elements-streaming-server.h',
+        'model/mixture-random-variable.h',
+        'model/three-lognormal-random-variable.h',
         'helper/bulk-send-helper.h',
         'helper/on-off-helper.h',
         'helper/packet-sink-helper.h',
         'helper/udp-client-server-helper.h',
         'helper/udp-echo-helper.h',
+        'helper/gaming-traffic-helper.h',
         ]
 
     bld.ns3_python_bindings()
