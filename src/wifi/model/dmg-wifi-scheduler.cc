@@ -126,6 +126,14 @@ DmgWifiScheduler::GetFullExtendedScheduleElement (void)
 AllocationFieldList
 DmgWifiScheduler::GetAllocationList (void)
 {
+  /* Check validity of the allocation list */
+  uint32_t allocEnd;
+  for (const auto & alloc: m_allocationList)
+    {
+      allocEnd = alloc.GetAllocationStart () + (alloc.GetNumberOfBlocks () - 1) * alloc.GetAllocationBlockPeriod () + alloc.GetAllocationBlockDuration ();
+      NS_ASSERT_MSG (allocEnd <= m_dtiDuration.GetMicroSeconds (), "Allocation exceeds DTI duration");
+    }
+
   return m_allocationList;
 }
 
