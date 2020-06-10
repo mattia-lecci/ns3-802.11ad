@@ -184,8 +184,8 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
       // distance between consecutive periodic SPs
       spInterval = uint32_t (m_biDuration.GetMicroSeconds () / allocPeriod);
 
-      NS_LOG_DEBUG ("Allocation Period " << allocPeriod 
-                                         << " AllocDuration " << allocDuration
+      NS_LOG_DEBUG ("Allocation Period=" << allocPeriod 
+                                         << " AllocDuration=" << allocDuration
                                          << " - Schedule one SP every " << spInterval);
 
       blocks = GetAvailableBlocks (allocDuration, spInterval, MAX_NUM_BLOCKS);
@@ -236,7 +236,8 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
   uint32_t endAlloc;
   for (uint8_t i = 0; i < blocks.size (); ++i)
     {
-      NS_LOG_DEBUG ("Reserve from " << blocks[i] << " for " << allocDuration);
+      NS_LOG_DEBUG ("Reserve from " << blocks[i] << " duration=" << allocDuration 
+                    << " sourceAid=" << +sourceAid << " destAid=" << +info.GetDestinationAid ());
       endAlloc = blocks[i] + allocDuration + m_guardTime;
       UpdateAvailableSlots (blocks[i], endAlloc);
     }
@@ -531,7 +532,8 @@ PeriodicDmgWifiScheduler::AddBroadcastCbapAllocations (void)
 
   for (const auto & alloc: m_allocationList)
     {
-      NS_LOG_DEBUG ("Allocation element start at: " << alloc.GetAllocationStart () << " periodicity " << alloc.GetAllocationBlockPeriod () << " duration " << alloc.GetAllocationBlockDuration ());
+      NS_LOG_DEBUG ("Allocation element start at: " << alloc.GetAllocationStart () << " periodicity=" << alloc.GetAllocationBlockPeriod () 
+                    << " duration=" << alloc.GetAllocationBlockDuration () << " blocks=" << +alloc.GetNumberOfBlocks ());
     }
 
 }
