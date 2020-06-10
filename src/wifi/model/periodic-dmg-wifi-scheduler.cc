@@ -262,11 +262,13 @@ PeriodicDmgWifiScheduler::GetAvailableBlocks (uint32_t allocDuration, uint32_t s
 
   while (it != m_availableSlots.end ())
     {
-      if (startNextAlloc < it->first)
+      if (startNextAlloc < it->first || startNextAlloc > m_availableSlots.back().second)
         {
           // The next periodic SP block is positioned before the beginning of the 
           // next available slot: this translates in a broken periodicity, and the 
           // algorithm stops.
+          // Or, if the start of the next allocation is greater than the duration of
+          // the DTI, then the algorithm stops.
           break;
         }
 
