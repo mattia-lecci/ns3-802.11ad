@@ -97,8 +97,8 @@ CrazyTaxiStreamingServer::InitializeStreams ()
 
   // Packet inter-arrival time
   Ptr<ConstantRandomVariable> iatVideo1 = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (0));
-  Ptr<ThreeLogNormalRandomVariable> iatVideo2 = CreateObjectWithAttributes<ThreeLogNormalRandomVariable> ("Mu", DoubleValue (0.34),
-                                                                                                          "Sigma", DoubleValue (1.73),
+  Ptr<ThreeLogNormalRandomVariable> iatVideo2 = CreateObjectWithAttributes<ThreeLogNormalRandomVariable> ("Mu", DoubleValue (1.729),
+                                                                                                          "Sigma", DoubleValue (0.343),
                                                                                                           "Threshold", DoubleValue (-2.25));
 
   Ptr<MixtureRandomVariable> iatVideo = CreateObject<MixtureRandomVariable> ();

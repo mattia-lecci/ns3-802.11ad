@@ -278,7 +278,7 @@ GamingStreamingServer::ScheduleNextTx (Ptr<TrafficStream> traffic)
     {
       // Using Seconds instead of MilliSeconds to avoid truncating to integer
       nextTx = Seconds(traffic->interArrivalTimesVariable->GetValue ()/1e3);
-    } while (nextTx.IsNegative ());
+    } while (nextTx.IsStrictlyNegative ());
 
   traffic->sendEvent = Simulator::Schedule (nextTx, &GamingStreamingServer::Send, this, traffic);
 
