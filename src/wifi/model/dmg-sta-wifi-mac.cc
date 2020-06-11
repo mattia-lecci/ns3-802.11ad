@@ -1297,7 +1297,7 @@ DmgStaWifiMac::ScheduleAllocationBlocks (AllocationField &field, STA_ROLE role)
       /* A_start + (i – 1) × A_period */
       for (uint8_t i = 0; i < blocks; i++)
         {
-          NS_LOG_INFO ("Schedule SP Block [" << i << "] at " << spStart << " till " << spStart + spLength);
+          NS_LOG_INFO ("Schedule SP Block [" << +i << "] at " << spStart << " till " << spStart + spLength);
           Simulator::Schedule (spStart, &DmgStaWifiMac::InitiateAllocationPeriod, this,
                                field.GetAllocationID (), field.GetSourceAid (), field.GetDestinationAid (), spLength, role);
           spStart += spPeriod;
@@ -1316,8 +1316,7 @@ DmgStaWifiMac::ScheduleAllocationBlocks (AllocationField &field, STA_ROLE role)
 void
 DmgStaWifiMac::InitiateAllocationPeriod (AllocationID id, uint8_t srcAid, uint8_t dstAid, Time spLength, STA_ROLE role)
 {
-  NS_LOG_FUNCTION (this << static_cast<uint16_t> (id) << static_cast<uint16_t> (srcAid)
-                   << static_cast<uint16_t> (dstAid) << spLength << role);
+  NS_LOG_FUNCTION (this << +id << +srcAid << +dstAid << spLength << role);
 
   /* Relay Pair */
   REDS_PAIR redsPair = std::make_pair (srcAid, dstAid);

@@ -127,6 +127,7 @@ AllocationFieldList
 DmgWifiScheduler::GetAllocationList (void)
 {
   /* Check validity of the allocation list */
+  /* This check must be modified accordingly if the periodicity is a multiple of the BI duration */
   uint32_t allocEnd;
   for (const auto & alloc: m_allocationList)
     {

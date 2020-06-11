@@ -372,15 +372,14 @@ void
 DmgWifiMac::ScheduleServicePeriod (uint8_t blocks, Time spStart, Time spLength, Time spPeriod,
                                    AllocationID allocationID, uint8_t peerAid, Mac48Address peerAddress, bool isSource)
 {
-  NS_LOG_FUNCTION (this << blocks << spStart << spLength << spPeriod
-                   << static_cast<uint16_t> (allocationID) << static_cast<uint16_t> (peerAid) << peerAddress << isSource);
+  NS_LOG_FUNCTION (this << +blocks << spStart << spLength << spPeriod << +allocationID << +peerAid << peerAddress << isSource);
   /* We allocate multiple blocks of this allocation as in (9.33.6 Channel access in scheduled DTI) */
   /* A_start + (i – 1) × A_period */
   if (spPeriod > 0)
     {
       for (uint8_t i = 0; i < blocks; i++)
         {
-          NS_LOG_INFO ("Schedule SP Block [" << i << "] at " << spStart << " till " << spStart + spLength);
+          NS_LOG_INFO ("Schedule SP Block [" << +i << "] at " << spStart << " till " << spStart + spLength);
           Simulator::Schedule (spStart, &DmgWifiMac::StartServicePeriod, this,
                                allocationID, spLength, peerAid, peerAddress, isSource);
           Simulator::Schedule (spStart + spLength, &DmgWifiMac::EndServicePeriod, this);
@@ -402,6 +401,7 @@ void
 DmgWifiMac::StartServicePeriod (AllocationID allocationID, Time length, uint8_t peerAid, Mac48Address peerAddress, bool isSource)
 {
   NS_LOG_FUNCTION (this << length << +peerAid << peerAddress << isSource << Simulator::Now ());
+  NS_ASSERT_MSG (m_accessPeriod == CHANNEL_ACCESS_DTI, "Attempting to start an SP outside the DTI");
   m_currentAllocationID = allocationID;
   m_currentAllocation = SERVICE_PERIOD_ALLOCATION;
   m_currentAllocationLength = length;
@@ -432,6 +432,7 @@ DmgWifiMac::StartServicePeriod (AllocationID allocationID, Time length, uint8_t 
     {
       m_currentLinkMaintained = false;
     }
+  NS_ASSERT_MSG (m_allocationStarted + m_currentAllocationLength <= m_dtiStartTime + m_dtiDuration, "SP exceeds DTI duration");
 }
 
 void
