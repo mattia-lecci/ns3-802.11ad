@@ -36,6 +36,11 @@ GamingStreamingServer::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::GamingStreamingServer")
     .SetParent<Application> ()
     .SetGroupName ("Applications")
+    .AddAttribute ("BitRate",
+                   "Application's data rate (in Mbps). If 0.0, The default application bitrate is used, instead.",
+                   DoubleValue (0.0),
+                   MakeDoubleAccessor (&GamingStreamingServer::SetScalingFactor),
+                   MakeDoubleChecker<double> ())
     .AddAttribute ("RemoteAddress",
                    "The destination Address of the outbound packets.",
                    AddressValue (),
@@ -49,28 +54,26 @@ GamingStreamingServer::GetTypeId (void)
     .AddTraceSource ("Tx", "A new packet is created and is sent",
                      MakeTraceSourceAccessor (&GamingStreamingServer::m_txTrace),
                      "ns3::Packet::TracedCallback")
+    .AddTraceSource ("Rx", "A new packet has received",
+                     MakeTraceSourceAccessor (&GamingStreamingServer::m_rxTrace),
+                     "ns3::Packet::TracedCallback")
   ;
   return tid;
 }
 
 GamingStreamingServer::GamingStreamingServer ()
-  : m_seq (0),
-    m_totSentPackets (0),
-    m_totFailedPackets (0),
-    m_totSentBytes (0),
-    m_socket (0),
-    m_peerAddress (Address ()),
-    m_peerPort (0)
+  : m_referenceBitRate (1),
+    m_seq (0),
+    m_totalSentPackets (0),
+    m_totalReceivedPackets (0),
+    m_totalFailedPackets (0),
+    m_totalSentBytes (0),
+    m_totalReceivedBytes (0),
+    m_socket (0)
 {
   NS_LOG_FUNCTION (this);
 }
 
-GamingStreamingServer::GamingStreamingServer (Address ip, uint16_t port)
-  : GamingStreamingServer ()
-{
-  NS_LOG_FUNCTION (this << ip << port);
-  SetRemote (ip, port);
-}
 
 GamingStreamingServer::~GamingStreamingServer ()
 {
@@ -103,33 +106,49 @@ GamingStreamingServer::SetRemote (Address addr)
 }
 
 uint32_t
-GamingStreamingServer::GetTotSentPackets (void)
+GamingStreamingServer::GetTotalSentPackets (void)
 {
   NS_LOG_FUNCTION (this);
-  return m_totSentPackets;
+  return m_totalSentPackets;
 }
 
 uint32_t
-GamingStreamingServer::GetTotFailedPackets (void)
+GamingStreamingServer::GetTotalReceivedPackets (void)
 {
   NS_LOG_FUNCTION (this);
-  return m_totFailedPackets;
+  return m_totalReceivedPackets;
 }
 
 uint32_t
-GamingStreamingServer::GetTotSentBytes (void)
+GamingStreamingServer::GetTotalFailedPackets (void)
 {
   NS_LOG_FUNCTION (this);
-  return m_totSentBytes;
+  return m_totalFailedPackets;
+}
+
+uint32_t
+GamingStreamingServer::GetTotalSentBytes (void)
+{
+  NS_LOG_FUNCTION (this);
+  return m_totalSentBytes;
+}
+
+uint32_t
+GamingStreamingServer::GetTotalReceivedBytes (void)
+{
+  NS_LOG_FUNCTION (this);
+  return m_totalReceivedBytes;
 }
 
 void
 GamingStreamingServer::EraseStatistics (void)
 {
   NS_LOG_FUNCTION (this);
-  m_totSentPackets = 0;
-  m_totFailedPackets = 0;
-  m_totSentBytes = 0;
+  m_totalSentPackets = 0;
+  m_totalFailedPackets = 0;
+  m_totalSentBytes = 0;
+  m_totalReceivedBytes = 0;
+  m_totalFailedPackets = 0;
 }
 
 void
@@ -172,36 +191,80 @@ GamingStreamingServer::Send (Ptr<TrafficStream> traffic)
 
   if ((m_socket->Send (packet)) >= 0)
     {
-      m_totSentPackets++;
-      m_totSentBytes += pktSize;
-      NS_LOG_INFO("At time " << Simulator::Now ().GetSeconds ()
-                             << "s gaming server sent "
-                             << packet->GetSize () << " bytes to "
-                             << addrString.str ()
-                             << " port " << m_peerPort
-                             << " total sent packets " << m_totSentPackets
-                             << " total Tx " << m_totSentBytes << " bytes");
+      m_totalSentPackets++;
+      m_totalSentBytes += pktSize;
+      NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
+                              << "s gaming server sent "
+                              << packet->GetSize () << " bytes to "
+                              << addrString.str ()
+                              << " port " << m_peerPort
+                              << " total sent packets " << m_totalSentPackets
+                              << " total Tx " << m_totalSentBytes << " bytes");
     }
   else
     {
-      m_totFailedPackets++;
+      m_totalFailedPackets++;
       NS_LOG_INFO ("Error while sending " << packet->GetSize () << " bytes to "
                                           << addrString.str ());
     }
   ScheduleNextTx (traffic);
 }
 
+
+void 
+GamingStreamingServer::HandleRead (Ptr<Socket> socket)
+{
+  NS_LOG_FUNCTION (this << socket);
+  Ptr<Packet> packet;
+  Address from;
+  while ((packet = socket->RecvFrom (from)))
+    {
+      m_rxTrace (packet, from);
+      if (packet->GetSize () == 0)
+        {
+          break;
+        }
+
+      std::stringstream addrString;
+      std::stringstream portString;
+      if (InetSocketAddress::IsMatchingType  (from))
+        {
+          addrString << InetSocketAddress::ConvertFrom (from).GetIpv4 ();
+          portString << InetSocketAddress::ConvertFrom (from).GetPort ();
+        }
+      else if (Inet6SocketAddress::IsMatchingType (from))
+        {
+          addrString << Inet6SocketAddress::ConvertFrom (from).GetIpv6 ();
+          portString << Inet6SocketAddress::ConvertFrom (from).GetPort ();
+        }
+
+      m_totalReceivedBytes += packet->GetSize ();
+      m_totalReceivedPackets++;
+
+      NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
+                              << "s gaming server received "
+                              << packet->GetSize () << " bytes from "
+                              << addrString.str ()
+                              << " port " << portString.str ()
+                              << " total received packets " << m_totalReceivedPackets
+                              << " total Tx " << m_totalReceivedBytes << " bytes");
+    }
+}
+
 void
 GamingStreamingServer::StartApplication (void)
 {
   NS_LOG_FUNCTION (this);
+  InitializeStreams ();
   if (m_socket == 0)
     {
       TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
       m_socket = Socket::CreateSocket (GetNode (), tid);
+
       if (Ipv4Address::IsMatchingType (m_peerAddress) == true)
         {
-          if (m_socket->Bind () == -1)
+          InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), m_peerPort);
+          if (m_socket->Bind (local) == -1)
             {
               NS_FATAL_ERROR ("Failed to bind socket");
             }
@@ -210,7 +273,8 @@ GamingStreamingServer::StartApplication (void)
         }
       else if (Ipv6Address::IsMatchingType (m_peerAddress) == true)
         {
-          if (m_socket->Bind6 () == -1)
+          Inet6SocketAddress local6 = Inet6SocketAddress (Ipv6Address::GetAny (), m_peerPort);
+          if (m_socket->Bind (local6) == -1)
             {
               NS_FATAL_ERROR ("Failed to bind socket");
             }
@@ -238,7 +302,7 @@ GamingStreamingServer::StartApplication (void)
           NS_ASSERT_MSG (false, "Incompatible address type: " << m_peerAddress);
         }
     }
-  m_socket->SetRecvCallback (MakeNullCallback<void, Ptr<Socket> > ());
+  m_socket->SetRecvCallback (MakeCallback (&GamingStreamingServer::HandleRead, this));
   m_socket->SetAllowBroadcast (true);
 
   for (auto &traffic : m_trafficStreams)
@@ -277,12 +341,27 @@ GamingStreamingServer::ScheduleNextTx (Ptr<TrafficStream> traffic)
   do // Iterate until the nextTx time is positive
     {
       // Using Seconds instead of MilliSeconds to avoid truncating to integer
-      nextTx = Seconds(traffic->interArrivalTimesVariable->GetValue ()/1e3);
+      nextTx = Seconds(traffic->interArrivalTimesVariable->GetValue () / 1e3);
     } while (nextTx.IsStrictlyNegative ());
 
   traffic->sendEvent = Simulator::Schedule (nextTx, &GamingStreamingServer::Send, this, traffic);
 
 }
+
+void
+GamingStreamingServer::SetScalingFactor (double targetBitRate)
+{
+  NS_LOG_FUNCTION (this << targetBitRate);
+  if (targetBitRate == 0)  // Generate traffics based on Reference BitRate if targetBitRate not defined
+    {
+      m_scalingFactor = 1;
+    }
+  else  // Scale up/down the traffic rate based on targetBitRate
+    {
+      m_scalingFactor = targetBitRate / m_referenceBitRate;
+    }
+}
+
 
 GamingStreamingServer::TrafficStream::~TrafficStream ()
 {

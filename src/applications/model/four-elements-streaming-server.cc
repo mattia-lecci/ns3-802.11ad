@@ -45,14 +45,7 @@ FourElementsStreamingServer::GetTypeId (void)
 FourElementsStreamingServer::FourElementsStreamingServer ()
 {
   NS_LOG_FUNCTION (this);
-  InitializeStreams ();
-}
-
-FourElementsStreamingServer::FourElementsStreamingServer (Address ip, uint16_t port)
-  : GamingStreamingServer (ip, port)
-{
-  NS_LOG_FUNCTION (this << ip << port);
-  InitializeStreams ();
+  m_referenceBitRate = 2.544;
 }
 
 FourElementsStreamingServer::~FourElementsStreamingServer ()
@@ -63,13 +56,18 @@ FourElementsStreamingServer::~FourElementsStreamingServer ()
 void
 FourElementsStreamingServer::InitializeStreams ()
 {
+  NS_LOG_FUNCTION (this);
   /** Add CBR audio stream */
+  // Packet size
   Ptr<ConstantRandomVariable> pktCbrAudio = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (216));
+  // Packet inter-arrival time
   Ptr<ConstantRandomVariable> iatCbrAudio = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (10));
   AddNewTrafficStream (pktCbrAudio, iatCbrAudio);
 
   /** Add Cursor stream */
+  // Packet Size
   Ptr<ConstantRandomVariable> pktCursor = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (4));
+  // Packet inter-arrival time
   Ptr<ConstantRandomVariable> iatCursor = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (50));
   AddNewTrafficStream (pktCursor, iatCursor);
 
@@ -90,8 +88,8 @@ FourElementsStreamingServer::InitializeStreams ()
   /** Add video stream */
   // Packet size
   Ptr<UniformRandomVariable> pktVideo1 = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (1),
-                                                                                            "Max", DoubleValue (1355));
-  Ptr<ConstantRandomVariable> pktVideo2 = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (1356));
+                                                                                            "Max", DoubleValue (m_scalingFactor * 1355));
+  Ptr<ConstantRandomVariable> pktVideo2 = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (m_scalingFactor * 1356));
 
   Ptr<MixtureRandomVariable> pktVideo = CreateObject<MixtureRandomVariable> ();
   pktVideo->SetRandomVariables ({pktVideo1, pktVideo2}, {0.7393, 0.2607});

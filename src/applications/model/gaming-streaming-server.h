@@ -54,14 +54,6 @@ public:
    */
   GamingStreamingServer ();
 
-  /**
-   * \brief Create a GamingStreamingServer object
-   *
-   * \param ip Remote peer address
-   * \param port Remote peer port
-   */
-  GamingStreamingServer (Address ip, uint16_t port);
-
   virtual ~GamingStreamingServer () override;
 
   /**
@@ -82,19 +74,31 @@ public:
    * \brief return the number of total sent packets
    * \return total number of sent packets
    */
-  uint32_t GetTotSentPackets (void);
+  uint32_t GetTotalSentPackets (void);
+
+  /**
+   * \brief return the number of total received packets
+   * \return total number of received packets
+   */
+  uint32_t GetTotalReceivedPackets (void);
 
   /**
    * \brief return the number of total failed packets
    * \return total number of failed packets
    */
-  uint32_t GetTotFailedPackets (void);
+  uint32_t GetTotalFailedPackets (void);
 
   /**
    * \brief return the total bytes sent
    * \return the total bytes sent
    */
-  uint32_t GetTotSentBytes (void);
+  uint32_t GetTotalSentBytes (void);
+
+  /**
+   * \brief return the total bytes received
+   * \return the total bytes received
+   */
+  uint32_t GetTotalReceivedBytes (void);
 
   /**
    * \brief Erase the statistics of sent packets
@@ -120,6 +124,9 @@ protected:
    */
   virtual void InitializeStreams () = 0;
 
+  double       m_referenceBitRate;  //!< Reference bit-rate
+  double       m_scalingFactor;     //!< Traffic scaling factor
+
 private:
   struct TrafficStream;
 
@@ -132,33 +139,49 @@ private:
   void Send (Ptr<TrafficStream> traffic);
 
   /**
+   * \brief Handle a packet received by the application
+   * \param socket the receiving socket
+   */
+  void HandleRead (Ptr<Socket> socket);
+
+  /**
    * \brief Schedule the next packet transmission
    *
    * \param traffic A pointer to traffic stream defined by TrafficStream struct
    */
   void ScheduleNextTx (Ptr<TrafficStream> traffic);
 
-  uint32_t     m_seq;  //!< Sequence number for packets
-  uint32_t     m_totSentPackets; //!< Counter for sent packets
-  uint32_t     m_totFailedPackets; //!< Counter for failed packets
-  uint32_t     m_totSentBytes; //!< Total bytes sent so far
-  Ptr<Socket>  m_socket; //!< Socket
-  Address      m_peerAddress; //!< Remote peer address
-  uint16_t     m_peerPort; //!< Remote peer port
+  /**
+   * Set the scaling factor
+   *
+   * \param targetBitRate Applications data rate (Mbps)
+   */
+  void SetScalingFactor (double targetBitRate);
+
+  uint32_t     m_seq;                  //!< Sequence number for packets
+  uint32_t     m_totalSentPackets;     //!< Counter for sent packets
+  uint32_t     m_totalReceivedPackets; //!< Counter for received packets
+  uint32_t     m_totalFailedPackets;   //!< Counter for failed packets
+  uint32_t     m_totalSentBytes;       //!< Total bytes sent so far
+  uint32_t     m_totalReceivedBytes;   //!< Total bytes sent so far
+  Ptr<Socket>  m_socket;               //!< Socket
+  Address      m_peerAddress;          //!< Remote peer address
+  uint16_t     m_peerPort;             //!< Remote peer port
 
   struct TrafficStream : public SimpleRefCount<TrafficStream>
-    {
-      EventId sendEvent;  //!< Send event for next packet
-      Ptr<RandomVariableStream> packetSizeVariable;  //!< Random number generator for packet size
-      Ptr<RandomVariableStream> interArrivalTimesVariable; //!< Random number generator for packets inter-arrival time
+  {
+    EventId sendEvent;  //!< Send event for next packet
+    Ptr<RandomVariableStream> packetSizeVariable;  //!< Random number generator for packet size
+    Ptr<RandomVariableStream> interArrivalTimesVariable; //!< Random number generator for packets inter-arrival time
 
-      ~TrafficStream ();
-    };
+    ~TrafficStream ();
+  };
 
   std::vector<Ptr<TrafficStream> > m_trafficStreams; //!< A list of traffic streams
 
-  /// Traced Callback: transmitted packets.
-  TracedCallback<Ptr<const Packet> > m_txTrace;
+  TracedCallback<Ptr<const Packet> > m_txTrace; //!< Traced Callback: transmitted packets
+
+  TracedCallback<Ptr<const Packet>, const Address &> m_rxTrace; //!< Traced Callback: received packets
 
 };
 
