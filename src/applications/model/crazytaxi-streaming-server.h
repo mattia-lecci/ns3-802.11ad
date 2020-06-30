@@ -23,7 +23,6 @@
 #ifndef CRAZY_TAXI_STREAMING_SERVER_H
 #define CRAZY_TAXI_STREAMING_SERVER_H
 
-#include "ns3/random-variable-stream.h"
 #include "ns3/mixture-random-variable.h"
 #include "ns3/gaming-streaming-server.h"
 
@@ -50,13 +49,6 @@ public:
    */
   CrazyTaxiStreamingServer ();
 
-  /**
-   * \brief Create a CrazyTaxiStreamingServer object
-   *
-   * \param ip Ip Remote peer address
-   * \param port Remote peer port
-   */
-  CrazyTaxiStreamingServer (Address ip, uint16_t port);
   virtual ~CrazyTaxiStreamingServer () override;
 
 private:

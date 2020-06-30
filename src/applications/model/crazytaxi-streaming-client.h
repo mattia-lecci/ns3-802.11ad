@@ -20,8 +20,8 @@
  *
  */
 
-#ifndef FOUR_ELEMENTS_STREAMING_SERVER_H
-#define FOUR_ELEMENTS_STREAMING_SERVER_H
+#ifndef CRAZY_TAXI_STREAMING_CLIENT_H
+#define CRAZY_TAXI_STREAMING_CLIENT_H
 
 #include "ns3/mixture-random-variable.h"
 #include "ns3/gaming-streaming-server.h"
@@ -31,11 +31,11 @@ namespace ns3 {
 /**
  * \ingroup applications
  *
- * Implement the gaming traffic streams for the 4-Elements based on following paper:
+ * Implement the gaming traffic streams for the Crazy Taxi client based on following paper:
  * Manzano, Marc, et al. "Dissecting the protocol and network traffic of the OnLive
  * cloud gaming platform." Multimedia systems 20.5 (2014): 451-470.
  */
-class FourElementsStreamingServer : public GamingStreamingServer
+class CrazyTaxiStreamingClient : public GamingStreamingServer
 {
 public:
   /**
@@ -45,20 +45,20 @@ public:
   static TypeId GetTypeId (void);
 
   /**
-   * \brief create a FourElementsStreamingServer object with default parameters
+   * \brief create a CrazyTaxiStreamingClient object with default parameters
    */
-  FourElementsStreamingServer ();
+  CrazyTaxiStreamingClient ();
 
-  virtual ~FourElementsStreamingServer () override;
+  virtual ~CrazyTaxiStreamingClient () override;
 
 private:
   /**
    *  Initialize the parameters of different streams
    */
-  void InitializeStreams () override;
+  virtual void InitializeStreams () override;
 
 };
 
 } // namespace ns3
 
-#endif /* FOUR_ELEMENTS_STREAMING_SERVER_H */
+#endif /* CRAZY_TAXI_STREAMING_CLIENT_H */

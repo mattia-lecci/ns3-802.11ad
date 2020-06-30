@@ -46,14 +46,7 @@ CrazyTaxiStreamingServer::GetTypeId (void)
 CrazyTaxiStreamingServer::CrazyTaxiStreamingServer ()
 {
   NS_LOG_FUNCTION (this);
-  InitializeStreams ();
-}
-
-CrazyTaxiStreamingServer::CrazyTaxiStreamingServer (Address ip, uint16_t port)
-  : GamingStreamingServer (ip, port)
-{
-  NS_LOG_FUNCTION (this << ip << port);
-  InitializeStreams ();
+  m_referenceBitRate = 5.948;
 }
 
 CrazyTaxiStreamingServer::~CrazyTaxiStreamingServer ()
@@ -64,13 +57,19 @@ CrazyTaxiStreamingServer::~CrazyTaxiStreamingServer ()
 void
 CrazyTaxiStreamingServer::InitializeStreams ()
 {
+  NS_LOG_FUNCTION (this);
+
   /** Add CBR audio stream */
+  // Packet size
   Ptr<ConstantRandomVariable> pktCbrAudio = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (216));
+  // Packet inter-arrival time
   Ptr<ConstantRandomVariable> iatCbrAudio = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (10));
   AddNewTrafficStream (pktCbrAudio, iatCbrAudio);
 
   /** Add Cursor stream */
+  // Packet size
   Ptr<ConstantRandomVariable> pktCursor = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (28));
+  // Packet inter-arrival time
   Ptr<ConstantRandomVariable> iatCursor = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (50));
   AddNewTrafficStream (pktCursor, iatCursor);
 
@@ -78,20 +77,17 @@ CrazyTaxiStreamingServer::InitializeStreams ()
   // Packet size
   Ptr<ConstantRandomVariable> pktVbrAudio1 = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (244));
   Ptr<ConstantRandomVariable> pktVbrAudio2 = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (1384));
-
   Ptr<MixtureRandomVariable> pktVbrAudio = CreateObject<MixtureRandomVariable> ();
   pktVbrAudio->SetRandomVariables ({pktVbrAudio1, pktVbrAudio2}, {0.0776, 0.9224});
-
   // Packet inter-arrival time
   Ptr<ConstantRandomVariable> iatVbrAudio = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (50));
   AddNewTrafficStream (pktVbrAudio, iatVbrAudio);
 
   /** Add video stream */
   // Packet size
-  Ptr<UniformRandomVariable> pktVideo1 = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (0),
-                                                                                            "Max", DoubleValue (1355));
-  Ptr<ConstantRandomVariable> pktVideo2 = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (1356));
-
+  Ptr<UniformRandomVariable> pktVideo1 = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (1),
+                                                                                            "Max", DoubleValue (m_scalingFactor * 1355));
+  Ptr<ConstantRandomVariable> pktVideo2 = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (m_scalingFactor * 1356));
   Ptr<MixtureRandomVariable> pktVideo = CreateObject<MixtureRandomVariable> ();
   pktVideo->SetRandomVariables ({pktVideo1, pktVideo2}, {0.3606, 0.6394});
 
@@ -100,10 +96,8 @@ CrazyTaxiStreamingServer::InitializeStreams ()
   Ptr<ThreeLogNormalRandomVariable> iatVideo2 = CreateObjectWithAttributes<ThreeLogNormalRandomVariable> ("Mu", DoubleValue (1.729),
                                                                                                           "Sigma", DoubleValue (0.343),
                                                                                                           "Threshold", DoubleValue (-2.25));
-
   Ptr<MixtureRandomVariable> iatVideo = CreateObject<MixtureRandomVariable> ();
   iatVideo->SetRandomVariables ({iatVideo1, iatVideo2}, {0.5725, 0.4275});
-
   AddNewTrafficStream (pktVideo, iatVideo);
 }
 
