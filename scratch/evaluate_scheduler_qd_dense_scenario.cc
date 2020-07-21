@@ -97,9 +97,11 @@ struct CommunicationPair
 typedef std::map<Ptr<Node>, CommunicationPair> CommunicationPairList;
 
 /** Simulation Arguments **/
+std::string schedulerType;                         /* The type of scheduler to be used */
+uint16_t allocationPeriod;                         /* The periodicity of the requested SP allocation, 0 if not periodic */
 std::string applicationType = "onoff";             /* Type of the Tx application */
 std::string socketType = "ns3::UdpSocketFactory";  /* Socket Type (TCP/UDP) */
-std::string schedulerType = "ns3::CbapOnlyDmgWifiScheduler";   /* The type of scheduler to be used */
+uint16_t schedulerTypeIdx = 0;                     /* The scheduler type: 0= CbapOnly, 1 basic, >=2 periodic */
 std::string phyMode = "DMG_MCS12";                 /* The MCS to be used at the Physical Layer. */
 uint32_t packetSize = 1448;                        /* Application payload size [bytes]. */
 std::string tcpVariant = "NewReno";                /* TCP Variant Type. */
@@ -108,7 +110,6 @@ uint32_t msduAggregationSize = 7935;               /* The maximum aggregation si
 uint32_t mpduAggregationSize = 262143;             /* The maximum aggregation size for A-MPDU [bytes]. */
 double simulationTime = 10;                        /* Simulation time [s]. */
 uint8_t allocationId = 1;                          /* The allocation ID of the DMG Tspec element to create */
-uint16_t allocationPeriod = 0;                     /* The periodicity of the requested SP allocation, 0 if not periodic */
 Time thrLogPeriodicity = MilliSeconds (100);       /* The log periodicity for the throughput of each STA [ms] */
 
 typedef std::map<Mac48Address, uint32_t> Mac2IdMap;
@@ -462,7 +463,7 @@ main (int argc, char *argv[])
   double frameCaptureMargin = 10;                 /* Frame capture margin [dB]. */
   bool verbose = false;                           /* Print Logging Information. */
   bool pcapTracing = false;                       /* Enable PCAP Tracing. */
-  uint16_t numStas = 10;                          /* The number of DMG STAs. */
+  uint16_t numStas = 8;                          /* The number of DMG STAs. */
   std::map<std::string, std::string> tcpVariants; /* List of the TCP Variants */
   std::string qdChannelFolder = "DenseScenario";  /* The name of the folder containing the QD-Channel files. */
   std::string logComponentsStr = "";              /* Components to be logged from tLogStart to tLogEnd separated by ':' */
@@ -501,13 +502,26 @@ main (int argc, char *argv[])
   cmd.AddValue ("qdChannelFolder", "The name of the folder containing the QD-Channel files", qdChannelFolder);
   cmd.AddValue ("numSTAs", "The number of DMG STA", numStas);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
-  cmd.AddValue ("scheduler", "The type of scheduler to use in the simulation", schedulerType);
-  cmd.AddValue ("period", "The periodicity of the requested SP allocation, 0 if not periodic", allocationPeriod);
   cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
   cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
   cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
   cmd.AddValue ("tLogEnd", "Log end [s]", tLogEnd);
+  cmd.AddValue ("schedulerTypeIdx", "Scheduler type: 0 CbapOnly, 1 Basic, >=2 Periodic", schedulerTypeIdx);
   cmd.Parse (argc, argv);
+
+  if (schedulerTypeIdx == 0)
+  {
+    schedulerType = "ns3::CbapOnlyDmgWifiScheduler";
+  }
+  else if (schedulerTypeIdx == 1)
+  {
+    schedulerType = "ns3::BasicDmgWifiScheduler";
+  }
+  else
+  {
+    schedulerType = "ns3::PeriodicDmgWifiScheduler";
+    allocationPeriod = schedulerTypeIdx;
+  }
 
   /* Global params: no fragmentation, no RTS/CTS, fixed rate for all packets */
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
@@ -831,7 +845,7 @@ main (int argc, char *argv[])
       
       packetSink = it->second.packetSink;
       thr = packetSink->GetTotalRx () * 8.0 / ((simulationTime - it->second.startTime.GetSeconds ()) * 1e6);
-      avgJitter = it->second.jitter / packetSink->GetTotalReceivedPackets ();
+      avgJitter = packetSink->GetTotalReceivedPackets () == 0 ? Seconds (0) : it->second.jitter / packetSink->GetTotalReceivedPackets ();
       aggregateThr += thr;
       std::cout << "  Rx Packets: " << packetSink->GetTotalReceivedPackets () << std::endl;
       std::cout << "  Rx Bytes:   " << packetSink->GetTotalRx () << std::endl;
