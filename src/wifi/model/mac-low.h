@@ -521,12 +521,22 @@ public:
    * \param peekedHdr the WifiMacHeader for the packet.
    * \param aggregatedPacket the current A-MPDU
    * \param size the size of a piggybacked block ack request
+   * \param numOfMpdus the current number of MPDUs aggregated
    * \return false if the given packet can be added to an A-MPDU, true otherwise
    *
    * This function decides if a given packet can be added to an A-MPDU or not
    *
    */
   bool StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peekedHdr, Ptr<Packet> aggregatedPacket, uint16_t size, uint8_t numOfMpdus) const;
+  /**
+   * \param numOfMpdus the current number of MPDUs aggregated
+   * \param hdr the WifiMacHeader of the current packet
+   * \param txParams the transmission parameters of the current packet
+
+   * This function sets the type of acknowledgement in the tx parameters
+   *
+   */
+  void SetAmpduAckType (uint8_t numOfMpdus, const WifiMacHeader &hdr, MacLowTransmissionParameters &txParams) const;
   /**
    *
    * This function is called to flush the aggregate queue, which is used for A-MPDU
@@ -1039,6 +1049,7 @@ private:
    * \param tstamp timestamp
    * \param currentAmpduPacket current A-MPDU packet
    * \param blockAckSize size of the piggybacked block ack request
+   * \param numOfMpdus the current number of MPDUs aggregated
    *
    * \return the aggregate if MSDU aggregation succeeded, 0 otherwise
    */

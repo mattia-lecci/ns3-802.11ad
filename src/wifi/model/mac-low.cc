@@ -718,6 +718,20 @@ MacLow::StoredCurrentAllocation (void) const
 }
 
 void
+MacLow::SetAmpduAckType (uint8_t numOfMpdus, const WifiMacHeader &hdr, MacLowTransmissionParameters &txParams) const
+{
+  NS_LOG_FUNCTION (numOfMpdus << txParams << hdr);
+  if (numOfMpdus > 0)
+    {
+      txParams.EnableCompressedBlockAck ();
+    }
+  else if (hdr.IsQosData ())
+    {
+      txParams.EnableAck ();
+    }
+}
+
+void
 MacLow::StartTransmission (Ptr<const Packet> packet,
                            const WifiMacHeader* hdr,
                            MacLowTransmissionParameters params,
@@ -810,16 +824,7 @@ MacLow::StartTransmission (Ptr<const Packet> packet,
         {
           AmpduTag ampdu;
           m_currentPacket->PeekPacketTag (ampdu);
-          if (ampdu.GetRemainingNbOfMpdus () > 0)
-            {
-              NS_LOG_UNCOND ("Final number of MPDUs=" << +ampdu.GetRemainingNbOfMpdus ());
-              m_txParams.EnableCompressedBlockAck ();
-            }
-          else if (m_currentHdr.IsQosData ())
-            {
-              //VHT/HE single MPDUs are followed by normal ACKs
-              m_txParams.EnableAck ();
-            }
+          SetAmpduAckType (ampdu.GetRemainingNbOfMpdus (), m_currentHdr, m_txParams);
         }
       else if (m_currentHdr.IsQosData ())
         {
@@ -850,7 +855,8 @@ MacLow::StartTransmission (Ptr<const Packet> packet,
               Time transactionTime = CalculateDmgTransactionDuration (m_currentPacket, m_currentHdr);
               NS_LOG_DEBUG ("TransactionTime=" << transactionTime <<
                             ", RemainingTime=" << m_txParams.GetMaximumTransmissionDuration () <<
-                            ", CurrentTime=" << Simulator::Now ());
+                            ", CurrentTime=" << Simulator::Now () <<
+                            ", PacketSize=" << m_currentPacket->GetSize ());
               if (transactionTime <= m_txParams.GetMaximumTransmissionDuration ())
                 {
                   SendDataPacket ();
@@ -3022,7 +3028,7 @@ MacLow::DeaggregateAmpduAndReceive (Ptr<Packet> aggregatedPacket, double rxSnr, 
 bool
 MacLow::StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peekedHdr, Ptr<Packet> aggregatedPacket, uint16_t size, uint8_t numOfMpdus) const
 {
-  NS_LOG_FUNCTION (this << peekedPacket << peekedHdr << aggregatedPacket << size);
+  NS_LOG_FUNCTION (this << peekedPacket << peekedHdr << aggregatedPacket << size << +numOfMpdus);
   if (peekedPacket == 0)
     {
       NS_LOG_DEBUG ("no more packets in queue");
@@ -3045,20 +3051,14 @@ MacLow::StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peeke
 
   WifiMacHeader hdr = m_currentHdr;
   MacLowTransmissionParameters txParams = m_txParams;
+  SetAmpduAckType (numOfMpdus, peekedHdr, txParams);
+
   uint32_t peekedSize = peekedPacket->GetSize () + peekedHdr.GetSize () + WIFI_MAC_FCS_LENGTH;
-
-  NS_ASSERT_MSG (numOfMpdus >= 0, "The number of aggregated MPDUs cannot be negative");
-  if (numOfMpdus > 0)
-    {
-      txParams.EnableCompressedBlockAck ();
-    }
-  else
-    {
-      txParams.EnableAck ();
-    }
-
   Time txDuration = m_phy->CalculateTxDuration (aggregatedPacket->GetSize () + peekedSize, m_currentTxVector, m_phy->GetFrequency ());
   Time transactionDuration = CalculateDmgTransactionDuration (txDuration, hdr, txParams);
+  NS_LOG_DEBUG ("Aggregation of " << peekedSize << " bytes to " << aggregatedPacket->GetSize () << 
+                " bytes, txDuration=" << txDuration << ", transactionDuration=" << transactionDuration <<
+                ", current number of MPDUs=" << +numOfMpdus);
 
   if (transactionDuration > txParams.GetMaximumTransmissionDuration ())
     {
