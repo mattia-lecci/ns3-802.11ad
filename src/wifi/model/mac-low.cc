@@ -2174,14 +2174,14 @@ MacLow::SendDataPacket (void)
 }
 
 Time
-MacLow::CalculateDmgTransactionDuration (Time packetDuration)
+MacLow::CalculateDmgTransactionDuration (Time packetDuration) const
 {
   NS_LOG_FUNCTION (this << packetDuration);
   return CalculateDmgTransactionDuration (packetDuration, m_currentHdr, m_txParams);
 }
 
 Time
-MacLow::CalculateDmgTransactionDuration (Ptr<Packet> packet, WifiMacHeader &hdr) 
+MacLow::CalculateDmgTransactionDuration (Ptr<const Packet> packet, WifiMacHeader const &hdr) const
 {
   NS_LOG_FUNCTION (this << packet << hdr);
   Time duration = m_phy->CalculateTxDuration (GetSize (packet, &hdr, m_ampdu),
@@ -2190,7 +2190,7 @@ MacLow::CalculateDmgTransactionDuration (Ptr<Packet> packet, WifiMacHeader &hdr)
 }
 
 Time
-MacLow::CalculateDmgTransactionDuration (Time packetDuration, WifiMacHeader &hdr, MacLowTransmissionParameters &txParams) const
+MacLow::CalculateDmgTransactionDuration (Time packetDuration, WifiMacHeader const &hdr, MacLowTransmissionParameters const &txParams) const
 {
   NS_LOG_FUNCTION (this << packetDuration << hdr << txParams);
   Time duration = packetDuration;
@@ -3021,7 +3021,7 @@ MacLow::DeaggregateAmpduAndReceive (Ptr<Packet> aggregatedPacket, double rxSnr, 
 bool
 MacLow::StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peekedHdr, Ptr<Packet> aggregatedPacket, uint16_t size) const
 {
-  NS_LOG_FUNCTION (this << aggregatedPacket << peekedPacket << peekedHdr << size);
+  NS_LOG_FUNCTION (this << peekedPacket << peekedHdr << aggregatedPacket << size);
   if (peekedPacket == 0)
     {
       NS_LOG_DEBUG ("no more packets in queue");
@@ -3055,7 +3055,7 @@ MacLow::StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peeke
 
   if (transactionDuration > txParams.GetMaximumTransmissionDuration ())
     {
-      NS_LOG_DEBUG ("transaction duration exceeds maximum transmission duration");
+      NS_LOG_DEBUG ("no more packets can be aggregated because the transaction duration exceeds the maximum transmission duration");
       return true;
     }
     

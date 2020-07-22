@@ -544,14 +544,14 @@ public:
    * \param packetDuration The duration of the packet to transmit.
    * \return The total duration of the transaction.
    */
-  Time CalculateDmgTransactionDuration (Time packetDuration);
+  Time CalculateDmgTransactionDuration (Time packetDuration) const;
   /**
    * Calculate DMG transaction duration including packet transmission + acknowledgement.
    * \param packet The packet to be transmitted.
    * \param hdr The header of the packet to be transmitted.
    * \return The total duration of the transaction.
    */
-  Time CalculateDmgTransactionDuration (Ptr<Packet> packet, WifiMacHeader &hdr);
+  Time CalculateDmgTransactionDuration (Ptr<const Packet> packet, WifiMacHeader const &hdr) const;
   /**
    * Calculate DMG transaction duration including packet transmission + acknowledgement.
    * \param packetDuration The duration of the packet to transmit.
@@ -559,7 +559,7 @@ public:
    * \param txParams The tx parameters for the packet to be transmitted.
    * \return The total duration of the transaction.
    */
-  Time CalculateDmgTransactionDuration (Time packetDuration, WifiMacHeader &hdr, MacLowTransmissionParameters &txParams) const;
+  Time CalculateDmgTransactionDuration (Time packetDuration, WifiMacHeader const &hdr, MacLowTransmissionParameters const &txParams) const;
   /**
    * Return a TXVECTOR for the DATA frame given the destination.
    * The function consults WifiRemoteStationManager, which controls the rate
