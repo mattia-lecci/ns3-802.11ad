@@ -532,7 +532,7 @@ public:
    * \param numOfMpdus the current number of MPDUs aggregated
    * \param hdr the WifiMacHeader of the current packet
    * \param txParams the transmission parameters of the current packet
-
+   *
    * This function sets the type of acknowledgement in the tx parameters
    *
    */

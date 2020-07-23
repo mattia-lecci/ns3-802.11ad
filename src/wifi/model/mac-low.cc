@@ -720,7 +720,7 @@ MacLow::StoredCurrentAllocation (void) const
 void
 MacLow::SetAmpduAckType (uint8_t numOfMpdus, const WifiMacHeader &hdr, MacLowTransmissionParameters &txParams) const
 {
-  NS_LOG_FUNCTION (numOfMpdus << txParams << hdr);
+  NS_LOG_FUNCTION (this << numOfMpdus << txParams << hdr);
   if (numOfMpdus > 0)
     {
       txParams.EnableCompressedBlockAck ();
