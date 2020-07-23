@@ -521,12 +521,22 @@ public:
    * \param peekedHdr the WifiMacHeader for the packet.
    * \param aggregatedPacket the current A-MPDU
    * \param size the size of a piggybacked block ack request
+   * \param numOfMpdus the current number of MPDUs aggregated
    * \return false if the given packet can be added to an A-MPDU, true otherwise
    *
    * This function decides if a given packet can be added to an A-MPDU or not
    *
    */
-  bool StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peekedHdr, Ptr<Packet> aggregatedPacket, uint16_t size) const;
+  bool StopMpduAggregation (Ptr<const Packet> peekedPacket, WifiMacHeader peekedHdr, Ptr<Packet> aggregatedPacket, uint16_t size, uint8_t numOfMpdus) const;
+  /**
+   * \param numOfMpdus the current number of MPDUs aggregated
+   * \param hdr the WifiMacHeader of the current packet
+   * \param txParams the transmission parameters of the current packet
+   *
+   * This function sets the type of acknowledgement in the tx parameters
+   *
+   */
+  void SetAmpduAckType (uint8_t numOfMpdus, const WifiMacHeader &hdr, MacLowTransmissionParameters &txParams) const;
   /**
    *
    * This function is called to flush the aggregate queue, which is used for A-MPDU
@@ -541,17 +551,25 @@ public:
   void SetMacHigh (Ptr<WifiMac> mac);
   /**
    * Calculate DMG transaction duration including packet transmission + acknowledgement.
-   * \param packetDuration The duration of the packet to transmit
+   * \param packetDuration The duration of the packet to transmit.
+   * \return The total duration of the transaction.
    */
-  Time CalculateDmgTransactionDuration (Time packetDuration);
+  Time CalculateDmgTransactionDuration (Time packetDuration) const;
   /**
    * Calculate DMG transaction duration including packet transmission + acknowledgement.
-   * \param packet
-   * \param hdr
-   * \return The total duration of the transaction
+   * \param packet The packet to be transmitted.
+   * \param hdr The header of the packet to be transmitted.
+   * \return The total duration of the transaction.
    */
-  Time CalculateDmgTransactionDuration (Ptr<Packet> packet, WifiMacHeader &hdr);
-
+  Time CalculateDmgTransactionDuration (Ptr<const Packet> packet, WifiMacHeader const &hdr) const;
+  /**
+   * Calculate DMG transaction duration including packet transmission + acknowledgement.
+   * \param packetDuration The duration of the packet to transmit.
+   * \param hdr The header of the packet to be transmitted.
+   * \param txParams The tx parameters for the packet to be transmitted.
+   * \return The total duration of the transaction.
+   */
+  Time CalculateDmgTransactionDuration (Time packetDuration, WifiMacHeader const &hdr, MacLowTransmissionParameters const &txParams) const;
   /**
    * Return a TXVECTOR for the DATA frame given the destination.
    * The function consults WifiRemoteStationManager, which controls the rate
@@ -1031,10 +1049,12 @@ private:
    * \param tstamp timestamp
    * \param currentAmpduPacket current A-MPDU packet
    * \param blockAckSize size of the piggybacked block ack request
+   * \param numOfMpdus the current number of MPDUs aggregated
    *
    * \return the aggregate if MSDU aggregation succeeded, 0 otherwise
    */
-  Ptr<Packet> PerformMsduAggregation (Ptr<const Packet> packet, WifiMacHeader *hdr, Time *tstamp, Ptr<Packet> currentAmpduPacket, uint16_t blockAckSize);
+  Ptr<Packet> PerformMsduAggregation (Ptr<const Packet> packet, WifiMacHeader *hdr, Time *tstamp, 
+                                      Ptr<Packet> currentAmpduPacket, uint16_t blockAckSize, uint8_t numOfMpdus);
 
   Ptr<WifiPhy> m_phy; //!< Pointer to WifiPhy (actually send/receives frames)
   Ptr<WifiRemoteStationManager> m_stationManager; //!< Pointer to WifiRemoteStationManager (rate control)
