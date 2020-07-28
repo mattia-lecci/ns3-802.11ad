@@ -106,6 +106,26 @@ EdcaTxopN::DoDispose (void)
   DcaTxop::DoDispose ();
 }
 
+void
+EdcaTxopN::MultipleBlock (Mac48Address dest, std::vector<uint8_t> tids)
+{
+  NS_LOG_FUNCTION (this << dest);
+  for (auto tid : tids)
+    {
+      m_qosBlockedDestinations->Block (dest, tid);
+    }
+}
+
+void
+EdcaTxopN::MultipleUnblock (Mac48Address dest, std::vector<uint8_t> tids)
+{
+  NS_LOG_FUNCTION (this << dest);
+  for (auto tid : tids)
+    {
+      m_qosBlockedDestinations->Unblock (dest, tid);
+    }
+}
+
 bool
 EdcaTxopN::GetBaAgreementExists (Mac48Address address, uint8_t tid) const
 {
