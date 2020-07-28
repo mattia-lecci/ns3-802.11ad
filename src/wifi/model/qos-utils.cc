@@ -50,31 +50,6 @@ QosUtilsMapTidToAc (uint8_t tid)
   return AC_UNDEF;
 }
 
-std::vector<uint8_t>
-QoSUtilsMapAcToTids (AcIndex ac)
-{
-  if (ac == AC_BE)
-    {
-      return {0, 3};
-    }
-  else if (ac == AC_BK)
-    {
-      return {1, 2};
-    }
-  else if (ac == AC_VI)
-    {
-      return {4, 5};
-    }
-  else if (ac == AC_VO)
-    {
-      return {6, 7};
-    }
-  else
-    {
-      NS_FATAL_ERROR ("Access category not supported");
-    }
-}
-
 uint8_t
 QosUtilsGetTidForPacket (Ptr<const Packet> packet)
 {

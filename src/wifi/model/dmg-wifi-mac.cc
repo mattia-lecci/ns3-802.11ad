@@ -92,12 +92,6 @@ DmgWifiMac::GetTypeId (void)
                                      RELAY_HD_DF, "Half Duplex",
                                      RELAY_BOTH, "Both"))
 
-    /* Channel Access during the DTI */
-    .AddAttribute ("AccessInCbap", "Whether a TS with dedicated SP/CBAP can acquire channel access even during a broadcast CBAP.",
-                    BooleanValue (true),
-                    MakeBooleanAccessor (&DmgWifiMac::m_allowAccessInCbap),
-                    MakeBooleanChecker ())
-
     /* Beacon Interval Traces */
     .AddTraceSource ("DTIStarted", "The Data Transmission Interval access period started.",
                      MakeTraceSourceAccessor (&DmgWifiMac::m_dtiStarted),
@@ -339,29 +333,6 @@ DmgWifiMac::RegisterAllocatedRequest (const DmgAllocationInfo &info)
   NS_LOG_DEBUG ("Registered allocation with ID=" << +id << 
                 ", dstAddress=" << destAddress << ", srcAddress=" << GetAddress () << ", type=" << info.GetAllocationType ());
 }
-
-void
-DmgWifiMac::BlockUnblockChannelAccess (bool block)
-{
-  NS_LOG_FUNCTION (this << block);
-  /* Block the channel access of all the allocated requests */
-  for (auto al = m_allocatedRequests.begin (); al != m_allocatedRequests.end (); ++al)
-    {
-      /* Block this destination in each access category */
-      for (auto it = m_edca.begin (); it != m_edca.end (); ++it)
-        {
-          if (block)
-            {
-              it->second->MultipleBlock (al->second, QoSUtilsMapAcToTids (it->first));
-            }
-          else
-            {
-              it->second->MultipleUnblock (al->second, QoSUtilsMapAcToTids (it->first));
-            }
-        }
-    }
-}
-
 void
 DmgWifiMac::StartContentionPeriod (AllocationID allocationID, Time contentionDuration)
 {
@@ -375,13 +346,6 @@ DmgWifiMac::StartContentionPeriod (AllocationID allocationID, Time contentionDur
     }
   /* Allow Contention Access */
   m_dcfManager->AllowChannelAccess ();
-
-  /* Block the destination associated with an allocated SP/CBAP, if needed */
-  if (allocationID == BROADCAST_CBAP && !m_allowAccessInCbap)
-    {
-      BlockUnblockChannelAccess (true);
-    }
-
   /* Restore previously suspended transmission at MacLow*/
   m_low->RestoreAllocationParameters (allocationID, GetAddress (), GetBssid ());
   /* Signal DCA, EDCA, and SLS DCA Functions to start channel access */
@@ -414,9 +378,6 @@ DmgWifiMac::EndContentionPeriod (void)
     {
       m_low->StoreAllocationParameters ();
     }
-
-  /* Unblock the destination associated with an allocated SP/CBAP, if needed */
-  BlockUnblockChannelAccess (false);
 }
 
 void
