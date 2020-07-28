@@ -244,6 +244,11 @@ protected:
   virtual void Configure80211ad (void);
 
   /**
+   * This function registers the allocation requests accepted by the PCP/AP.
+   * \param info The DMG allocation info field associated with the request.
+   */
+  void RegisterAllocatedRequest (const DmgAllocationInfo &info);
+  /**
    * Start TxSS Transmit opportunity (TxOP).
    * \param peerAddress The address of the DMG STA to perform beamforming training with.
    * \param isInitiator Indicate whether we are the TxSS Initiator.
@@ -765,6 +770,9 @@ protected:
   /* Access Period Allocations */
   AllocationFieldList m_allocationList;         //!< List of access period allocations in DTI.
 
+  typedef std::pair<AllocationID, Mac48Address> AllocatedDataPair;
+  typedef std::vector<AllocatedDataPair> AllocatedRequestsVec;
+  AllocatedRequestsVec m_allocatedRequests;     //!< Vector of requested allocations granted to this STA
   /* Service Period Channel Access */
   AllocationID m_currentAllocationID;           //!< The ID of the current allocation.
   AllocationType m_currentAllocation;           //!< The current access period allocation.
