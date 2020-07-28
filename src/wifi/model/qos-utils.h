@@ -62,15 +62,6 @@ AcIndex QosUtilsMapTidToAc (uint8_t tid);
 
 /**
  * \ingroup wifi
- * Maps an Access category to the associated TIDs.
- *
- * \param ac the Access category.
- * \return a vector with the TIDs associated with the Access category.
- */
-std::vector<uint8_t> QoSUtilsMapAcToTids (AcIndex ac);
-
-/**
- * \ingroup wifi
  * If a qos tag is attached to the packet, returns a value < 8.
  * A value >= 8 is returned otherwise.
  *

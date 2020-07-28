@@ -94,20 +94,7 @@ public:
    * \return type of station.
    */
   TypeOfStation GetTypeOfStation (void) const;
-  /**
-   * Block the given destination address and TIDs from sending.
-   *
-   * \param dest The MAC address of the destination.
-   * \param tids List of tids associated with the destination.
-   */
-  void MultipleBlock (Mac48Address dest, std::vector<uint8_t> tids);
-  /**
-   * Unblock the given destination address and TIDs.
-   *
-   * \param dest The MAC address of the destination.
-   * \param tids List of tids associated with the destination.
-   */
-  void MultipleUnblock (Mac48Address dest, std::vector<uint8_t> tids);
+
   /**
    * Returns the aggregator used to construct A-MSDU subframes.
    *

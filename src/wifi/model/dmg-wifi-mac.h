@@ -599,11 +599,6 @@ protected:
    */
   void EndContentionPeriod (void);
   /**
-   * Block/Unblock the channel access for the destination with allocated SP or CBAP.
-   * \param block The flag to indicate Whether to block or unblock.
-   */
-  void BlockUnblockChannelAccess (bool block);
-  /**
    *BeamLink Maintenance Timeout.
    */
   virtual void BeamLinkMaintenanceTimeout (void);
@@ -778,8 +773,6 @@ protected:
   typedef std::pair<AllocationID, Mac48Address> AllocatedDataPair;
   typedef std::vector<AllocatedDataPair> AllocatedRequestsVec;
   AllocatedRequestsVec m_allocatedRequests;     //!< Vector of requested allocations granted to this STA
-  bool m_allowAccessInCbap;                     //!< Whether a TS with allocated SP/CBAP can access the channel also in a broadcast CBAP.
-
   /* Service Period Channel Access */
   AllocationID m_currentAllocationID;           //!< The ID of the current allocation.
   AllocationType m_currentAllocation;           //!< The current access period allocation.
