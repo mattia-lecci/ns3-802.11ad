@@ -560,6 +560,16 @@ DmgStaWifiMac::DeleteAllocation (uint16_t reason, DmgAllocationInfo &allocationI
   frame.SetReasonCode (reason);
   frame.SetDmgAllocationInfo (allocationInfo);
 
+  /* Remove the allocation from the list of allocated requests */
+  for (auto it = m_allocatedRequests.begin (); it != m_allocatedRequests.end (); ++it)
+    {
+      if (it->first == allocationInfo.GetAllocationID () && it->second == m_aidMap[allocationInfo.GetDestinationAid ()])
+        {
+          m_allocatedRequests.erase (it);
+          break;
+        }
+    }
+
   WifiActionHeader actionHdr;
   WifiActionHeader::ActionValue action;
   action.qos = WifiActionHeader::DELTS;
@@ -2651,6 +2661,7 @@ DmgStaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                 if (frame.GetStatusCode ().IsSuccess ())
                   {
                     NS_LOG_LOGIC ("DMG Allocation Request accepted by the PCP/AP");
+                    RegisterAllocatedRequest (frame.GetDmgTspec ().GetDmgAllocationInfo ());
                   }
                 else if (frame.GetStatusCode ().GetStatusCodeValue () == STATUS_CODE_REJECTED_WITH_SUGGESTED_CHANGES)
                   {

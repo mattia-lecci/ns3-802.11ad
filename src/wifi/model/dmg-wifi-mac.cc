@@ -76,7 +76,7 @@ DmgWifiMac::GetTypeId (void)
                     MakeBooleanAccessor (&DmgWifiMac::m_supportRdp),
                     MakeBooleanChecker ())
 
-      /* DMG Relay Capabilities common between PCP/AP and DMG STA */
+    /* DMG Relay Capabilities common between PCP/AP and DMG STA */
     .AddAttribute ("REDSActivated", "Whether the DMG STA is REDS.",
                     BooleanValue (false),
                     MakeBooleanAccessor (&DmgWifiMac::m_redsActivated),
@@ -316,6 +316,17 @@ DmgWifiMac::GetCurrentAllocation (void) const
   return m_currentAllocation;
 }
 
+void
+DmgWifiMac::RegisterAllocatedRequest (const DmgAllocationInfo &info)
+{
+  NS_LOG_FUNCTION (this);
+  AllocationID id = info.GetAllocationID ();
+  Mac48Address destAddress = m_aidMap[info.GetDestinationAid ()];
+  NS_ASSERT_MSG (id != BROADCAST_CBAP, "A broadcast CBAP cannot be registered among the allocated requests");
+  m_allocatedRequests.push_back (std::make_pair (id, destAddress));
+  NS_LOG_DEBUG ("Registered allocation with ID=" << +id << 
+                ", dstAddress=" << destAddress << ", srcAddress=" << GetAddress () << ", type=" << info.GetAllocationType ());
+}
 void
 DmgWifiMac::StartContentionPeriod (AllocationID allocationID, Time contentionDuration)
 {
