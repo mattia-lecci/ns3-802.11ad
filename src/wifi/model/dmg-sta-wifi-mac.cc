@@ -563,7 +563,7 @@ DmgStaWifiMac::DeleteAllocation (uint16_t reason, DmgAllocationInfo &allocationI
   /* Remove the allocation from the list of allocated requests */
   for (auto it = m_allocatedRequests.begin (); it != m_allocatedRequests.end (); ++it)
     {
-      if (it->first == allocationInfo.GetAllocationID () && it->second == m_aidMap[allocationInfo.GetDestinationAid ()])
+      if (it->id == allocationInfo.GetAllocationID () && it->dstAid == allocationInfo.GetDestinationAid ())
         {
           m_allocatedRequests.erase (it);
           break;
@@ -1281,8 +1281,9 @@ DmgStaWifiMac::StartDataTransmissionInterval (void)
                     }
                 }
               else if ((field.GetAllocationType () == CBAP_ALLOCATION) &&
-                      ((field.GetSourceAid () == AID_BROADCAST) ||
-                       (field.GetSourceAid () == m_aid) || (field.GetDestinationAid () == m_aid)))
+                      (((field.GetSourceAid () == AID_BROADCAST) && AccessAllowedInBroadcastCbap (m_aid)) ||
+                       (field.GetSourceAid () == m_aid) || 
+                       (field.GetDestinationAid () == m_aid)))
 
                 {
                   Simulator::Schedule (MicroSeconds (field.GetAllocationStart ()), &DmgStaWifiMac::StartContentionPeriod, this,

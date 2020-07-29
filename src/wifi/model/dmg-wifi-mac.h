@@ -672,6 +672,13 @@ protected:
   void AddMcsSupport (Mac48Address address, uint32_t initialMcs, uint32_t lastMcs);
 
 protected:
+  /**
+   * Get whether a Station can compete for channel access during a broadcast CBAP.
+   * \param staAid The AID of the Station.
+   * \return True if the Station is allowed to access, False otherwise.
+   */
+  bool AccessAllowedInBroadcastCbap (uint16_t staAid);
+  
   STATION_SNR_PAIR_MAP m_stationSnrMap;           //!< Map between stations and their SNR Table.
   STATION_ANTENNA_CONFIG_MAP m_bestAntennaConfig; //!< Map between remote stations and the best antenna configuration.
   ANTENNA_CONFIGURATION m_feedbackAntennaConfig;  //!< Temporary variable to save the best antenna config of the peer station.
@@ -770,9 +777,16 @@ protected:
   /* Access Period Allocations */
   AllocationFieldList m_allocationList;         //!< List of access period allocations in DTI.
 
-  typedef std::pair<AllocationID, Mac48Address> AllocatedDataPair;
-  typedef std::vector<AllocatedDataPair> AllocatedRequestsVec;
+  typedef struct 
+    {
+      AllocationID id;
+      uint16_t dstAid;
+    } AllocatedDataStruct;
+
+  typedef std::vector<AllocatedDataStruct> AllocatedRequestsVec;
   AllocatedRequestsVec m_allocatedRequests;     //!< Vector of requested allocations granted to this STA
+  bool m_accessInCbap;                          //!< Flag to indicate whether a Station with allocated SP/CBAP is allowed to compete in a CBAP.
+
   /* Service Period Channel Access */
   AllocationID m_currentAllocationID;           //!< The ID of the current allocation.
   AllocationType m_currentAllocation;           //!< The current access period allocation.
