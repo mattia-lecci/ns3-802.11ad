@@ -91,6 +91,13 @@ DmgWifiMac::GetTypeId (void)
                     MakeEnumChecker (RELAY_FD_AF, "Full Duplex",
                                      RELAY_HD_DF, "Half Duplex",
                                      RELAY_BOTH, "Both"))
+    
+    /* Channel access in the DTI */
+    .AddAttribute ("AccessInCbap", "Whether a Station with allocated SP or CBAP"
+                   "is allowed to compete for channel access during a broadcast CBAP.",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&DmgWifiMac::m_accessInCbap),
+                   MakeBooleanChecker ())
 
     /* Beacon Interval Traces */
     .AddTraceSource ("DTIStarted", "The Data Transmission Interval access period started.",
@@ -321,12 +328,41 @@ DmgWifiMac::RegisterAllocatedRequest (const DmgAllocationInfo &info)
 {
   NS_LOG_FUNCTION (this);
   AllocationID id = info.GetAllocationID ();
-  Mac48Address destAddress = m_aidMap[info.GetDestinationAid ()];
   NS_ASSERT_MSG (id != BROADCAST_CBAP, "A broadcast CBAP cannot be registered among the allocated requests");
-  m_allocatedRequests.push_back (std::make_pair (id, destAddress));
+  AllocatedDataStruct data;
+  data.id = id;
+  data.dstAid = info.GetDestinationAid ();
+  m_allocatedRequests.push_back (data);
   NS_LOG_DEBUG ("Registered allocation with ID=" << +id << 
-                ", dstAddress=" << destAddress << ", srcAddress=" << GetAddress () << ", type=" << info.GetAllocationType ());
+                ", destAid=" << data.dstAid << ", type=" << info.GetAllocationType ());
 }
+
+bool
+DmgWifiMac::AccessAllowedInBroadcastCbap (uint16_t staAid)
+{
+  if (m_allocatedRequests.empty ())
+    {
+      /* if the current Station does not have allocated requests, the channel access
+         during a broadcast CBAP is always allowed */
+      return true;
+    }
+
+  bool hasScheduledAllocation = false;
+  for (auto it = m_allocatedRequests.begin (); it != m_allocatedRequests.end (); ++it)
+    {
+      /* if the current Station is source of at least one allocated request
+         then this Station is not allowed to compete for channel access during broadcast CBAP */
+      if (staAid != it->dstAid)
+        {
+          hasScheduledAllocation = true;
+          break;
+        }
+    }
+  bool isAccessAllowed = m_accessInCbap && !hasScheduledAllocation;
+  NS_LOG_DEBUG ("Channel access during this broadcast CBAP for station=" << GetAddress () << " is: " << isAccessAllowed);
+  return isAccessAllowed;
+}
+
 void
 DmgWifiMac::StartContentionPeriod (AllocationID allocationID, Time contentionDuration)
 {
