@@ -272,8 +272,16 @@ ADDTSResponseReceived (Mac48Address address, StatusCode status, DmgTspecElement 
       /* Connect to TCP traces */
       if (socketType == "ns3::TcpSocketFactory")
         {
-          onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
-          onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+          if (applicationType == "onoff")
+            {
+              onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+              onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+            }
+          else
+            {
+              bulk->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
+              bulk->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
+            }
         }
     }
 }
