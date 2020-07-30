@@ -249,6 +249,12 @@ protected:
    */
   void RegisterAllocatedRequest (const DmgAllocationInfo &info);
   /**
+   * Get whether a Station can compete for channel access during a broadcast CBAP.
+   * \param staAid The AID of the Station.
+   * \return True if the Station is allowed to compete, False otherwise.
+   */
+  bool AccessAllowedInBroadcastCbap (uint16_t staAid);
+  /**
    * Start TxSS Transmit opportunity (TxOP).
    * \param peerAddress The address of the DMG STA to perform beamforming training with.
    * \param isInitiator Indicate whether we are the TxSS Initiator.
@@ -672,12 +678,6 @@ protected:
   void AddMcsSupport (Mac48Address address, uint32_t initialMcs, uint32_t lastMcs);
 
 protected:
-  /**
-   * Get whether a Station can compete for channel access during a broadcast CBAP.
-   * \param staAid The AID of the Station.
-   * \return True if the Station is allowed to access, False otherwise.
-   */
-  bool AccessAllowedInBroadcastCbap (uint16_t staAid);
   
   STATION_SNR_PAIR_MAP m_stationSnrMap;           //!< Map between stations and their SNR Table.
   STATION_ANTENNA_CONFIG_MAP m_bestAntennaConfig; //!< Map between remote stations and the best antenna configuration.
