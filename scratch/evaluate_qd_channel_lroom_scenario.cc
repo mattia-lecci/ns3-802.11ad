@@ -217,6 +217,18 @@ MacRxOk (Ptr<DmgWifiMac> wifiMac, Ptr<OutputStreamWrapper> stream,
     }
 }
 
+void
+CwTrace (uint32_t oldCw, uint32_t newCw)
+{
+  NS_LOG_DEBUG ("Old Cw: " << oldCw << ", New Cw: " << newCw);
+}
+
+void
+CongStateTrace (TcpSocketState::TcpCongState_t oldState, TcpSocketState::TcpCongState_t newState)
+{
+  NS_LOG_DEBUG ("Old State: " << oldState << ", New State: " << newState); 
+}
+
 DmgTspecElement
 GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation, uint16_t period)
 {
