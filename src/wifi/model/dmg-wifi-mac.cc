@@ -333,33 +333,27 @@ DmgWifiMac::RegisterAllocatedRequest (const DmgAllocationInfo &info)
   data.id = id;
   data.dstAid = info.GetDestinationAid ();
   m_allocatedRequests.push_back (data);
-  NS_LOG_DEBUG ("Registered allocation with ID=" << +id << 
-                ", destAid=" << data.dstAid << ", type=" << info.GetAllocationType ());
+  NS_LOG_DEBUG ("Registered allocation with ID=" << +id << ", destAid=" << data.dstAid << 
+                ", type=" << info.GetAllocationType () << ", at Station with address=" << GetAddress ());
 }
 
 bool
 DmgWifiMac::AccessAllowedInBroadcastCbap (uint16_t staAid)
 {
-  if (m_allocatedRequests.empty ())
-    {
-      /* if the current Station does not have allocated requests, the channel access
-         during a broadcast CBAP is always allowed */
-      return true;
-    }
-
+  NS_LOG_FUNCTION (this << staAid);
   bool hasScheduledAllocation = false;
   for (auto it = m_allocatedRequests.begin (); it != m_allocatedRequests.end (); ++it)
     {
-      /* if the current Station is source of at least one allocated request
-         then this Station is not allowed to compete for channel access during broadcast CBAP */
+      // if the current Station is source of at least one allocated request
+      // then this Station is not allowed to compete for channel access during the broadcast CBAP 
       if (staAid != it->dstAid)
         {
           hasScheduledAllocation = true;
           break;
         }
     }
-  bool isAccessAllowed = m_accessInCbap && !hasScheduledAllocation;
-  NS_LOG_DEBUG ("Channel access during this broadcast CBAP for station=" << GetAddress () << " is: " << isAccessAllowed);
+  bool isAccessAllowed = m_accessInCbap || !hasScheduledAllocation;
+  NS_LOG_DEBUG ("Channel access during this broadcast CBAP for station=" << GetAddress () << " is=" << isAccessAllowed);
   return isAccessAllowed;
 }
 
