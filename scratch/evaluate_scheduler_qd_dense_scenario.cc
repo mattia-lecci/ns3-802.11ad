@@ -98,7 +98,7 @@ typedef std::map<Ptr<Node>, CommunicationPair> CommunicationPairList;
 
 /** Simulation Arguments **/
 std::string schedulerType;                         /* The type of scheduler to be used */
-uint16_t allocationPeriod;                         /* The periodicity of the requested SP allocation, 0 if not periodic */
+uint16_t allocationPeriod = 0;                     /* The periodicity of the requested SP allocation, 0 if not periodic */
 std::string applicationType = "onoff";             /* Type of the Tx application */
 std::string socketType = "ns3::UdpSocketFactory";  /* Socket Type (TCP/UDP) */
 uint16_t schedulerTypeIdx = 0;                     /* The scheduler type: 0= CbapOnly, 1 basic, >=2 periodic */
@@ -463,7 +463,7 @@ main (int argc, char *argv[])
   double frameCaptureMargin = 10;                 /* Frame capture margin [dB]. */
   bool verbose = false;                           /* Print Logging Information. */
   bool pcapTracing = false;                       /* Enable PCAP Tracing. */
-  uint16_t numStas = 8;                          /* The number of DMG STAs. */
+  uint16_t numStas = 8;                           /* The number of DMG STAs. */
   std::map<std::string, std::string> tcpVariants; /* List of the TCP Variants */
   std::string qdChannelFolder = "DenseScenario";  /* The name of the folder containing the QD-Channel files. */
   std::string logComponentsStr = "";              /* Components to be logged from tLogStart to tLogEnd separated by ':' */
@@ -471,6 +471,7 @@ main (int argc, char *argv[])
   double tLogEnd = simulationTime;                /* Log end [s] */
   std::string appDataRateStr = "";                /* List of App Data Rates for each SP allocation separated by ':' */
   uint32_t interAllocDistance = 10;               /* Duration of a broadcast CBAP between two ADDTS allocations [us] */
+  bool accessCbapIfAllocated = true;              /* Enable the access to a broadcast CBAP for a STA with scheduled SP/CBAP */
 
   /** TCP Variants **/
   tcpVariants.insert (std::make_pair ("NewReno",       "ns3::TcpNewReno"));
@@ -507,6 +508,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
   cmd.AddValue ("tLogEnd", "Log end [s]", tLogEnd);
   cmd.AddValue ("schedulerTypeIdx", "Scheduler type: 0 CbapOnly, 1 Basic, >=2 Periodic", schedulerTypeIdx);
+  cmd.AddValue ("allowAccessCbapIfAllocated", "Enable the access to a broadcast CBAP for a STA with scheduled SP/CBAP", accessCbapIfAllocated);
   cmd.Parse (argc, argv);
 
   if (schedulerTypeIdx == 0)
@@ -528,7 +530,7 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
   Config::SetDefault ("ns3::BasicDmgWifiScheduler::InterAllocationDistance", UintegerValue (interAllocDistance));
-
+  Config::SetDefault ("ns3::DmgWifiMac::AccessCbapIfAllocated", BooleanValue (accessCbapIfAllocated));
   /* Enable Log of specific components from tLogStart to tLogEnd */  
   std::vector<std::string> logComponents = SplitString (logComponentsStr, ':');
   EnableMyTraces (logComponents, Seconds (tLogStart), Seconds (tLogEnd));

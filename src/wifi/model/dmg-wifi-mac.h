@@ -244,6 +244,17 @@ protected:
   virtual void Configure80211ad (void);
 
   /**
+   * This function registers the allocation requests accepted by the PCP/AP.
+   * \param info The DMG allocation info field associated with the request.
+   */
+  void RegisterAllocatedRequest (const DmgAllocationInfo &info);
+  /**
+   * Get whether a STA can compete for channel access during a broadcast CBAP.
+   * \param staAid The Association ID of the target STA.
+   * \return True if the Station is allowed to compete, False otherwise.
+   */
+  bool AccessAllowedInBroadcastCbap (uint16_t staAid);
+  /**
    * Start TxSS Transmit opportunity (TxOP).
    * \param peerAddress The address of the DMG STA to perform beamforming training with.
    * \param isInitiator Indicate whether we are the TxSS Initiator.
@@ -667,6 +678,7 @@ protected:
   void AddMcsSupport (Mac48Address address, uint32_t initialMcs, uint32_t lastMcs);
 
 protected:
+  
   STATION_SNR_PAIR_MAP m_stationSnrMap;           //!< Map between stations and their SNR Table.
   STATION_ANTENNA_CONFIG_MAP m_bestAntennaConfig; //!< Map between remote stations and the best antenna configuration.
   ANTENNA_CONFIGURATION m_feedbackAntennaConfig;  //!< Temporary variable to save the best antenna config of the peer station.
@@ -764,6 +776,16 @@ protected:
 
   /* Access Period Allocations */
   AllocationFieldList m_allocationList;         //!< List of access period allocations in DTI.
+
+  typedef struct 
+    {
+      AllocationID id;
+      uint16_t dstAid;
+    } AllocatedDataStruct;
+
+  typedef std::vector<AllocatedDataStruct> AllocatedRequestsVec;
+  AllocatedRequestsVec m_allocatedRequests;     //!< Vector of requested allocations granted to this STA
+  bool m_accessCbapIfAllocated;                 //!< Flag to indicate whether a STA with allocated SP/CBAP is allowed to compete in a CBAP.
 
   /* Service Period Channel Access */
   AllocationID m_currentAllocationID;           //!< The ID of the current allocation.
