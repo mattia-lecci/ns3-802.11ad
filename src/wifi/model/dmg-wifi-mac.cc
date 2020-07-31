@@ -93,10 +93,10 @@ DmgWifiMac::GetTypeId (void)
                                      RELAY_BOTH, "Both"))
     
     /* Channel access in the DTI */
-    .AddAttribute ("AccessInCbap", "Whether a Station with allocated SP or CBAP"
-                   "is allowed to compete for channel access during a broadcast CBAP.",
+    .AddAttribute ("AccessCbapIfAllocated", "Whether a STA with allocated SP or CBAP"
+                   " is allowed to compete for channel access during a broadcast CBAP.",
                    BooleanValue (true),
-                   MakeBooleanAccessor (&DmgWifiMac::m_accessInCbap),
+                   MakeBooleanAccessor (&DmgWifiMac::m_accessCbapIfAllowed),
                    MakeBooleanChecker ())
 
     /* Beacon Interval Traces */
@@ -358,7 +358,7 @@ DmgWifiMac::AccessAllowedInBroadcastCbap (uint16_t staAid)
           break;
         }
     }
-  bool isAccessAllowed = m_accessInCbap || !hasScheduledAllocation;
+  bool isAccessAllowed = m_accessCbapIfAllowed || !hasScheduledAllocation;
   NS_LOG_DEBUG ("Channel access during this broadcast CBAP for station=" << GetAddress () << " is=" << isAccessAllowed);
   return isAccessAllowed;
 }

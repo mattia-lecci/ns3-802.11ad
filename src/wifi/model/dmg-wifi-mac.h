@@ -249,8 +249,8 @@ protected:
    */
   void RegisterAllocatedRequest (const DmgAllocationInfo &info);
   /**
-   * Get whether a Station can compete for channel access during a broadcast CBAP.
-   * \param staAid The AID of the Station.
+   * Get whether a STA can compete for channel access during a broadcast CBAP.
+   * \param staAid The Association ID of the target STA.
    * \return True if the Station is allowed to compete, False otherwise.
    */
   bool AccessAllowedInBroadcastCbap (uint16_t staAid);
@@ -785,7 +785,7 @@ protected:
 
   typedef std::vector<AllocatedDataStruct> AllocatedRequestsVec;
   AllocatedRequestsVec m_allocatedRequests;     //!< Vector of requested allocations granted to this STA
-  bool m_accessInCbap;                          //!< Flag to indicate whether a Station with allocated SP/CBAP is allowed to compete in a CBAP.
+  bool m_accessCbapIfAllowed;                   //!< Flag to indicate whether a STA with allocated SP/CBAP is allowed to compete in a CBAP.
 
   /* Service Period Channel Access */
   AllocationID m_currentAllocationID;           //!< The ID of the current allocation.
