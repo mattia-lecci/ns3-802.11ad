@@ -63,7 +63,8 @@ NS_LOG_COMPONENT_DEFINE ("LRoom");
 /**  Application Variables **/
 std::string applicationType = "onoff";                       /* Type of the Tx application */
 std::string socketType = "ns3::UdpSocketFactory";            /* Socket Type (TCP/UDP) */
-std::string schedulerType = "ns3::CbapOnlyDmgWifiScheduler"; /* Type of scheduler to be used */
+std::string schedulerType;                                   /* Type of scheduler to be used */
+uint16_t schedulerTypeIdx = 0;                               /* The scheduler type: 0= CbapOnly, 1 basic, >=2 periodic */
 Time thrLogPeriodicity = MilliSeconds (100);                 /* The log periodicity for the throughput of each STA [ms] */
 uint16_t allocationPeriod = 0;                               /* The periodicity of the requested SP allocation, 0 if not periodic */
 uint64_t totalRx = 0;
@@ -362,6 +363,7 @@ main (int argc, char *argv[])
   std::vector<uint8_t> tosValues = {0x70, 0x28, 0xb8, 0xc0}; /* AC_BE, AC_BK, AC_VI, AC_VO */
   std::string arrayConfig = "28";               /* Phased antenna array configuration*/
   std::string logComponentsStr = "";            /* Components to be logged from tLogStart to tLogEnd separated by ':' */
+  bool accessCbapIfAllocated = true;            /* Enable the access to a broadcast CBAP for a STA with scheduled SP/CBAP */
   double tLogStart = 0.0;                       /* Log start [s] */
   double tLogEnd = simulationTime;              /* Log end [s] */
 
@@ -397,19 +399,35 @@ main (int argc, char *argv[])
   cmd.AddValue ("ac", "0: AC_BE, 1: AC_BK, 2: AC_VI, 3: AC_VO", ac);
   cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   cmd.AddValue ("arrayConfig", "Antenna array configuration", arrayConfig);
-  cmd.AddValue ("scheduler", "The type of scheduler to use in the simulation", schedulerType);
+  cmd.AddValue ("schedulerTypeIdx", "Scheduler type: 0 CbapOnly, 1 Basic, >=2 Periodic", schedulerTypeIdx);
   cmd.AddValue ("period", "The periodicity of the requested SP allocation, 0 if not periodic", allocationPeriod);
   cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
   cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
+  cmd.AddValue ("allowAccessCbapIfAllocated", "Enable the access to a broadcast CBAP for a STA with scheduled SP/CBAP", accessCbapIfAllocated);
   cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
   cmd.AddValue ("tLogEnd", "Log end [s]", tLogEnd);
   cmd.Parse (argc, argv);
+
+  if (schedulerTypeIdx == 0)
+    {
+      schedulerType = "ns3::CbapOnlyDmgWifiScheduler";
+    }
+  else if (schedulerTypeIdx == 1)
+    {
+      schedulerType = "ns3::BasicDmgWifiScheduler";
+    }
+  else
+    {
+      schedulerType = "ns3::PeriodicDmgWifiScheduler";
+      allocationPeriod = schedulerTypeIdx;
+    }
 
   /* Global params: no fragmentation, no RTS/CTS, fixed rate for all packets */
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
   Config::SetDefault ("ns3::BasicDmgWifiScheduler::InterAllocationDistance", UintegerValue (interAllocDistance));
+  Config::SetDefault ("ns3::DmgWifiMac::AccessCbapIfAllocated", BooleanValue (accessCbapIfAllocated));
 
   /* Enable Log of specific components from tLogStart to tLogEnd */  
   std::vector<std::string> logComponents = SplitString (logComponentsStr, ':');

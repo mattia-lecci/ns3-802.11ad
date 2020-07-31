@@ -785,7 +785,7 @@ protected:
 
   typedef std::vector<AllocatedDataStruct> AllocatedRequestsVec;
   AllocatedRequestsVec m_allocatedRequests;     //!< Vector of requested allocations granted to this STA
-  bool m_accessCbapIfAllowed;                   //!< Flag to indicate whether a STA with allocated SP/CBAP is allowed to compete in a CBAP.
+  bool m_accessCbapIfAllocated;                 //!< Flag to indicate whether a STA with allocated SP/CBAP is allowed to compete in a CBAP.
 
   /* Service Period Channel Access */
   AllocationID m_currentAllocationID;           //!< The ID of the current allocation.
