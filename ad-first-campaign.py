@@ -29,8 +29,8 @@ if __name__ == '__main__':
     # Create campaign
     #################
 
-    # skip_configuration parameter is not included in the official SEM release as of now
-    # A PR has been opened to this regard, you can use the patch for here: https://github.com/signetlabdei/sem/pull/35
+    # skip_configuration parameter is not included in the official SEM release as of December 2020
+    # It was, though, included in the develop branch https://github.com/signetlabdei/sem/tree/develop
     campaign = sem.CampaignManager.new(ns_path, script, campaign_dir,
                                        runner_type="ParallelRunner",
                                        check_repo=False,
