@@ -536,7 +536,7 @@ main (int argc, char *argv[])
 
   /* Set Parametric Codebook for the DMG AP */
   wifi.SetCodebook ("ns3::CodebookParametric",
-                    "FileName", StringValue (inputPath + "DmgFiles/Codebook/CODEBOOK_URA_AP_" + arrayConfig + "x.txt"));
+                    "FileName", StringValue (inputPath + "DmgFiles/Codebook/CODEBOOK_URA_AP_8x4_notNorm.txt"));
   /* Set the Scheduler for the DMG AP */
   wifi.SetDmgScheduler (schedulerType);
 
@@ -557,7 +557,7 @@ main (int argc, char *argv[])
 
   /* Set Parametric Codebook for the DMG STA */
   wifi.SetCodebook ("ns3::CodebookParametric",
-                    "FileName", StringValue (inputPath + "DmgFiles/Codebook/CODEBOOK_URA_STA_" + arrayConfig + "x.txt"));
+                    "FileName", StringValue (inputPath + "DmgFiles/Codebook/CODEBOOK_ULA_STA_4x1_notNorm.txt"));
 
   staDevices = wifi.Install (spectrumWifiPhy, wifiMac, staWifiNode);
 
