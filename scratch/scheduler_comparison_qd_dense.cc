@@ -18,6 +18,7 @@
 #include "common-functions.h"
 #include <iomanip>
 #include <sstream>
+#include "common-functions.h"
 
 /**
  * Simulation Objective:
@@ -132,146 +133,6 @@ Ptr<OutputStreamWrapper> spTrace;
 /* MAC queue size output stream */
 Ptr<OutputStreamWrapper> queueTrace;
 
-template <typename T>
-std::string to_string_with_precision (const T a_value, const int n = 6)
-{
-  std::ostringstream out;
-  out.precision (n);
-  out << std::fixed << a_value;
-  return out.str ();
-}
-
-std::vector<std::string>
-SplitString (const std::string &str, char delimiter)
-{
-  std::stringstream ss (str);
-  std::string token;
-  std::vector<std::string> container;
-
-  while (getline (ss, token, delimiter))
-    {
-      container.push_back (token);
-    }
-  return container;
-}
-
-void
-EnableMyTraces (std::vector<std::string> &logComponents, Time tLogStart, Time tLogEnd)
-{
-  for (size_t i = 0; i < logComponents.size (); ++i)
-    {
-      const char* component = logComponents.at (i).c_str ();
-      if (strlen (component) > 0)
-        {
-          NS_LOG_UNCOND ("Logging component " << component);
-          Simulator::Schedule (tLogStart, &LogComponentEnable, component, LOG_LEVEL_ALL);
-          Simulator::Schedule (tLogEnd, &LogComponentDisable, component, LOG_LEVEL_ALL);
-        }
-    }
-}
-
-std::string
-GetInputPath (std::vector<std::string> &pathComponents)
-{
-  std::string inputPath = "/";
-  std::string dir;
-  for (size_t i = 0; i < pathComponents.size (); ++i)
-    {
-      dir = pathComponents.at (i);
-      if (dir == "")
-        continue;
-      inputPath += dir + "/";
-      if (dir == "ns3-802.11ad")
-        break;
-    }
-  return inputPath;
-}
-
-void 
-ReceivedPacket (Ptr<Node> srcNode, Ptr<const Packet> packet, const Address &address)
-{
-  CommunicationPair &commPair = communicationPairList.at (srcNode);
-  Time delay, jitter;
-  TimestampTag timestamp;
-  if (packet->FindFirstMatchingByteTag (timestamp))
-    {
-      delay = Simulator::Now () - timestamp.GetTimestamp ();
-      jitter = Seconds (std::abs (delay.GetSeconds () - commPair.lastDelayValue.GetSeconds ()));
-      commPair.jitter += jitter;
-      commPair.lastDelayValue = delay;
-    }
-  *receivedPktsTrace->GetStream () << srcNode->GetId () << "," << timestamp.GetTimestamp ().GetTimeStep () << ","
-                                   << Simulator::Now ().GetTimeStep () << "," << packet->GetSize ()  << std::endl;
-}
-
-double
-CalculateSingleStreamThroughput (Ptr<PacketSink> sink, uint64_t &lastTotalRx)
-{
-  double rxBits = (sink->GetTotalRx () - lastTotalRx) * 8.0; /* Total Rx Bits in the last period with length thrLogPeriodicity */
-  double rxBitsPerSec = rxBits * (1.0 / thrLogPeriodicity.GetSeconds ()); /* Total Rx bits per second */
-  double thr = rxBitsPerSec / 1e6;                                        /* Conversion from Bps to Mbps */
-  lastTotalRx = sink->GetTotalRx ();
-  return thr;
-}
-
-void
-CalculateThroughput (void)
-{
-  double totalThr = 0;
-  double thr;
-  /* duration is the time period which corresponds to the logged throughput values */
-  std::string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - thrLogPeriodicity.GetSeconds (), 2) +
-                         " - " + to_string_with_precision<double> (Simulator::Now ().GetSeconds (), 2) + ", ";
-  std::string thrString;
-
-  /* calculate the throughput over the last window with length thrLogPeriodicity for each communication Pair */
-  for (auto it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
-    {
-      thr = CalculateSingleStreamThroughput (it->second.packetSink, it->second.totalRx);
-      totalThr += thr;
-      thrString += to_string_with_precision<double> (thr, 3) + ", ";
-    }
-  NS_LOG_UNCOND (duration << thrString << totalThr);
-
-  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);
-}
-
-void 
-DtiStarted (Mac48Address apAddr, Time duration)
-{
-  NS_LOG_DEBUG ("DTI started at " << apAddr);
-  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << Simulator::Now ().GetTimeStep () << "," << true << std::endl;
-  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << (Simulator::Now () + duration).GetTimeStep () << "," << false << std::endl;
-}
-
-void
-ServicePeriodStarted (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
-{
-  NS_LOG_DEBUG ("Starting SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
-  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetTimeStep () << "," << true << std::endl;
-}
-
-void
-ServicePeriodEnded (Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
-{
-  NS_LOG_DEBUG ("Ending SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
-  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetTimeStep () << "," << false << std::endl;
-}
-
-void
-ContentionPeriodStarted (Mac48Address address, TypeOfStation stationType)
-{
-  NS_LOG_DEBUG ("Starting CBAP at station=" << address << ", type of station=" << stationType);
-  *spTrace->GetStream () << 255 << "," << Simulator::Now ().GetTimeStep () << "," << true << std::endl;
-}
-
-void
-ContentionPeriodEnded (Mac48Address address, TypeOfStation stationType)
-{
-  NS_LOG_DEBUG ("Ending CBAP at station=" << address << ", type of station=" << stationType);
-  *spTrace->GetStream () << 255 << "," << Simulator::Now ().GetTimeStep () << "," << false << std::endl;
-}
-
 void
 ADDTSResponseReceived (Ptr<Node> node, Mac48Address address, StatusCode status, DmgTspecElement element)
 {
@@ -293,48 +154,8 @@ ADDTSResponseReceived (Ptr<Node> node, Mac48Address address, StatusCode status, 
     }
 }
 
-uint32_t
-ComputeServicePeriodDuration (const uint64_t &appDataRate, const uint64_t &phyModeDataRate)
-{
-  NS_LOG_FUNCTION (appDataRate << phyModeDataRate);
-
-  double dataRateRatio = double (appDataRate) / phyModeDataRate;
-  uint64_t biDurationUs = apWifiMac->GetBeaconInterval ().GetMicroSeconds ();
-  uint32_t spDuration = ceil (dataRateRatio * biDurationUs);
-
-  return spDuration * 1.3;
-}
-
-DmgTspecElement
-GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation, uint16_t period)
-{
-  NS_LOG_FUNCTION (+allocId << isPseudoStatic << minAllocation << maxAllocation);
-  /* Simple assert for the moment */
-  NS_ABORT_MSG_IF (minAllocation > maxAllocation, "Minimum Allocation cannot be greater than Maximum Allocation");
-  NS_ABORT_MSG_IF (maxAllocation > MAX_SP_BLOCK_DURATION, "Maximum Allocation exceeds Max SP block duration");
-  DmgTspecElement element;
-  DmgAllocationInfo info;
-  info.SetAllocationID (allocId);
-  info.SetAllocationType (SERVICE_PERIOD_ALLOCATION);
-  info.SetAllocationFormat (ISOCHRONOUS);
-  info.SetAsPseudoStatic (isPseudoStatic);
-  info.SetDestinationAid (AID_AP);
-  element.SetDmgAllocationInfo (info);
-  if (period > 0)
-    {
-      minAllocation /= period;
-      maxAllocation /= period;
-      element.SetAllocationPeriod (period, false); // false: The allocation period must not be a multiple of the BI
-    }
-  element.SetMinimumAllocation (minAllocation);
-  element.SetMaximumAllocation (maxAllocation);
-  element.SetMinimumDuration (minAllocation);
-
-  return element;
-}
-
 void
-StationAssociated (Ptr<Node> node, Ptr<DmgStaWifiMac> staWifiMac, Mac48Address apAddress, uint16_t aid)
+StationAssociated (CommunicationPairList communicationPairList, Ptr<Node> node, Ptr<DmgStaWifiMac> staWifiMac, Mac48Address apAddress, uint16_t aid)
 {
   NS_LOG_FUNCTION (node << staWifiMac << apAddress << aid);
   NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << apAddress
@@ -342,15 +163,13 @@ StationAssociated (Ptr<Node> node, Ptr<DmgStaWifiMac> staWifiMac, Mac48Address a
 
   /* Send ADDTS request to the PCP/AP */
   auto it = communicationPairList.find (node);
-  if (it != communicationPairList.end ())
-    {
-      uint32_t spDuration = ComputeServicePeriodDuration (it->second.appDataRate, WifiMode (phyMode).GetPhyRate ());
-      staWifiMac->CreateAllocation (GetDmgTspecElement (allocationId, true, spDuration, spDuration, allocationPeriod));
-    }
-  else
-    {
-      NS_FATAL_ERROR ("Could not find application for this node.");
-    }
+  NS_ABORT_MSG_IF (it == communicationPairList.end (),
+                   "Could not find application for this node.");
+
+  uint32_t spDuration = ComputeServicePeriodDuration (it->second.appDataRate,
+                                                      WifiMode (phyMode).GetPhyRate (),
+                                                      apWifiMac->GetBeaconInterval ().GetMicroSeconds (););
+  staWifiMac->CreateAllocation (GetDmgTspecElement (allocationId, true, spDuration, spDuration, allocationPeriod));
 }
 
 void
@@ -404,7 +223,7 @@ InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address address, s
   PacketSinkHelper sinkHelper (socketType, InetSocketAddress (Ipv4Address::GetAny (), 9000 + appNumber));
   ApplicationContainer sinkApp = sinkHelper.Install (dstNode);
   commPair.packetSink = StaticCast<PacketSink> (sinkApp.Get (0));
-  commPair.packetSink->TraceConnectWithoutContext ("Rx", MakeBoundCallback (&ReceivedPacket, srcNode));
+  commPair.packetSink->TraceConnectWithoutContext ("Rx", MakeBoundCallback (&ReceivedPacket, receivedPktsTrace, srcNode));
   sinkApp.Start (Seconds (0));
 
   return commPair;
@@ -431,7 +250,7 @@ SLSCompleted (Ptr<Parameters> parameters,
 void
 MacQueueChanged (Ptr<Node> srcNode, uint32_t oldQueueSize, uint32_t newQueueSize)
 {
-  *queueTrace->GetStream () << srcNode->GetId () << "," << Simulator::Now ().GetTimeStep () << "," << newQueueSize << std::endl;
+  *queueTrace->GetStream () << srcNode->GetId () << "," << Simulator::Now ().GetNanoSeconds () << "," << newQueueSize << std::endl;
 }
 
 void
@@ -463,7 +282,7 @@ main (int argc, char *argv[])
   double frameCaptureMargin = 10;                 /* Frame capture margin [dB]. */
   bool verbose = false;                           /* Print Logging Information. */
   bool pcapTracing = false;                       /* Enable PCAP Tracing. */
-  uint16_t numStas = 8;                           /* The number of DMG STAs. */
+  uint16_t numStas = 10;                          /* The number of DMG STAs. */
   std::map<std::string, std::string> tcpVariants; /* List of the TCP Variants */
   std::string qdChannelFolder = "DenseScenario";  /* The name of the folder containing the QD-Channel files. */
   std::string logComponentsStr = "";              /* Components to be logged from tLogStart to tLogEnd separated by ':' */
@@ -533,7 +352,7 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::DmgWifiMac::AccessCbapIfAllocated", BooleanValue (accessCbapIfAllocated));
   /* Enable Log of specific components from tLogStart to tLogEnd */  
   std::vector<std::string> logComponents = SplitString (logComponentsStr, ':');
-  EnableMyTraces (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
+  EnableMyLogs (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
 
   /* Compute system path in order to import correctly DmgFiles */
   std::string systemPath = SystemPath::FindSelfDirectory ();
@@ -694,6 +513,8 @@ main (int argc, char *argv[])
 
   /** Install Applications **/
   std::vector<std::string> appDataRates = SplitString (appDataRateStr, ':');
+  NS_ABORT_IF (appDataRates.size () != 0 &&
+               appDataRates.size () != staWifiNodes.GetN ());
   for (uint32_t i = 0; i < staWifiNodes.GetN (); i++)
     {
       std::string dataRate = appDataRate;
@@ -723,13 +544,13 @@ main (int argc, char *argv[])
 
   AsciiTraceHelper ascii;
   Ptr<OutputStreamWrapper> e2eResults = ascii.CreateFileStream ("results.csv");
-  *e2eResults->GetStream () << "TxPkts,TxBytes,RxPkts,RxBytes,AvgThroughput,AvgDelay,AvgJitter" << std::endl;
+  *e2eResults->GetStream () << "TxPkts_pkts,TxBytes_B,RxPkts_pkts,RxBytes_B,AvgThroughput_Mbps,AvgDelay_s,AvgJitter_s" << std::endl;
   receivedPktsTrace = ascii.CreateFileStream ("packetsTrace.csv");
-  *receivedPktsTrace->GetStream () << "SrcNodeId,TxTimestamp[ns],RxTimestamp[ns],PktSize[bytes]" << std::endl;
+  *receivedPktsTrace->GetStream () << "SrcNodeId,TxTimestamp_ns,RxTimestamp_ns,PktSize_B" << std::endl;
   spTrace = ascii.CreateFileStream ("spTrace.csv");
-  *spTrace->GetStream () << "SrcNodeId,Timestamp[ns],isStart[bool]" << std::endl;
+  *spTrace->GetStream () << "SrcNodeId,Timestamp_ns,isStart" << std::endl;
   queueTrace = ascii.CreateFileStream ("queueTrace.csv");
-  *queueTrace->GetStream () << "SrcNodeId,Timestamp[ns],queueSize[packets]" << std::endl;
+  *queueTrace->GetStream () << "SrcNodeId,Timestamp_ns,queueSize_pkts" << std::endl;
 
   Ptr<WifiNetDevice> wifiNetDevice;
   Ptr<DmgStaWifiMac> staWifiMac;
@@ -751,11 +572,11 @@ main (int argc, char *argv[])
       remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, staWifiMac));
       remoteStationManager->TraceConnectWithoutContext ("MacTxOK", MakeBoundCallback (&MacTxOk, staWifiMac));
       remoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeBoundCallback (&MacTxDataFailed, staWifiMac));
-      staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, staWifiNodes.Get (i), staWifiMac));
+      staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, communicationPairList, staWifiNodes.Get (i), staWifiMac));
       staWifiMac->TraceConnectWithoutContext ("DeAssoc", MakeBoundCallback (&StationDeAssociated, staWifiNodes.Get (i), staWifiMac));
       staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, staWifiNodes.Get (i)));
-      staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeCallback (&ServicePeriodStarted));
-      staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeCallback (&ServicePeriodEnded));
+      staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeCallback (&ServicePeriodStarted, spTrace));
+      staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeCallback (&ServicePeriodEnded, spTrace));
       beQueue->TraceConnectWithoutContext ("OccupancyChanged", MakeBoundCallback (&MacQueueChanged, staWifiNodes.Get (i)));
 
       Ptr<Parameters> parameters = Create<Parameters> ();
@@ -774,10 +595,10 @@ main (int argc, char *argv[])
   Ptr<Parameters> parameters = Create<Parameters> ();
   parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
   parameters->wifiMac = apWifiMac;
-  apWifiMac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DtiStarted));
+  apWifiMac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DtiStarted, spTrace));
   apWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parameters));
-  apWifiMac->TraceConnectWithoutContext ("ContentionPeriodStarted", MakeCallback (&ContentionPeriodStarted));
-  apWifiMac->TraceConnectWithoutContext ("ContentionPeriodEnded", MakeCallback (&ContentionPeriodEnded));
+  apWifiMac->TraceConnectWithoutContext ("ContentionPeriodStarted", MakeCallback (&ContentionPeriodStarted, spTrace));
+  apWifiMac->TraceConnectWithoutContext ("ContentionPeriodEnded", MakeCallback (&ContentionPeriodEnded, spTrace));
   remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, apWifiMac));
 
   /* Install FlowMonitor on all nodes */
@@ -796,7 +617,7 @@ main (int argc, char *argv[])
   NS_LOG_UNCOND (rowOutput + " Aggregate");
 
   /* Schedule Throughput Calulcations */
-  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);
+  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput, thrLogPeriodicity);
 
   Simulator::Stop (Seconds (simulationTime + 0.101));
   Simulator::Run ();
