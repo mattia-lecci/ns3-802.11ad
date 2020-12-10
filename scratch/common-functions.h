@@ -5,12 +5,44 @@
 #include "ns3/core-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/network-module.h"
+#include "ns3/wifi-remote-station-manager.h"
+#include "ns3/dmg-information-elements.h"
+#include "ns3/status-code.h"
 
 #ifndef COMMON_FUNCTIONS_H
 #define COMMON_FUNCTIONS_H
 
-using namespace ns3;
+namespace ns3 {
 
+class DmgWifiMac;
+class DmgApWifiMac;
+class DmgStaWifiMac;
+class PacketSink;
+
+/* Type definitions */
+struct Parameters : public SimpleRefCount<Parameters>
+{
+  uint32_t srcNodeId;
+  uint32_t dstNodeId;
+  Ptr<DmgWifiMac> wifiMac;
+};
+
+struct CommunicationPair
+{
+  Ptr<Application> srcApp;
+  Ptr<PacketSink> packetSink;
+  uint64_t totalRx = 0;
+  Time jitter = Seconds (0);
+  Time lastDelayValue = Seconds (0);
+  uint64_t appDataRate;
+  Time startTime;
+};
+typedef std::map<Ptr<Node>, CommunicationPair> CommunicationPairMap;
+
+typedef std::map<Mac48Address, uint32_t> Mac2IdMap;
+typedef std::map<Mac48Address, uint64_t> PacketCountMap;
+
+/* Functions */
 void
 PopulateArpCache (void)
 {
@@ -60,7 +92,7 @@ PopulateArpCache (void)
 
 
 template <typename T>
-std::string to_string_with_precision (const T a_value, const int n = 6)
+std::string to_string_with_precision (const T a_value, const int n)
 {
   std::ostringstream out;
   out.precision (n);
@@ -92,7 +124,7 @@ EnableMyLogs (std::vector<std::string> &logComponents, Time tLogStart, Time tLog
       const char* component = logComponents.at (i).c_str ();
       if (strlen (component) > 0)
         {
-          NS_LOG_UNCOND ("Logging component " << component);
+          std::cout << "Logging component " << component << std::endl;
           Simulator::Schedule (tLogStart, &LogComponentEnable, component, LOG_LEVEL_ALL);
           Simulator::Schedule (tLogEnd, &LogComponentDisable, component, LOG_LEVEL_ALL);
         }
@@ -119,12 +151,13 @@ GetInputPath (std::vector<std::string> &pathComponents)
 
 
 void 
-ReceivedPacket (Ptr<OutputStreamWrapper> receivedPktsTrace, Ptr<Node> srcNode, Ptr<const Packet> packet, const Address &address)
+ReceivedPacket (Ptr<OutputStreamWrapper> receivedPktsTrace, CommunicationPairMap& communicationPairMap, Ptr<Node> srcNode, Ptr<const Packet> packet, const Address &address)
 {
+  TimestampTag timestamp;
   NS_ABORT_MSG_IF (!packet->FindFirstMatchingByteTag (timestamp),
                    "Packet timestamp not found");
 
-  CommunicationPair &commPair = communicationPairList.at (srcNode);
+  CommunicationPair &commPair = communicationPairMap.at (srcNode);
   Time delay = Simulator::Now () - timestamp.GetTimestamp ();
   Time jitter = Seconds (std::abs (delay.GetSeconds () - commPair.lastDelayValue.GetSeconds ()));
   commPair.jitter += jitter;
@@ -147,7 +180,7 @@ CalculateSingleStreamThroughput (Ptr<PacketSink> sink, uint64_t &lastTotalRx, do
 
 
 void
-CalculateThroughput (Time thrLogPeriodicity)
+CalculateThroughput (Time thrLogPeriodicity, CommunicationPairMap& communicationPairMap)
 {
   double totalThr = 0;
   double thr;
@@ -157,39 +190,36 @@ CalculateThroughput (Time thrLogPeriodicity)
   std::string thrString;
 
   /* calculate the throughput over the last window with length thrLogPeriodicity for each communication Pair */
-  for (auto it = communicationPairList.begin (); it != communicationPairList.end (); ++it)
+  for (auto it = communicationPairMap.begin (); it != communicationPairMap.end (); ++it)
     {
       thr = CalculateSingleStreamThroughput (it->second.packetSink, it->second.totalRx, thrLogPeriodicity.GetSeconds ());
       totalThr += thr;
       thrString += to_string_with_precision<double> (thr, 3) + ", ";
     }
-  NS_LOG_UNCOND (duration << thrString << totalThr);
+  std::cout << duration << thrString << totalThr << std::endl;
 
-  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput, thrLogPeriodicity);
+  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput, thrLogPeriodicity, communicationPairMap);
 }
 
 
 void 
-DtiStarted (Ptr<OutputStreamWrapper> spTrace, Mac48Address apAddr, Time duration)
+DtiStarted (Ptr<OutputStreamWrapper> spTrace, const Mac2IdMap& mac2IdMap, Mac48Address apAddr, Time duration)
 {
-  NS_LOG_DEBUG ("DTI started at " << apAddr);
   *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << Simulator::Now ().GetNanoSeconds () << "," << true << std::endl;
   *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << (Simulator::Now () + duration).GetNanoSeconds () << "," << false << std::endl;
 }
 
 
 void
-ServicePeriodStarted (Ptr<OutputStreamWrapper> spTrace, Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
+ServicePeriodStarted (Ptr<OutputStreamWrapper> spTrace, const Mac2IdMap& mac2IdMap, Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
-  NS_LOG_DEBUG ("Starting SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
   *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetNanoSeconds () << "," << true << std::endl;
 }
 
 
 void
-ServicePeriodEnded (Ptr<OutputStreamWrapper> spTrace, Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
+ServicePeriodEnded (Ptr<OutputStreamWrapper> spTrace, const Mac2IdMap& mac2IdMap, Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
-  NS_LOG_DEBUG ("Ending SP with source=" << srcAddr << ", dest=" << destAddr << ", isSource=" << isSource);
   *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetNanoSeconds () << "," << false << std::endl;
 }
 
@@ -197,7 +227,6 @@ ServicePeriodEnded (Ptr<OutputStreamWrapper> spTrace, Mac48Address srcAddr, Mac4
 void
 ContentionPeriodStarted (Ptr<OutputStreamWrapper> spTrace, Mac48Address address, TypeOfStation stationType)
 {
-  NS_LOG_DEBUG ("Starting CBAP at station=" << address << ", type of station=" << stationType);
   *spTrace->GetStream () << 255 << "," << Simulator::Now ().GetNanoSeconds () << "," << true << std::endl;
 }
 
@@ -205,7 +234,6 @@ ContentionPeriodStarted (Ptr<OutputStreamWrapper> spTrace, Mac48Address address,
 void
 ContentionPeriodEnded (Ptr<OutputStreamWrapper> spTrace, Mac48Address address, TypeOfStation stationType)
 {
-  NS_LOG_DEBUG ("Ending CBAP at station=" << address << ", type of station=" << stationType);
   *spTrace->GetStream () << 255 << "," << Simulator::Now ().GetNanoSeconds () << "," << false << std::endl;
 }
 
@@ -214,8 +242,6 @@ ContentionPeriodEnded (Ptr<OutputStreamWrapper> spTrace, Mac48Address address, T
 uint32_t
 ComputeServicePeriodDuration (uint64_t appDataRate, uint64_t phyModeDataRate, uint64_t biDurationUs)
 {
-  NS_LOG_FUNCTION (appDataRate << phyModeDataRate);
-
   double dataRateRatio = double (appDataRate) / phyModeDataRate;
   // uint64_t biDurationUs = apWifiMac->GetBeaconInterval ().GetMicroSeconds ();
   uint32_t spDuration = ceil (dataRateRatio * biDurationUs);
@@ -228,7 +254,6 @@ ComputeServicePeriodDuration (uint64_t appDataRate, uint64_t phyModeDataRate, ui
 DmgTspecElement
 GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation, uint16_t period)
 {
-  NS_LOG_FUNCTION (+allocId << isPseudoStatic << minAllocation << maxAllocation);
   /* Simple assert for the moment */
   NS_ABORT_MSG_IF (minAllocation > maxAllocation, "Minimum Allocation cannot be greater than Maximum Allocation");
   NS_ABORT_MSG_IF (maxAllocation > MAX_SP_BLOCK_DURATION, "Maximum Allocation exceeds Max SP block duration");
@@ -252,5 +277,92 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
 
   return element;
 }
+
+
+void
+StationAssociated (CommunicationPair& communicationPair, std::string phyMode, Ptr<DmgApWifiMac> apWifiMac, Ptr<DmgStaWifiMac> staWifiMac, uint8_t allocationId, uint16_t allocationPeriod, Mac48Address apAddress, uint16_t aid)
+{
+  // NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << apAddress << ", AID=" << aid << std::endl;
+
+  uint32_t spDuration = ComputeServicePeriodDuration (communicationPair.appDataRate,
+                                                      WifiMode (phyMode).GetPhyRate (),
+                                                      apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
+  staWifiMac->CreateAllocation (GetDmgTspecElement (allocationId, true, spDuration, spDuration, allocationPeriod));
+}
+
+
+void
+StationDeAssociated (CommunicationPair& communicationPair, Ptr<DmgWifiMac> staWifiMac, Mac48Address apAddress)
+{
+  // NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " deassociated from DMG PCP/AP=" << apAddress << std::endl;
+
+  communicationPair.srcApp->StopApplication ();
+}
+
+
+void
+ADDTSResponseReceived (std::string schedulerType, CommunicationPair& communicationPair, Mac48Address address, StatusCode status, DmgTspecElement element)
+{
+  // TODO: Add this code to DmgStaWifiMac class.
+  // NS_LOG_DEBUG ("DMG STA=" << address << " received ADDTS response with status=" << status.IsSuccess () << std::endl;
+  if (status.IsSuccess () || (schedulerType == "ns3::CbapOnlyDmgWifiScheduler"))
+    {
+      communicationPair.startTime = Simulator::Now ();
+      communicationPair.srcApp->StartApplication ();
+    }
+}
+
+
+void
+SLSCompleted (Ptr<Parameters> parameters,
+              Mac48Address address,
+              ChannelAccessPeriod accessPeriod,
+              BeamformingDirection beamformingDirection,
+              bool isInitiatorTxss,
+              bool isResponderTxss,
+              SECTOR_ID sectorId, ANTENNA_ID antennaId)
+{
+  std::string stationType;
+  if (parameters->wifiMac->GetTypeOfStation () == DMG_AP)
+    stationType = "DMG  AP=";    
+  else
+    stationType = "DMG STA=";
+
+  // NS_LOG_DEBUG (stationType << parameters->wifiMac->GetAddress () << " completed SLS phase with " << address 
+  //               << ", antennaID=" << +antennaId << ", sectorID=" << +sectorId << ", accessPeriod=" << accessPeriod
+  //               << ", IsInitiator=" << (beamformingDirection == 0) << std::endl;
+    
+}
+
+
+void
+MacQueueChanged (Ptr<OutputStreamWrapper> queueTrace, Ptr<Node> srcNode, uint32_t oldQueueSize, uint32_t newQueueSize)
+{
+  *queueTrace->GetStream () << srcNode->GetId () << "," << Simulator::Now ().GetNanoSeconds () << "," << newQueueSize << std::endl;
+}
+
+
+void
+MacRxOk (PacketCountMap& macRxDataOk, Ptr<DmgWifiMac> wifiMac, WifiMacType type, 
+         Mac48Address address, double snrValue)
+{
+  macRxDataOk.at (wifiMac->GetAddress ()) += 1;
+}
+
+
+void
+MacTxDataFailed (PacketCountMap& macTxDataFailed, Ptr<DmgWifiMac> wifiMac, Mac48Address address)
+{
+  macTxDataFailed.at (wifiMac->GetAddress ()) += 1;
+}
+
+
+void 
+MacTxOk (PacketCountMap& macTxDataOk, Ptr<DmgWifiMac> wifiMac, Mac48Address address)
+{
+  macTxDataOk.at (wifiMac->GetAddress ()) += 1;
+}
+
+} // namespace ns3
 
 #endif /* COMMON_FUNCTIONS_H */

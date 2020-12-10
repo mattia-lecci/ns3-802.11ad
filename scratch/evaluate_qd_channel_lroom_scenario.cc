@@ -60,6 +60,8 @@
 
 NS_LOG_COMPONENT_DEFINE ("LRoom");
 
+using namespace ns3;
+
 /**  Application Variables **/
 std::string applicationType = "onoff";                       /* Type of the Tx application */
 std::string socketType = "ns3::UdpSocketFactory";            /* Socket Type (TCP/UDP) */
@@ -102,121 +104,6 @@ uint64_t receivedPackets = 0;
 /* Tracing */
 Ptr<QdPropagationLossModel> lossModelRaytracing;     //!< Q-D Channel Tracing Model.
 
-std::vector<std::string>
-SplitString (const std::string &str, char delimiter)
-{
-  std::stringstream ss (str);
-  std::string token;
-  std::vector<std::string> container;
-
-  while (std::getline (ss, token, delimiter))
-    {
-      container.push_back (token);
-    }
-  return container;
-}
-
-void
-EnableMyTraces (std::vector<std::string> &logComponents, Time tLogStart, Time tLogEnd)
-{
-  for (size_t i = 0; i < logComponents.size (); ++i)
-    {
-      const char* component = logComponents.at (i).c_str ();
-      if (strlen(component) > 0)
-        {
-          NS_LOG_UNCOND ("Logging component " << component);
-          Simulator::Schedule (tLogStart, &LogComponentEnable, component, LOG_LEVEL_ALL);
-          Simulator::Schedule (tLogEnd, &LogComponentDisable, component, LOG_LEVEL_ALL);
-        }
-    }
-}
-
-std::string
-GetInputPath (std::vector<std::string> &pathComponents)
-{
-  std::string inputPath = "/";
-  std::string dir;
-  for (size_t i = 0; i < pathComponents.size (); ++i)
-    {
-      dir = pathComponents.at (i);
-      if (dir == "")
-        continue;
-      inputPath += dir + "/";
-      if (dir == "ns3-802.11ad")
-        break;
-    }
-  return inputPath;
-}
-
-struct Parameters : public SimpleRefCount<Parameters>
-{
-  uint32_t srcNodeID;
-  uint32_t dstNodeID;
-  Ptr<DmgWifiMac> wifiMac;
-};
-
-template <typename T>
-std::string to_string_with_precision (const T a_value, const int n = 6)
-{
-  std::ostringstream out;
-  out.precision (n);
-  out << std::fixed << a_value;
-  return out.str ();
-}
-
-double
-CalculateSingleStreamThroughput (Ptr<PacketSink> sink, uint64_t &lastTotalRx)
-{
-  double rxBits = (sink->GetTotalRx () - lastTotalRx) * 8.0; /* Total Rx Bits in the last period with length thrLogPeriodicity */
-  double rxBitsPerSec = rxBits * (1.0 / thrLogPeriodicity.GetSeconds ()); /* Total Rx bits per second */
-  double thr =  rxBitsPerSec / 1e6;                                       /* Conversion from Bps to Mbps */
-  lastTotalRx = sink->GetTotalRx ();
-  return thr;
-}
-
-void
-CalculateThroughput (void)
-{
-  /* calculate the throughput over the last window with length thrLogPeriodicity */
-  double thr = CalculateSingleStreamThroughput (packetSink, totalRx);
-
-  /* duration is the time period which corresponds to the logged throughput values */
-  std::string duration = to_string_with_precision<double> (Simulator::Now ().GetSeconds () - thrLogPeriodicity.GetSeconds (), 2)
-                         + " - " + to_string_with_precision<double> (Simulator::Now ().GetSeconds (), 2); 
-  NS_LOG_UNCOND (duration << ", " << thr << ", " << lossModelRaytracing->GetCurrentTraceIndex ());
-
-  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);
-}
-
-void
-SLSCompleted (Ptr<OutputStreamWrapper> stream, Ptr<Parameters> parameters, Mac48Address address,  ChannelAccessPeriod accessPeriod,
-              BeamformingDirection beamformingDirection, bool isInitiatorTxss, bool isResponderTxss,
-              SECTOR_ID sectorId, ANTENNA_ID antennaId)
-{
-  *stream->GetStream () << parameters->srcNodeID + 1 << "," << parameters->dstNodeID + 1 << ","
-                        << lossModelRaytracing->GetCurrentTraceIndex () << ","
-                        << +sectorId << "," << +antennaId  << ","
-                        << parameters->wifiMac->GetTypeOfStation ()  << ","
-                        << apWifiNetDevice->GetNode ()->GetId () + 1  << ","
-                        << Simulator::Now ().GetNanoSeconds () << std::endl;
-
-  NS_LOG_DEBUG ("DMG STA " << parameters->wifiMac->GetAddress () << " completed SLS phase with DMG STA " << address);
-  NS_LOG_DEBUG ("Best Tx Antenna Configuration: SectorID=" << +sectorId << ", AntennaID=" << +antennaId);
-    
-}
-
-void
-MacRxOk (Ptr<DmgWifiMac> wifiMac, Ptr<OutputStreamWrapper> stream,
-         WifiMacType type, Mac48Address address, double snrValue)
-{
-  if (type == WIFI_MAC_QOSDATA)
-    {
-      *stream->GetStream () << Simulator::Now ().GetNanoSeconds () << ","
-                            << address << ","
-                            << wifiMac->GetAddress () << ","
-                            << snrValue << std::endl;
-    }
-}
 
 void
 CwTrace (uint32_t oldCw, uint32_t newCw)
@@ -228,96 +115,6 @@ void
 CongStateTrace (TcpSocketState::TcpCongState_t oldState, TcpSocketState::TcpCongState_t newState)
 {
   NS_LOG_DEBUG ("Old State: " << oldState << ", New State: " << newState); 
-}
-
-DmgTspecElement
-GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation, uint16_t period)
-{
-  /* Simple assert for the moment */
-  NS_ABORT_MSG_IF (minAllocation > maxAllocation, "Minimum Allocation cannot be greater than Maximum Allocation");
-  NS_ABORT_MSG_IF (maxAllocation > MAX_SP_BLOCK_DURATION, "Maximum Allocation exceeds Max SP block duration");
-  DmgTspecElement element;
-  DmgAllocationInfo info;
-  info.SetAllocationID (allocId);
-  info.SetAllocationType (SERVICE_PERIOD_ALLOCATION);
-  info.SetAllocationFormat (ISOCHRONOUS);
-  info.SetAsPseudoStatic (isPseudoStatic);
-  info.SetDestinationAid (AID_AP);
-  element.SetDmgAllocationInfo (info);
-  if (period > 0)
-    {
-      minAllocation /= period;
-      maxAllocation /= period;
-      element.SetAllocationPeriod (period, false); // false: The allocation period must not be a multiple of the BI
-    }
-  element.SetMinimumAllocation (minAllocation);
-  element.SetMaximumAllocation (maxAllocation);
-  element.SetMinimumDuration (minAllocation);
-
-  return element;
-} 
-
-void
-StationAssociated (Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, uint16_t aid)
-{
-  NS_LOG_DEBUG ("DMG STA " << staWifiMac->GetAddress () << " associated with DMG PCP/AP " << address
-                << ", AID= " << aid);
-    
-  staWifiMac->CreateAllocation (GetDmgTspecElement (1, true, 10000, 10000, allocationPeriod));
-}
-
-void
-ADDTSResponseReceived (Mac48Address address, StatusCode status, DmgTspecElement element)
-{
-  NS_LOG_DEBUG (address << " Received ADDTS response with status: " << status.IsSuccess ());
-  if ((status.IsSuccess () || (schedulerType == "ns3::CbapOnlyDmgWifiScheduler")) && !appStarted)
-    {
-      NS_LOG_DEBUG ("Starting " << applicationType << " application at " << address);
-      appStartTime = Simulator::Now ();
-      appStarted = true;
-      if (applicationType == "onoff")
-        {
-          onoff->StartApplication ();
-        }
-      else
-        {
-          bulk->StartApplication ();
-        }
-      /* Connect to TCP traces */
-      if (socketType == "ns3::TcpSocketFactory")
-        {
-          if (applicationType == "onoff")
-            {
-              onoff->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
-              onoff->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
-            }
-          else
-            {
-              bulk->GetSocket ()->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwTrace));
-              bulk->GetSocket ()->TraceConnectWithoutContext ("CongState", MakeCallback (&CongStateTrace));
-            }
-        }
-    }
-}
-
-void
-DataTransmissionIntervalStarted (Ptr<DmgApWifiMac> apWifiMac, Ptr<DmgStaWifiMac> staWifiMac, Mac48Address address, Time)
-{
-  if (apWifiMac->GetWifiRemoteStationManager ()->IsAssociated (staWifiMac->GetAddress ()) > 0)
-    {
-      biCounter++;
-      if (biCounter == biThreshold)
-        {
-          staWifiMac->InitiateTxssCbap (address);
-          biCounter = 0;
-        }
-    }
-}
-
-void
-MacTxDataFailed (Mac48Address)
-{
-  macTxDataFailed++;
 }
 
 void
@@ -431,7 +228,7 @@ main (int argc, char *argv[])
 
   /* Enable Log of specific components from tLogStart to tLogEnd */  
   std::vector<std::string> logComponents = SplitString (logComponentsStr, ':');
-  EnableMyTraces (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
+  EnableMyLogs (logComponents, Seconds (tLogStart), Seconds (tLogEnd));
 
   /* Compute system path in order to import correctly DmgFiles */
   std::string systemPath = SystemPath::FindSelfDirectory ();
@@ -638,29 +435,28 @@ main (int argc, char *argv[])
 
   /* DMG AP Straces */
   Ptr<Parameters> parametersAp = Create<Parameters> ();
-  parametersAp->srcNodeID = apWifiNetDevice->GetNode ()->GetId ();
-  parametersAp->dstNodeID = staWifiNetDevice->GetNode ()->GetId ();
+  parametersAp->srcNodeId = apWifiNetDevice->GetNode ()->GetId ();
+  parametersAp->dstNodeId = staWifiNetDevice->GetNode ()->GetId ();
   parametersAp->wifiMac = apWifiMac;
-  apWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, outputSlsPhase, parametersAp));
-  apWifiMac->TraceConnectWithoutContext ("DTIStarted", MakeBoundCallback (&DataTransmissionIntervalStarted,
-                                                                          apWifiMac, staWifiMac));
+  apWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parametersAp));
+  // apWifiMac->TraceConnectWithoutContext ("DTIStarted", MakeBoundCallback (&DtiStarted, apWifiMac, staWifiMac)); // BROKEN
   apWifiPhy->TraceConnectWithoutContext ("PhyRxEnd", MakeCallback (&PhyRxEnd));
   apWifiPhy->TraceConnectWithoutContext ("PhyRxDrop", MakeCallback (&PhyRxDrop));
 
   /* DMG STA Straces */
   Ptr<Parameters> parametersSta = Create<Parameters> ();
-  parametersSta->srcNodeID = staWifiNetDevice->GetNode ()->GetId ();
-  parametersSta->dstNodeID = apWifiNetDevice->GetNode ()->GetId ();
+  parametersSta->srcNodeId = staWifiNetDevice->GetNode ()->GetId ();
+  parametersSta->dstNodeId = apWifiNetDevice->GetNode ()->GetId ();
   parametersSta->wifiMac = staWifiMac;
-  staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, staWifiMac));
-  staWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, outputSlsPhase, parametersSta));
-  staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeCallback (&ADDTSResponseReceived));
+  // staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, staWifiMac)); // BROKEN
+  staWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parametersSta));
+  // staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeCallback (&ADDTSResponseReceived)); // BROKEN
   staWifiPhy->TraceConnectWithoutContext ("PhyTxEnd", MakeCallback (&PhyTxEnd));
-  staRemoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeCallback (&MacTxDataFailed));
+  // staRemoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeBoundCallback (&MacTxDataFailed, macTxDataFailed, staWifiMac)); // BROKEN
 
-  /* Get SNR Traces */
-  Ptr<OutputStreamWrapper> snrStream = ascii.CreateFileStream ("snrValues.csv");
-  apRemoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, apWifiMac, snrStream));
+  // /* Get SNR Traces */
+  // Ptr<OutputStreamWrapper> snrStream = ascii.CreateFileStream ("snrValues.csv");
+  // apRemoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, apWifiMac, snrStream)); // BORKEN
 
   /* Install FlowMonitor on all nodes */
   FlowMonitorHelper flowmon;
@@ -668,7 +464,7 @@ main (int argc, char *argv[])
   /* Print Output */
   NS_LOG_UNCOND ("Time [s]," << " " << "Throughput [Mbps]," << " " << "Trace Idx");
   /* Schedule Throughput Calculations */
-  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput);
+  // Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput, thrLogPeriodicity, communicationPairMap); // BROKEN
 
   Simulator::Stop (Seconds (simulationTime + 0.101));
   Simulator::Run ();
