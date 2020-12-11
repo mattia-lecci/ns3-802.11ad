@@ -19,41 +19,41 @@
  * Authors: Salman Mohebi <s.mohebi22@gmail.com>
  *
  */
-#include "gaming-traffic-helper.h"
+#include "game-streaming-application-helper.h"
 #include "ns3/udp-server.h"
 #include "ns3/udp-client.h"
 #include "ns3/udp-trace-client.h"
 #include "ns3/uinteger.h"
 #include "ns3/string.h"
-#include "ns3/gaming-streaming-server.h"
+#include "ns3/game-streaming-application.h"
 
 namespace ns3 {
-GamingStreamingServerHelper::GamingStreamingServerHelper (std::string applicationType)
+GameStreamingApplicationHelper::GameStreamingApplicationHelper (std::string applicationType)
 {
   m_factory.SetTypeId (applicationType);
 }
 
-GamingStreamingServerHelper::GamingStreamingServerHelper (std::string applicationType, Address address, uint16_t port)
-  : GamingStreamingServerHelper (applicationType)
+GameStreamingApplicationHelper::GameStreamingApplicationHelper (std::string applicationType, Address address, uint16_t port)
+  : GameStreamingApplicationHelper (applicationType)
 {
   SetAttribute ("RemoteAddress", AddressValue (address));
   SetAttribute ("RemotePort", UintegerValue (port));
 }
 
 void
-GamingStreamingServerHelper::SetAttribute (std::string name, const AttributeValue &value)
+GameStreamingApplicationHelper::SetAttribute (std::string name, const AttributeValue &value)
 {
   m_factory.Set (name, value);
 }
 
 ApplicationContainer
-GamingStreamingServerHelper::Install (NodeContainer c)
+GameStreamingApplicationHelper::Install (NodeContainer c)
 {
   ApplicationContainer apps;
   for (NodeContainer::Iterator i = c.Begin (); i != c.End (); ++i)
     {
       Ptr<Node> node = *i;
-      Ptr<GamingStreamingServer> client = m_factory.Create<GamingStreamingServer> ();
+      Ptr<GameStreamingApplication> client = m_factory.Create<GameStreamingApplication> ();
       node->AddApplication (client);
       apps.Add (client);
     }

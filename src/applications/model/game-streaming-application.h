@@ -20,8 +20,8 @@
  *
  */
 
-#ifndef GAMING_STREAMING_SERVER_H
-#define GAMING_STREAMING_SERVER_H
+#ifndef GAME_STREAMING_APPLICATION_H
+#define GAME_STREAMING_APPLICATION_H
 
 #include "ns3/application.h"
 #include "ns3/random-variable-stream.h"
@@ -40,7 +40,7 @@ class Socket;
  *      packetSize: A random variable which determines the size of generated packets
  *      interArrivalTime: A random variable which determines the packets inter-arrival time
 */
-class GamingStreamingServer : public Application
+class GameStreamingApplication : public Application
 {
 public:
   /**
@@ -50,11 +50,11 @@ public:
   static TypeId GetTypeId (void);
 
   /**
-   * \brief create a GamingStreamingServer object with default parameters
+   * \brief create a GameStreamingApplication object with default parameters
    */
-  GamingStreamingServer ();
+  GameStreamingApplication ();
 
-  virtual ~GamingStreamingServer () override;
+  virtual ~GameStreamingApplication () override;
 
   /**
    * \brief set the remote address and port
@@ -187,4 +187,4 @@ private:
 
 } // namespace ns3
 
-#endif /* GAMING_STREAMING_SERVER_H */
+#endif /* GAME_STREAMING_APPLICATION_H */

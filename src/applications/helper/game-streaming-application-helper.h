@@ -19,8 +19,8 @@
  * Authors: Salman Mohebi <s.mohebi22@gmail.com>
  *
  */
-#ifndef GAMING_TRAFFIC_HELPER_H
-#define GAMING_TRAFFIC_HELPER_H
+#ifndef GAME_STREAMING_APPLICATION_HELPER_H
+#define GAME_STREAMING_APPLICATION_HELPER_H
 
 #include <stdint.h>
 #include "ns3/application-container.h"
@@ -35,24 +35,24 @@ namespace ns3 {
  * \ingroup applications
  * \brief Create a gaming server application that streams UDP packets
  */
-class GamingStreamingServerHelper
+class GameStreamingApplicationHelper
 {
 public:
   /**
-   * \brief Create an GamingStreamingServerHelper to make it easier to work with GamingStreamingServer
+   * \brief Create an GameStreamingApplicationHelper to make it easier to work with GameStreamingApplication
    *
    * \param applicationType identifier of the gaming server
    */
-  GamingStreamingServerHelper (std::string applicationType);
+  GameStreamingApplicationHelper (std::string applicationType);
 
   /**
-   * \brief Create an GamingStreamingServerHelper to make it easier to work with GamingStreamingServer
+   * \brief Create an GameStreamingApplicationHelper to make it easier to work with GameStreamingApplication
    *
    * \param applicationType identifier of the gaming server
    * \param ip peer remote address
    * \param port peer remote port
    */
-  GamingStreamingServerHelper (std::string applicationType, Address ip, uint16_t port);
+  GameStreamingApplicationHelper (std::string applicationType, Address ip, uint16_t port);
 
   /**
     * Record an attribute to be set in each Application after it is is created.
@@ -76,4 +76,4 @@ private:
 
 } // namespace ns3
 
-#endif /* GAMING_TRAFFIC_HELPER_H */
+#endif /* GAME_STREAMING_APPLICATION_HELPER_H */

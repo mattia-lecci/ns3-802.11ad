@@ -22,13 +22,68 @@
 
 #include "ns3/log.h"
 #include "timestamp-tag.h"
-#include "crazytaxi-streaming-server.h"
+#include "crazy-taxi-game-streaming-application.h"
 #include "three-lognormal-random-variable.h"
 
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("CrazyTaxiStreamingServer");
+NS_LOG_COMPONENT_DEFINE ("CrazyTaxiGameStreamingApplication");
+
+/****************************/
+/* CrazyTaxiStreamingClient */
+/****************************/
+
+NS_OBJECT_ENSURE_REGISTERED (CrazyTaxiStreamingClient);
+
+TypeId
+CrazyTaxiStreamingClient::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::CrazyTaxiStreamingClient")
+    .SetParent<GameStreamingApplication> ()
+    .SetGroupName ("Applications")
+    .AddConstructor<CrazyTaxiStreamingClient> ()
+  ;
+  return tid;
+}
+
+CrazyTaxiStreamingClient::CrazyTaxiStreamingClient ()
+{
+  NS_LOG_FUNCTION (this);
+  m_referenceBitRate = 0.033;
+}
+
+CrazyTaxiStreamingClient::~CrazyTaxiStreamingClient ()
+{
+  NS_LOG_FUNCTION (this);
+}
+
+void
+CrazyTaxiStreamingClient::InitializeStreams ()
+{
+  NS_LOG_FUNCTION (this);
+    
+  /** Add key stream */
+  // Packet size
+  Ptr<UniformRandomVariable> pktKey = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (25),
+                                                                                         "Max", DoubleValue (210));
+
+  // Packet inter-arrival time
+  Ptr<ConstantRandomVariable> iatKey1 = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (50));
+  Ptr<WeibullRandomVariable> iatKey2 = CreateObjectWithAttributes<WeibullRandomVariable> ("Scale", DoubleValue (22.7),
+                                                                                          "Shape", DoubleValue (1.33),
+                                                                                          "Bound", DoubleValue (50));
+
+  Ptr<MixtureRandomVariable> iatKey = CreateObject<MixtureRandomVariable> ();
+  iatKey->SetRandomVariables ({iatKey1, iatKey2}, {0.3231, 0.6769});
+
+  AddNewTrafficStream (pktKey, iatKey);
+}
+
+
+/****************************/
+/* CrazyTaxiStreamingServer */
+/****************************/
 
 NS_OBJECT_ENSURE_REGISTERED (CrazyTaxiStreamingServer);
 
@@ -36,7 +91,7 @@ TypeId
 CrazyTaxiStreamingServer::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::CrazyTaxiStreamingServer")
-    .SetParent<GamingStreamingServer> ()
+    .SetParent<GameStreamingApplication> ()
     .SetGroupName ("Applications")
     .AddConstructor<CrazyTaxiStreamingServer> ()
   ;

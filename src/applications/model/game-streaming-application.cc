@@ -21,47 +21,47 @@
  */
 
 #include "ns3/log.h"
-#include "gaming-streaming-server.h"
+#include "game-streaming-application.h"
 #include "timestamp-tag.h"
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("GamingStreamingServer");
+NS_LOG_COMPONENT_DEFINE ("GameStreamingApplication");
 
-NS_OBJECT_ENSURE_REGISTERED (GamingStreamingServer);
+NS_OBJECT_ENSURE_REGISTERED (GameStreamingApplication);
 
 TypeId
-GamingStreamingServer::GetTypeId (void)
+GameStreamingApplication::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::GamingStreamingServer")
+  static TypeId tid = TypeId ("ns3::GameStreamingApplication")
     .SetParent<Application> ()
     .SetGroupName ("Applications")
     .AddAttribute ("BitRate",
                    "Application's data rate (in Mbps). If 0.0, The default application bitrate is used, instead.",
                    DoubleValue (0.0),
-                   MakeDoubleAccessor (&GamingStreamingServer::SetScalingFactor),
+                   MakeDoubleAccessor (&GameStreamingApplication::SetScalingFactor),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("RemoteAddress",
                    "The destination Address of the outbound packets.",
                    AddressValue (),
-                   MakeAddressAccessor (&GamingStreamingServer::m_peerAddress),
+                   MakeAddressAccessor (&GameStreamingApplication::m_peerAddress),
                    MakeAddressChecker ())
     .AddAttribute ("RemotePort",
                    "The destination port of the outbound packets.",
                    UintegerValue (100),
-                   MakeUintegerAccessor (&GamingStreamingServer::m_peerPort),
+                   MakeUintegerAccessor (&GameStreamingApplication::m_peerPort),
                    MakeUintegerChecker<uint16_t> ())
     .AddTraceSource ("Tx", "A new packet is created and is sent",
-                     MakeTraceSourceAccessor (&GamingStreamingServer::m_txTrace),
+                     MakeTraceSourceAccessor (&GameStreamingApplication::m_txTrace),
                      "ns3::Packet::TracedCallback")
     .AddTraceSource ("Rx", "A new packet has received",
-                     MakeTraceSourceAccessor (&GamingStreamingServer::m_rxTrace),
+                     MakeTraceSourceAccessor (&GameStreamingApplication::m_rxTrace),
                      "ns3::Packet::TracedCallback")
   ;
   return tid;
 }
 
-GamingStreamingServer::GamingStreamingServer ()
+GameStreamingApplication::GameStreamingApplication ()
   : m_referenceBitRate (1),
     m_seq (0),
     m_totalSentPackets (0),
@@ -75,13 +75,13 @@ GamingStreamingServer::GamingStreamingServer ()
 }
 
 
-GamingStreamingServer::~GamingStreamingServer ()
+GameStreamingApplication::~GameStreamingApplication ()
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-GamingStreamingServer::DoDispose (void)
+GameStreamingApplication::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
 
@@ -91,7 +91,7 @@ GamingStreamingServer::DoDispose (void)
 }
 
 void
-GamingStreamingServer::SetRemote (Address ip, uint16_t port)
+GameStreamingApplication::SetRemote (Address ip, uint16_t port)
 {
   NS_LOG_FUNCTION (this << ip << port);
   m_peerAddress = ip;
@@ -99,49 +99,49 @@ GamingStreamingServer::SetRemote (Address ip, uint16_t port)
 }
 
 void
-GamingStreamingServer::SetRemote (Address addr)
+GameStreamingApplication::SetRemote (Address addr)
 {
   NS_LOG_FUNCTION (this << addr);
   m_peerAddress = addr;
 }
 
 uint32_t
-GamingStreamingServer::GetTotalSentPackets (void)
+GameStreamingApplication::GetTotalSentPackets (void)
 {
   NS_LOG_FUNCTION (this);
   return m_totalSentPackets;
 }
 
 uint32_t
-GamingStreamingServer::GetTotalReceivedPackets (void)
+GameStreamingApplication::GetTotalReceivedPackets (void)
 {
   NS_LOG_FUNCTION (this);
   return m_totalReceivedPackets;
 }
 
 uint32_t
-GamingStreamingServer::GetTotalFailedPackets (void)
+GameStreamingApplication::GetTotalFailedPackets (void)
 {
   NS_LOG_FUNCTION (this);
   return m_totalFailedPackets;
 }
 
 uint32_t
-GamingStreamingServer::GetTotalSentBytes (void)
+GameStreamingApplication::GetTotalSentBytes (void)
 {
   NS_LOG_FUNCTION (this);
   return m_totalSentBytes;
 }
 
 uint32_t
-GamingStreamingServer::GetTotalReceivedBytes (void)
+GameStreamingApplication::GetTotalReceivedBytes (void)
 {
   NS_LOG_FUNCTION (this);
   return m_totalReceivedBytes;
 }
 
 void
-GamingStreamingServer::EraseStatistics (void)
+GameStreamingApplication::EraseStatistics (void)
 {
   NS_LOG_FUNCTION (this);
   m_totalSentPackets = 0;
@@ -152,7 +152,7 @@ GamingStreamingServer::EraseStatistics (void)
 }
 
 void
-GamingStreamingServer::AddNewTrafficStream (Ptr<RandomVariableStream> packetSize,
+GameStreamingApplication::AddNewTrafficStream (Ptr<RandomVariableStream> packetSize,
                                             Ptr<RandomVariableStream> interArrivalTime)
 {
   NS_LOG_FUNCTION (this << packetSize << interArrivalTime);
@@ -165,7 +165,7 @@ GamingStreamingServer::AddNewTrafficStream (Ptr<RandomVariableStream> packetSize
 }
 
 void
-GamingStreamingServer::Send (Ptr<TrafficStream> traffic)
+GameStreamingApplication::Send (Ptr<TrafficStream> traffic)
 {
   NS_LOG_FUNCTION (this);
   NS_ASSERT (traffic->sendEvent.IsExpired ());
@@ -212,7 +212,7 @@ GamingStreamingServer::Send (Ptr<TrafficStream> traffic)
 
 
 void 
-GamingStreamingServer::HandleRead (Ptr<Socket> socket)
+GameStreamingApplication::HandleRead (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);
   Ptr<Packet> packet;
@@ -252,7 +252,7 @@ GamingStreamingServer::HandleRead (Ptr<Socket> socket)
 }
 
 void
-GamingStreamingServer::StartApplication (void)
+GameStreamingApplication::StartApplication (void)
 {
   NS_LOG_FUNCTION (this);
   InitializeStreams ();
@@ -302,7 +302,7 @@ GamingStreamingServer::StartApplication (void)
           NS_ASSERT_MSG (false, "Incompatible address type: " << m_peerAddress);
         }
     }
-  m_socket->SetRecvCallback (MakeCallback (&GamingStreamingServer::HandleRead, this));
+  m_socket->SetRecvCallback (MakeCallback (&GameStreamingApplication::HandleRead, this));
   m_socket->SetAllowBroadcast (true);
 
   for (auto &traffic : m_trafficStreams)
@@ -312,7 +312,7 @@ GamingStreamingServer::StartApplication (void)
 }
 
 void
-GamingStreamingServer::StopApplication ()
+GameStreamingApplication::StopApplication ()
 {
   NS_LOG_FUNCTION (this);
   for (const auto &traffic : m_trafficStreams)
@@ -328,12 +328,12 @@ GamingStreamingServer::StopApplication ()
     }
   else
     {
-      NS_LOG_WARN ("GamingStreamingServer found null socket to close in StopApplication");
+      NS_LOG_WARN ("GameStreamingApplication found null socket to close in StopApplication");
     }
 }
 
 void
-GamingStreamingServer::ScheduleNextTx (Ptr<TrafficStream> traffic)
+GameStreamingApplication::ScheduleNextTx (Ptr<TrafficStream> traffic)
 {
   NS_LOG_FUNCTION (this);
 
@@ -344,12 +344,12 @@ GamingStreamingServer::ScheduleNextTx (Ptr<TrafficStream> traffic)
       nextTx = Seconds(traffic->interArrivalTimesVariable->GetValue () / 1e3);
     } while (nextTx.IsStrictlyNegative ());
 
-  traffic->sendEvent = Simulator::Schedule (nextTx, &GamingStreamingServer::Send, this, traffic);
+  traffic->sendEvent = Simulator::Schedule (nextTx, &GameStreamingApplication::Send, this, traffic);
 
 }
 
 void
-GamingStreamingServer::SetScalingFactor (double targetBitRate)
+GameStreamingApplication::SetScalingFactor (double targetBitRate)
 {
   NS_LOG_FUNCTION (this << targetBitRate);
   if (targetBitRate == 0)  // Generate traffics based on Reference BitRate if targetBitRate not defined
@@ -363,7 +363,7 @@ GamingStreamingServer::SetScalingFactor (double targetBitRate)
 }
 
 
-GamingStreamingServer::TrafficStream::~TrafficStream ()
+GameStreamingApplication::TrafficStream::~TrafficStream ()
 {
   Simulator::Cancel (sendEvent);
   packetSizeVariable = nullptr;
