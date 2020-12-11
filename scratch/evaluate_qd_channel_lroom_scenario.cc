@@ -139,6 +139,8 @@ PhyRxEnd (Ptr<const Packet>)
 int
 main (int argc, char *argv[])
 {
+  NS_FATAL_ERROR ("This simulation is now broken!");
+
   uint32_t packetSize = 1448;                   /* Application payload size in bytes. */
   std::string dataRate = "300Mbps";             /* Application data rate. */
   std::string tcpVariant = "NewReno";           /* TCP Variant Type. */

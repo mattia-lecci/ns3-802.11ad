@@ -152,11 +152,12 @@ InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address address, s
   PacketSinkHelper sinkHelper (socketType, InetSocketAddress (Ipv4Address::GetAny (), 9000 + appNumber));
   ApplicationContainer sinkApp = sinkHelper.Install (dstNode);
   commPair.packetSink = StaticCast<PacketSink> (sinkApp.Get (0));
-  // commPair.packetSink->TraceConnectWithoutContext ("Rx", MakeBoundCallback (&ReceivedPacket, receivedPktsTrace, communicationPairMap, srcNode)); // BROKEN
+  commPair.packetSink->TraceConnectWithoutContext ("Rx", MakeBoundCallback (&ReceivedPacket, receivedPktsTrace, &communicationPairMap, srcNode));
   sinkApp.Start (Seconds (0));
 
   return commPair;
 }
+
 
 int
 main (int argc, char *argv[])
@@ -229,6 +230,17 @@ main (int argc, char *argv[])
     schedulerType = "ns3::PeriodicDmgWifiScheduler";
     allocationPeriod = schedulerTypeIdx;
   }
+
+  /* Initialize traces */
+  AsciiTraceHelper ascii;
+  Ptr<OutputStreamWrapper> e2eResults = ascii.CreateFileStream ("results.csv");
+  *e2eResults->GetStream () << "TxPkts_pkts,TxBytes_B,RxPkts_pkts,RxBytes_B,AvgThroughput_Mbps,AvgDelay_s,AvgJitter_s" << std::endl;
+  receivedPktsTrace = ascii.CreateFileStream ("packetsTrace.csv");
+  *receivedPktsTrace->GetStream () << "SrcNodeId,TxTimestamp_ns,RxTimestamp_ns,PktSize_B" << std::endl;
+  spTrace = ascii.CreateFileStream ("spTrace.csv");
+  *spTrace->GetStream () << "SrcNodeId,Timestamp_ns,isStart" << std::endl;
+  queueTrace = ascii.CreateFileStream ("queueTrace.csv");
+  *queueTrace->GetStream () << "SrcNodeId,Timestamp_ns,queueSize_pkts" << std::endl;
 
   /* Global params: no fragmentation, no RTS/CTS, fixed rate for all packets */
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
@@ -428,53 +440,12 @@ main (int argc, char *argv[])
       wifiHelper.EnableDmgPhyLogComponents ();
     }
 
-  AsciiTraceHelper ascii;
-  Ptr<OutputStreamWrapper> e2eResults = ascii.CreateFileStream ("results.csv");
-  *e2eResults->GetStream () << "TxPkts_pkts,TxBytes_B,RxPkts_pkts,RxBytes_B,AvgThroughput_Mbps,AvgDelay_s,AvgJitter_s" << std::endl;
-  receivedPktsTrace = ascii.CreateFileStream ("packetsTrace.csv");
-  *receivedPktsTrace->GetStream () << "SrcNodeId,TxTimestamp_ns,RxTimestamp_ns,PktSize_B" << std::endl;
-  spTrace = ascii.CreateFileStream ("spTrace.csv");
-  *spTrace->GetStream () << "SrcNodeId,Timestamp_ns,isStart" << std::endl;
-  queueTrace = ascii.CreateFileStream ("queueTrace.csv");
-  *queueTrace->GetStream () << "SrcNodeId,Timestamp_ns,queueSize_pkts" << std::endl;
-
   Ptr<WifiNetDevice> wifiNetDevice;
   Ptr<DmgStaWifiMac> staWifiMac;
   Ptr<WifiRemoteStationManager> remoteStationManager;
   /* By default the generated traffic is associated to AC_BE */
   /* Therefore we keep track of changes in the BE Queue */
   Ptr<WifiMacQueue> beQueue;
-
-  /* Connect DMG STA traces */
-  for (uint32_t i = 0; i < staDevices.GetN (); i++)
-    {
-      wifiNetDevice = StaticCast<WifiNetDevice> (staDevices.Get (i));
-      staWifiMac = StaticCast<DmgStaWifiMac> (wifiNetDevice->GetMac ());
-      beQueue = staWifiMac->GetBEQueue ()->GetQueue ();
-
-      // auto it = communicationPairMap.find (staWifiNodes.Get (i));
-      // NS_ABORT_MSG_IF (it == communicationPairMap.end (), "Could not find application for this node.");
-      // CommunicationPair& communicationPair = it->second;
-
-      macTxDataFailed.insert (std::make_pair (staWifiMac->GetAddress (), 0));
-      macTxDataOk.insert (std::make_pair (staWifiMac->GetAddress (), 0));
-      macRxDataOk.insert (std::make_pair (staWifiMac->GetAddress (), 0));
-      remoteStationManager = wifiNetDevice->GetRemoteStationManager ();
-      remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, macRxDataOk, staWifiMac));
-      remoteStationManager->TraceConnectWithoutContext ("MacTxOK", MakeBoundCallback (&MacTxOk, macTxDataOk, staWifiMac));
-      remoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeBoundCallback (&MacTxDataFailed, macTxDataFailed, staWifiMac));
-      // staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, communicationPair, phyMode, apWifiMac, staWifiMac, allocationId, allocationPeriod)); // BROKEN
-      // staWifiMac->TraceConnectWithoutContext ("DeAssoc", MakeBoundCallback (&StationDeAssociated, communicationPair, staWifiMac)); // BROKEN
-      // staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, schedulerType, communicationPair)); // BROKEN
-      // staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeCallback (&ServicePeriodStarted, spTrace, mac2IdMap)); // BROKEN
-      // staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeCallback (&ServicePeriodEnded, spTrace, mac2IdMap)); // BROKEN
-      beQueue->TraceConnectWithoutContext ("OccupancyChanged", MakeBoundCallback (&MacQueueChanged, queueTrace, staWifiNodes.Get (i)));
-
-      Ptr<Parameters> parameters = Create<Parameters> ();
-      parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
-      parameters->wifiMac = staWifiMac;
-      staWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parameters));
-    }
 
   /* Connect DMG PCP/AP traces */
   wifiNetDevice = StaticCast<WifiNetDevice> (apDevice.Get (0));
@@ -486,11 +457,51 @@ main (int argc, char *argv[])
   Ptr<Parameters> parameters = Create<Parameters> ();
   parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
   parameters->wifiMac = apWifiMac;
-  // apWifiMac->TraceConnectWithoutContext ("DTIStarted", MakeCallback (&DtiStarted, spTrace, mac2IdMap)); // BROKEN
+  apWifiMac->TraceConnectWithoutContext ("DTIStarted", MakeBoundCallback (&DtiStarted, spTrace, &mac2IdMap));
   apWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parameters));
-  // apWifiMac->TraceConnectWithoutContext ("ContentionPeriodStarted", MakeCallback (&ContentionPeriodStarted, spTrace)); // BROKEN
-  // apWifiMac->TraceConnectWithoutContext ("ContentionPeriodEnded", MakeCallback (&ContentionPeriodEnded, spTrace)); // BROKEN
+  apWifiMac->TraceConnectWithoutContext ("ContentionPeriodStarted", MakeBoundCallback (&ContentionPeriodStarted, spTrace));
+  apWifiMac->TraceConnectWithoutContext ("ContentionPeriodEnded", MakeBoundCallback (&ContentionPeriodEnded, spTrace));
   remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, macRxDataOk, apWifiMac));
+
+  /* Connect DMG STA traces */
+  AssocParams ap;
+  ap.phyMode = phyMode;
+  ap.apWifiMac = apWifiMac;
+  ap.allocationId = allocationId;
+  ap.allocationPeriod = allocationPeriod;
+
+  for (uint32_t i = 0; i < staDevices.GetN (); i++)
+    {
+      wifiNetDevice = StaticCast<WifiNetDevice> (staDevices.Get (i));
+      staWifiMac = StaticCast<DmgStaWifiMac> (wifiNetDevice->GetMac ());
+      beQueue = staWifiMac->GetBEQueue ()->GetQueue ();
+
+      auto it = communicationPairMap.find (staWifiNodes.Get (i));
+      NS_ABORT_MSG_IF (it == communicationPairMap.end (), "Could not find application for this node.");
+      CommunicationPair& communicationPair = it->second;
+
+      ap.communicationPair = communicationPair; // &?
+      ap.staWifiMac = staWifiMac;
+
+      macTxDataFailed.insert (std::make_pair (staWifiMac->GetAddress (), 0));
+      macTxDataOk.insert (std::make_pair (staWifiMac->GetAddress (), 0));
+      macRxDataOk.insert (std::make_pair (staWifiMac->GetAddress (), 0));
+      remoteStationManager = wifiNetDevice->GetRemoteStationManager ();
+      remoteStationManager->TraceConnectWithoutContext ("MacRxOK", MakeBoundCallback (&MacRxOk, macRxDataOk, staWifiMac));
+      remoteStationManager->TraceConnectWithoutContext ("MacTxOK", MakeBoundCallback (&MacTxOk, macTxDataOk, staWifiMac));
+      remoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeBoundCallback (&MacTxDataFailed, macTxDataFailed, staWifiMac));
+      staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, ap));
+      staWifiMac->TraceConnectWithoutContext ("DeAssoc", MakeBoundCallback (&StationDeAssociated, communicationPair, staWifiMac));
+      staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, schedulerType, communicationPair));
+      staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeBoundCallback (&ServicePeriodStarted, spTrace, &mac2IdMap));
+      staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeBoundCallback (&ServicePeriodEnded, spTrace, &mac2IdMap));
+      beQueue->TraceConnectWithoutContext ("OccupancyChanged", MakeBoundCallback (&MacQueueChanged, queueTrace, staWifiNodes.Get (i)));
+
+      Ptr<Parameters> parameters = Create<Parameters> ();
+      parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
+      parameters->wifiMac = staWifiMac;
+      staWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parameters));
+    }
 
   /* Install FlowMonitor on all nodes */
   FlowMonitorHelper flowmon;
@@ -508,7 +519,7 @@ main (int argc, char *argv[])
   NS_LOG_UNCOND (rowOutput + " Aggregate");
 
   /* Schedule Throughput Calulcations */
-  // Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput, thrLogPeriodicity, communicationPairMap); // BROKEN
+  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput, thrLogPeriodicity, communicationPairMap);
 
   Simulator::Stop (Seconds (simulationTime + 0.101));
   Simulator::Run ();

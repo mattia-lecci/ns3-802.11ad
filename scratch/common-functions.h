@@ -37,12 +37,57 @@ struct CommunicationPair
   uint64_t appDataRate;
   Time startTime;
 };
-typedef std::map<Ptr<Node>, CommunicationPair> CommunicationPairMap;
+bool operator== (const CommunicationPair& a, const CommunicationPair& b);
+bool operator!= (const CommunicationPair& a, const CommunicationPair& b);
 
+struct AssocParams
+{
+  CommunicationPair communicationPair; // &?
+  std::string phyMode;
+  Ptr<DmgApWifiMac> apWifiMac;
+  Ptr<DmgStaWifiMac> staWifiMac;
+  uint8_t allocationId;
+  uint16_t allocationPeriod;
+};
+bool operator== (const AssocParams& a, const AssocParams& b);
+bool operator!= (const AssocParams& a, const AssocParams& b);
+
+typedef std::map<Ptr<Node>, CommunicationPair> CommunicationPairMap;
 typedef std::map<Mac48Address, uint32_t> Mac2IdMap;
 typedef std::map<Mac48Address, uint64_t> PacketCountMap;
 
 /* Functions */
+bool
+operator== (const CommunicationPair& a, const CommunicationPair& b)
+{
+  return a.srcApp == b.srcApp && a.packetSink == b.packetSink &&
+    a.totalRx == b.totalRx && a.jitter == b.jitter &&
+    a.lastDelayValue == b.lastDelayValue && a.appDataRate == b.appDataRate &&
+    a.startTime == b.startTime;
+}
+
+bool
+operator!= (const CommunicationPair& a, const CommunicationPair& b)
+{
+  return !(a == b);
+}
+
+bool
+operator== (const AssocParams& a, const AssocParams& b)
+{
+  return a.communicationPair == b.communicationPair && a.phyMode == b.phyMode &&
+    a.apWifiMac == b.apWifiMac && a.staWifiMac == b.staWifiMac &&
+    a.allocationId == b.allocationId && a.allocationPeriod == b.allocationPeriod;
+}
+
+
+bool
+operator!= (const AssocParams& a, const AssocParams& b)
+{
+  return !(a == b);
+}
+
+
 void
 PopulateArpCache (void)
 {
@@ -150,14 +195,14 @@ GetInputPath (std::vector<std::string> &pathComponents)
 }
 
 
-void 
-ReceivedPacket (Ptr<OutputStreamWrapper> receivedPktsTrace, CommunicationPairMap& communicationPairMap, Ptr<Node> srcNode, Ptr<const Packet> packet, const Address &address)
+void
+ReceivedPacket (Ptr<OutputStreamWrapper> receivedPktsTrace, CommunicationPairMap* communicationPairMap, Ptr<Node> srcNode, Ptr<const Packet> packet, const Address &address)
 {
   TimestampTag timestamp;
   NS_ABORT_MSG_IF (!packet->FindFirstMatchingByteTag (timestamp),
                    "Packet timestamp not found");
 
-  CommunicationPair &commPair = communicationPairMap.at (srcNode);
+  CommunicationPair &commPair = communicationPairMap->at (srcNode);
   Time delay = Simulator::Now () - timestamp.GetTimestamp ();
   Time jitter = Seconds (std::abs (delay.GetSeconds () - commPair.lastDelayValue.GetSeconds ()));
   commPair.jitter += jitter;
@@ -203,24 +248,24 @@ CalculateThroughput (Time thrLogPeriodicity, CommunicationPairMap& communication
 
 
 void 
-DtiStarted (Ptr<OutputStreamWrapper> spTrace, const Mac2IdMap& mac2IdMap, Mac48Address apAddr, Time duration)
+DtiStarted (Ptr<OutputStreamWrapper> spTrace, Mac2IdMap* mac2IdMap, Mac48Address apAddr, Time duration)
 {
-  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << Simulator::Now ().GetNanoSeconds () << "," << true << std::endl;
-  *spTrace->GetStream () << mac2IdMap.at (apAddr) << "," << (Simulator::Now () + duration).GetNanoSeconds () << "," << false << std::endl;
+  *spTrace->GetStream () << mac2IdMap->at (apAddr) << "," << Simulator::Now ().GetNanoSeconds () << "," << true << std::endl;
+  *spTrace->GetStream () << mac2IdMap->at (apAddr) << "," << (Simulator::Now () + duration).GetNanoSeconds () << "," << false << std::endl;
 }
 
 
 void
-ServicePeriodStarted (Ptr<OutputStreamWrapper> spTrace, const Mac2IdMap& mac2IdMap, Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
+ServicePeriodStarted (Ptr<OutputStreamWrapper> spTrace, Mac2IdMap* mac2IdMap, Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
-  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetNanoSeconds () << "," << true << std::endl;
+  *spTrace->GetStream () << mac2IdMap->at (srcAddr) << "," << Simulator::Now ().GetNanoSeconds () << "," << true << std::endl;
 }
 
 
 void
-ServicePeriodEnded (Ptr<OutputStreamWrapper> spTrace, const Mac2IdMap& mac2IdMap, Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
+ServicePeriodEnded (Ptr<OutputStreamWrapper> spTrace, Mac2IdMap* mac2IdMap, Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
 {
-  *spTrace->GetStream () << mac2IdMap.at (srcAddr) << "," << Simulator::Now ().GetNanoSeconds () << "," << false << std::endl;
+  *spTrace->GetStream () << mac2IdMap->at (srcAddr) << "," << Simulator::Now ().GetNanoSeconds () << "," << false << std::endl;
 }
 
 
@@ -280,14 +325,14 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
 
 
 void
-StationAssociated (CommunicationPair& communicationPair, std::string phyMode, Ptr<DmgApWifiMac> apWifiMac, Ptr<DmgStaWifiMac> staWifiMac, uint8_t allocationId, uint16_t allocationPeriod, Mac48Address apAddress, uint16_t aid)
+StationAssociated (AssocParams params, Mac48Address apAddress, uint16_t aid)
 {
   // NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << apAddress << ", AID=" << aid << std::endl;
 
-  uint32_t spDuration = ComputeServicePeriodDuration (communicationPair.appDataRate,
-                                                      WifiMode (phyMode).GetPhyRate (),
-                                                      apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
-  staWifiMac->CreateAllocation (GetDmgTspecElement (allocationId, true, spDuration, spDuration, allocationPeriod));
+  uint32_t spDuration = ComputeServicePeriodDuration (params.communicationPair.appDataRate,
+                                                      WifiMode (params.phyMode).GetPhyRate (),
+                                                      params.apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
+  params.staWifiMac->CreateAllocation (GetDmgTspecElement (params.allocationId, true, spDuration, spDuration, params.allocationPeriod));
 }
 
 
