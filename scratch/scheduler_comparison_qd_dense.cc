@@ -18,6 +18,9 @@
 #include "common-functions.h"
 #include <iomanip>
 #include <sstream>
+#include "ns3/game-streaming-application-helper.h"
+#include "ns3/four-elements-game-streaming-application.h"
+#include "ns3/crazy-taxi-game-streaming-application.h"
 
 /**
  * Simulation Objective:
@@ -113,47 +116,84 @@ Ptr<OutputStreamWrapper> spTrace;
 /* MAC queue size output stream */
 Ptr<OutputStreamWrapper> queueTrace;
 
+
 CommunicationPair
-InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address address, std::string appDataRate, uint16_t appNumber)
+InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address srcIp, Ipv4Address dstIp, std::string appDataRate, uint16_t appNumber)
 {
-  NS_LOG_FUNCTION (srcNode->GetId () << dstNode->GetId () << address << appDataRate << +appNumber);
+  NS_LOG_FUNCTION (srcNode->GetId () << dstNode->GetId () << srcIp << dstIp << appDataRate << +appNumber);
   CommunicationPair commPair;
-  /* Install TCP/UDP Transmitter on the source node */
-  Address dest (InetSocketAddress (address, 9000 + appNumber));
   ApplicationContainer srcApp;
-  if (applicationType == "onoff")
-    {
-      OnOffHelper src (socketType, dest);
-      src.SetAttribute ("MaxBytes", UintegerValue (maxPackets));
-      src.SetAttribute ("PacketSize", UintegerValue (packetSize));
-      src.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1e6]"));
-      src.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
-      src.SetAttribute ("DataRate", DataRateValue (DataRate (appDataRate)));
-      srcApp = src.Install (srcNode);
-    }
-  else if (applicationType == "bulk")
-    {
-      BulkSendHelper src (socketType, dest);
-      srcApp = src.Install (srcNode);
-    }
-  else
-    {
-      NS_FATAL_ERROR ("applicationType=" << applicationType << " not recognized");
-    }
+  ApplicationContainer dstApp;
+
+  /* Install TCP/UDP Transmitter on the source node */
+  uint16_t portNumber = 9000 + appNumber;
+  srcIp = Ipv4Address::GetAny (); // 0.0.0.0
+  Address dstInet (InetSocketAddress (dstIp, portNumber));
+  Address srcInet (InetSocketAddress (srcIp, portNumber));
 
   /* The APP is manually started when the corresponding ADDTS request succeeded (or failed only for CbapOnlyDmgWifiScheduler) */
   /* Here the start time is to a value greater than the simulation time otherwise the APP will start at 0 by default */
-  srcApp.Start (Seconds (simulationTime + 1));
-  srcApp.Stop (Seconds (simulationTime));
+  Time appStartTime = Seconds (simulationTime + 1);
+  Time appStopTime = Seconds (simulationTime);
+
+  if (applicationType == "onoff")
+  {
+    OnOffHelper src (socketType, dstInet);
+    src.SetAttribute ("MaxBytes", UintegerValue (maxPackets));
+    src.SetAttribute ("PacketSize", UintegerValue (packetSize));
+    src.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1e6]"));
+    src.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+    src.SetAttribute ("DataRate", DataRateValue (DataRate (appDataRate)));
+    srcApp = src.Install (srcNode);
+  }
+else if (applicationType == "bulk")
+  {
+    // Bulk Send needs TCP sockets
+    socketType = "ns3::TcpSocketFactory";
+    BulkSendHelper src (socketType, dstInet);
+    srcApp = src.Install (srcNode);
+  }
+else if (applicationType == "crazyTaxi" || applicationType == "fourElements")
+  {
+    std::string gamingServerId;
+
+    if (applicationType == "crazyTaxi")
+      {
+        gamingServerId = "ns3::CrazyTaxiStreamingServer";
+      }
+    else if (applicationType == "fourElements")
+      {
+        gamingServerId = "ns3::FourElementsStreamingServer";
+      }
+    else
+      {
+        NS_FATAL_ERROR ("applicationType=" << applicationType << " not recognized");
+      }
+
+    // improve "address" doc in gamingstreaming, make it similar to packetsink
+    GameStreamingApplicationHelper serverStreamingHelper (gamingServerId, dstIp, portNumber);
+    
+    // TODO use DataRate object
+    serverStreamingHelper.SetAttribute ("BitRate", DoubleValue (0.0)); // TODO
+
+    srcApp = serverStreamingHelper.Install (srcNode);
+  }
+else
+  {
+    NS_FATAL_ERROR ("applicationType=" << applicationType << " not recognized");
+  }
+
+  srcApp.Start (appStartTime);
+  srcApp.Stop (appStopTime);
   commPair.srcApp = srcApp.Get (0);
   commPair.appDataRate = DataRate (appDataRate).GetBitRate ();
 
   /* Install Simple TCP/UDP Server on the destination node */
-  PacketSinkHelper sinkHelper (socketType, InetSocketAddress (Ipv4Address::GetAny (), 9000 + appNumber));
-  ApplicationContainer sinkApp = sinkHelper.Install (dstNode);
-  commPair.packetSink = StaticCast<PacketSink> (sinkApp.Get (0));
+  PacketSinkHelper sinkHelper (socketType, srcInet);
+  dstApp = sinkHelper.Install (dstNode);
+  commPair.packetSink = StaticCast<PacketSink> (dstApp.Get (0));
   commPair.packetSink->TraceConnectWithoutContext ("Rx", MakeBoundCallback (&ReceivedPacket, receivedPktsTrace, &communicationPairMap, srcNode));
-  sinkApp.Start (Seconds (0));
+  dstApp.Start (Seconds (0));
 
   return commPair;
 }
@@ -421,7 +461,7 @@ main (int argc, char *argv[])
         dataRate = appDataRates.at (i);
       }
       communicationPairMap[staWifiNodes.Get (i)] = InstallApplication (staWifiNodes.Get (i), apWifiNode.Get (0),
-                                                                         apInterface.GetAddress (0), dataRate, i);
+                                                                       staInterfaces.GetAddress (i), apInterface.GetAddress (0), dataRate, i);
     }
 
   /* Print Traces */
