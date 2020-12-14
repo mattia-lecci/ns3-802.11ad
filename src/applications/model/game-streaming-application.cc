@@ -37,20 +37,16 @@ GameStreamingApplication::GetTypeId (void)
     .SetParent<Application> ()
     .SetGroupName ("Applications")
     .AddAttribute ("BitRate",
-                   "Application's data rate (in Mbps). If 0.0, The default application bitrate is used, instead.",
-                   DoubleValue (0.0),
-                   MakeDoubleAccessor (&GameStreamingApplication::SetScalingFactor),
-                   MakeDoubleChecker<double> ())
+                   "Application's data rate. If 0 bps, the default application bitrate is used.",
+                   DataRateValue (DataRate ("0bps")),
+                   MakeDataRateAccessor (&GameStreamingApplication::GetTargetDataRate,
+                                         &GameStreamingApplication::SetTargetDataRate),
+                   MakeDataRateChecker ())
     .AddAttribute ("RemoteAddress",
                    "The destination Address of the outbound packets.",
                    AddressValue (),
                    MakeAddressAccessor (&GameStreamingApplication::m_peerAddress),
                    MakeAddressChecker ())
-    .AddAttribute ("RemotePort",
-                   "The destination port of the outbound packets.",
-                   UintegerValue (100),
-                   MakeUintegerAccessor (&GameStreamingApplication::m_peerPort),
-                   MakeUintegerChecker<uint16_t> ())
     .AddTraceSource ("Tx", "A new packet is created and is sent",
                      MakeTraceSourceAccessor (&GameStreamingApplication::m_txTrace),
                      "ns3::Packet::TracedCallback")
@@ -62,7 +58,7 @@ GameStreamingApplication::GetTypeId (void)
 }
 
 GameStreamingApplication::GameStreamingApplication ()
-  : m_referenceBitRate (1),
+  : m_referenceDataRate (DataRate ("0bps")),
     m_seq (0),
     m_totalSentPackets (0),
     m_totalReceivedPackets (0),
@@ -88,14 +84,6 @@ GameStreamingApplication::DoDispose (void)
   m_trafficStreams.clear ();
   m_socket = nullptr;
   Application::DoDispose ();
-}
-
-void
-GameStreamingApplication::SetRemote (Address ip, uint16_t port)
-{
-  NS_LOG_FUNCTION (this << ip << port);
-  m_peerAddress = ip;
-  m_peerPort = port;
 }
 
 void
@@ -170,15 +158,6 @@ GameStreamingApplication::Send (Ptr<TrafficStream> traffic)
   NS_LOG_FUNCTION (this);
   NS_ASSERT (traffic->sendEvent.IsExpired ());
 
-  uint32_t pktSize = traffic->packetSizeVariable->GetInteger ();
-
-  Ptr<Packet> packet = Create<Packet> (pktSize);
-  m_txTrace (packet);
-  TimestampTag timestamp;
-  timestamp.SetTimestamp (Simulator::Now ());
-  packet->AddByteTag (timestamp);
-  NS_ABORT_IF (packet->GetSize () != pktSize);
-
   std::stringstream addrString;
   if (Ipv4Address::IsMatchingType (m_peerAddress))
     {
@@ -188,26 +167,62 @@ GameStreamingApplication::Send (Ptr<TrafficStream> traffic)
     {
       addrString << Ipv6Address::ConvertFrom (m_peerAddress);
     }
-
-  if ((m_socket->Send (packet)) >= 0)
-    {
-      m_totalSentPackets++;
-      m_totalSentBytes += pktSize;
-      NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
-                              << "s gaming server sent "
-                              << packet->GetSize () << " bytes to "
-                              << addrString.str ()
-                              << " port " << m_peerPort
-                              << " total sent packets " << m_totalSentPackets
-                              << " total Tx " << m_totalSentBytes << " bytes");
-    }
+  else if (InetSocketAddress::IsMatchingType (m_peerAddress))
+  {
+    addrString << InetSocketAddress::ConvertFrom (m_peerAddress).GetIpv4 () << ":"
+               << InetSocketAddress::ConvertFrom (m_peerAddress).GetPort ();
+  }
   else
+  {
+    addrString << "UNKNOWN";
+  }
+
+  uint32_t totPktSize = traffic->packetSizeVariable->GetInteger ();
+  uint32_t pktSizeLeft = totPktSize;
+  uint32_t pktSizeLimit = m_socket->GetTxAvailable ();
+
+  while (pktSizeLeft > 0)
     {
-      m_totalFailedPackets++;
-      NS_LOG_INFO ("Error while sending " << packet->GetSize () << " bytes to "
-                                          << addrString.str ());
+      uint32_t pktSize = pktSizeLeft > pktSizeLimit ? pktSizeLimit : pktSizeLeft;
+      pktSizeLeft -= pktSize;
+        
+      Ptr<Packet> packet = Create<Packet> (pktSize);
+      m_txTrace (packet);
+      TimestampTag timestamp;
+      timestamp.SetTimestamp (Simulator::Now ());
+      packet->AddByteTag (timestamp);
+      NS_ABORT_IF (packet->GetSize () != pktSize);
+
+      if ((m_socket->Send (packet)) >= 0)
+        {
+          m_totalSentPackets++;
+          m_totalSentBytes += pktSize;
+          NS_LOG_INFO ("Sending packet of size " << pktSize << " B " <<
+                       "(out of " << totPktSize << " B) " <<
+                       "to " << addrString.str ());
+        }
+      else
+        {
+          m_totalFailedPackets++;
+          NS_LOG_INFO ("Error while sending packet of size " << pktSize << " B " <<
+                       "(out of " << totPktSize << " B) " <<
+                       "to " << addrString.str ());
+        }
     }
+  
   ScheduleNextTx (traffic);
+}
+
+
+void GameStreamingApplication::ConnectionSucceeded (Ptr<Socket> socket)
+{
+  NS_LOG_FUNCTION (this << socket);
+}
+
+
+void GameStreamingApplication::ConnectionFailed (Ptr<Socket> socket)
+{
+  NS_LOG_FUNCTION (this << socket);
 }
 
 
@@ -256,52 +271,27 @@ GameStreamingApplication::StartApplication (void)
 {
   NS_LOG_FUNCTION (this);
   InitializeStreams ();
-  if (m_socket == 0)
+  if (!m_socket)
     {
       TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
       m_socket = Socket::CreateSocket (GetNode (), tid);
 
-      if (Ipv4Address::IsMatchingType (m_peerAddress) == true)
+      if (InetSocketAddress::IsMatchingType (m_peerAddress) == true)
         {
-          InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), m_peerPort);
-          if (m_socket->Bind (local) == -1)
-            {
-              NS_FATAL_ERROR ("Failed to bind socket");
-            }
-          m_socket->Connect (InetSocketAddress (Ipv4Address::ConvertFrom (m_peerAddress),
-                                                m_peerPort));
-        }
-      else if (Ipv6Address::IsMatchingType (m_peerAddress) == true)
-        {
-          Inet6SocketAddress local6 = Inet6SocketAddress (Ipv6Address::GetAny (), m_peerPort);
-          if (m_socket->Bind (local6) == -1)
-            {
-              NS_FATAL_ERROR ("Failed to bind socket");
-            }
-          m_socket->Connect (Inet6SocketAddress (Ipv6Address::ConvertFrom (m_peerAddress),
-                                                 m_peerPort));
-        }
-      else if (InetSocketAddress::IsMatchingType (m_peerAddress) == true)
-        {
-          if (m_socket->Bind () == -1)
-            {
-              NS_FATAL_ERROR ("Failed to bind socket");
-            }
-          m_socket->Connect (m_peerAddress);
+          InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), InetSocketAddress::ConvertFrom (m_peerAddress).GetPort ());
+          NS_ABORT_MSG_IF (m_socket->Bind (local) == -1, "Failed to bind socket");
         }
       else if (Inet6SocketAddress::IsMatchingType (m_peerAddress) == true)
         {
-          if (m_socket->Bind6 () == -1)
-            {
-              NS_FATAL_ERROR ("Failed to bind socket");
-            }
-          m_socket->Connect (m_peerAddress);
+          Inet6SocketAddress local6 = Inet6SocketAddress (Ipv6Address::GetAny (), Inet6SocketAddress::ConvertFrom (m_peerAddress).GetPort ());
+          NS_ABORT_MSG_IF (m_socket->Bind (local6) == -1, "Failed to bind socket");
         }
       else
         {
           NS_ASSERT_MSG (false, "Incompatible address type: " << m_peerAddress);
         }
     }
+  m_socket->Connect (m_peerAddress);
   m_socket->SetRecvCallback (MakeCallback (&GameStreamingApplication::HandleRead, this));
   m_socket->SetAllowBroadcast (true);
 
@@ -349,17 +339,35 @@ GameStreamingApplication::ScheduleNextTx (Ptr<TrafficStream> traffic)
 }
 
 void
-GameStreamingApplication::SetScalingFactor (double targetBitRate)
+GameStreamingApplication::SetTargetDataRate (DataRate targetDataRate)
 {
-  NS_LOG_FUNCTION (this << targetBitRate);
-  if (targetBitRate == 0)  // Generate traffics based on Reference BitRate if targetBitRate not defined
+  NS_LOG_FUNCTION (this << targetDataRate);
+  if (targetDataRate.GetBitRate () == 0)  // Generate traffics based on Reference BitRate if targetDataRate not defined
     {
       m_scalingFactor = 1;
+      m_tagetDataRate = m_referenceDataRate;
     }
-  else  // Scale up/down the traffic rate based on targetBitRate
+  else  // Scale up/down the traffic rate based on targetDataRate
     {
-      m_scalingFactor = targetBitRate / m_referenceBitRate;
+      m_scalingFactor = ((double) targetDataRate.GetBitRate ()) / m_referenceDataRate.GetBitRate ();
+      m_tagetDataRate = targetDataRate;
     }
+
+  NS_LOG_DEBUG ("targetDataRate=" << targetDataRate << ", m_referenceDataRate=" << m_referenceDataRate << ", m_scalingFactor=" << m_scalingFactor);
+}
+
+DataRate
+GameStreamingApplication::GetTargetDataRate () const
+{
+  NS_LOG_FUNCTION (this);
+  return m_tagetDataRate;
+}
+
+DataRate
+GameStreamingApplication::GetReferenceDataRate () const
+{
+  NS_LOG_FUNCTION (this);
+  return m_referenceDataRate;
 }
 
 

@@ -33,11 +33,10 @@ GameStreamingApplicationHelper::GameStreamingApplicationHelper (std::string appl
   m_factory.SetTypeId (applicationType);
 }
 
-GameStreamingApplicationHelper::GameStreamingApplicationHelper (std::string applicationType, Address address, uint16_t port)
+GameStreamingApplicationHelper::GameStreamingApplicationHelper (std::string applicationType, Address address)
   : GameStreamingApplicationHelper (applicationType)
 {
   SetAttribute ("RemoteAddress", AddressValue (address));
-  SetAttribute ("RemotePort", UintegerValue (port));
 }
 
 void

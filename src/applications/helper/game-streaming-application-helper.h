@@ -44,15 +44,13 @@ public:
    * \param applicationType identifier of the gaming server
    */
   GameStreamingApplicationHelper (std::string applicationType);
-
   /**
-   * \brief Create an GameStreamingApplicationHelper to make it easier to work with GameStreamingApplication
+   * Create an GameStreamingApplicationHelper to make it easier to work with GameStreamingApplication
    *
    * \param applicationType identifier of the gaming server
-   * \param ip peer remote address
-   * \param port peer remote port
+   * \param address the address of the remote node to send traffic to
    */
-  GameStreamingApplicationHelper (std::string applicationType, Address ip, uint16_t port);
+  GameStreamingApplicationHelper (std::string applicationType, Address address);
 
   /**
     * Record an attribute to be set in each Application after it is is created.

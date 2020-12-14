@@ -50,7 +50,7 @@ FourElementsStreamingClient::GetTypeId (void)
 FourElementsStreamingClient::FourElementsStreamingClient ()
 {
   NS_LOG_FUNCTION (this);
-  m_referenceBitRate = 0.056;
+  m_referenceDataRate = DataRate ("56.197kbps");
 }
 
 FourElementsStreamingClient::~FourElementsStreamingClient ()
@@ -102,7 +102,7 @@ FourElementsStreamingServer::GetTypeId (void)
 FourElementsStreamingServer::FourElementsStreamingServer ()
 {
   NS_LOG_FUNCTION (this);
-  m_referenceBitRate = 2.544;
+  m_referenceDataRate = DataRate ("2.5745Mbps");
 }
 
 FourElementsStreamingServer::~FourElementsStreamingServer ()

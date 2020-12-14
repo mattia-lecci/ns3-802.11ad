@@ -50,7 +50,7 @@ CrazyTaxiStreamingClient::GetTypeId (void)
 CrazyTaxiStreamingClient::CrazyTaxiStreamingClient ()
 {
   NS_LOG_FUNCTION (this);
-  m_referenceBitRate = 0.033;
+  m_referenceDataRate = DataRate ("33.123kbps");
 }
 
 CrazyTaxiStreamingClient::~CrazyTaxiStreamingClient ()
@@ -101,7 +101,7 @@ CrazyTaxiStreamingServer::GetTypeId (void)
 CrazyTaxiStreamingServer::CrazyTaxiStreamingServer ()
 {
   NS_LOG_FUNCTION (this);
-  m_referenceBitRate = 5.948;
+  m_referenceDataRate = DataRate ("5.979Mbps");
 }
 
 CrazyTaxiStreamingServer::~CrazyTaxiStreamingServer ()

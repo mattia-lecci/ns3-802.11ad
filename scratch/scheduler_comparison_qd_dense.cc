@@ -170,11 +170,8 @@ else if (applicationType == "crazyTaxi" || applicationType == "fourElements")
         NS_FATAL_ERROR ("applicationType=" << applicationType << " not recognized");
       }
 
-    // improve "address" doc in gamingstreaming, make it similar to packetsink
-    GameStreamingApplicationHelper serverStreamingHelper (gamingServerId, dstIp, portNumber);
-    
-    // TODO use DataRate object
-    serverStreamingHelper.SetAttribute ("BitRate", DoubleValue (0.0)); // TODO
+    GameStreamingApplicationHelper serverStreamingHelper (gamingServerId, dstInet);
+    serverStreamingHelper.SetAttribute ("BitRate", DataRateValue (DataRate (appDataRate)));
 
     srcApp = serverStreamingHelper.Install (srcNode);
   }
