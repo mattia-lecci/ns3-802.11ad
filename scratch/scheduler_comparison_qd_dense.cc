@@ -87,16 +87,17 @@ std::string schedulerType;                         /* The type of scheduler to b
 uint16_t allocationPeriod = 0;                     /* The periodicity of the requested SP allocation, 0 if not periodic */
 std::string applicationType = "onoff";             /* Type of the Tx application */
 std::string socketType = "ns3::UdpSocketFactory";  /* Socket Type (TCP/UDP) */
-uint16_t schedulerTypeIdx = 0;                     /* The scheduler type: 0= CbapOnly, 1 basic, >=2 periodic */
 std::string phyMode = "DMG_MCS12";                 /* The MCS to be used at the Physical Layer. */
 uint32_t packetSize = 1448;                        /* Application payload size [bytes]. */
 std::string tcpVariant = "NewReno";                /* TCP Variant Type. */
-uint32_t maxPackets = 0;                           /* Maximum Number of Packets */
 uint32_t msduAggregationSize = 7935;               /* The maximum aggregation size for A-MSDU [bytes]. */
 uint32_t mpduAggregationSize = 262143;             /* The maximum aggregation size for A-MPDU [bytes]. */
 double simulationTime = 10;                        /* Simulation time [s]. */
 uint8_t allocationId = 1;                          /* The allocation ID of the DMG Tspec element to create */
 Time thrLogPeriodicity = MilliSeconds (100);       /* The log periodicity for the throughput of each STA [ms] */
+uint32_t biDurationUs = 102400;                    /* Duration of a BI [us]. Must be a multiple of 1024 us */
+double onoffPeriodMean = 102.4e-3;                 /* On/off application mean period [s] */
+double onoffPeriodStdev = 0;                       /* On/off application period stdev [s] (normal distribution) */
 
 Mac2IdMap mac2IdMap;
 
@@ -136,22 +137,51 @@ InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address srcIp, Ipv
   Time appStartTime = Seconds (simulationTime + 1);
   Time appStopTime = Seconds (simulationTime);
 
-  if (applicationType == "onoff")
+  if (applicationType == "constant")
   {
-    OnOffHelper src (socketType, dstInet);
-    src.SetAttribute ("MaxBytes", UintegerValue (maxPackets));
-    src.SetAttribute ("PacketSize", UintegerValue (packetSize));
-    src.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1e6]"));
-    src.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
-    src.SetAttribute ("DataRate", DataRateValue (DataRate (appDataRate)));
-    srcApp = src.Install (srcNode);
+    OnOffHelper onoff (socketType, dstInet);
+    onoff.SetAttribute ("PacketSize", UintegerValue (packetSize));
+    onoff.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1e6]"));
+    onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+    onoff.SetAttribute ("DataRate", DataRateValue (DataRate (appDataRate)));
+    srcApp = onoff.Install (srcNode);
+  }
+  else if (applicationType == "onoff")
+  {
+    NS_ABORT_MSG_IF (onoffPeriodMean == 0, "onoffPeriodMean==0");
+    OnOffHelper onoff (socketType, dstInet);
+
+    // params: constant on time (burst), truncated positive gaussian off time
+    double onTime = 10e-6;
+    std::string onTimeStr = std::to_string (onTime);
+    
+    std::string meanOffTimeStr = std::to_string (onoffPeriodMean - onTime);
+    std::string varOffTimeStr = std::to_string (onoffPeriodStdev * onoffPeriodStdev);
+    std::string boundOffTimeStr = meanOffTimeStr;
+
+    std::string onTimeRv = "ns3::ConstantRandomVariable[Constant=" + onTimeStr + "]";
+    std::string offTimeRv = "ns3::NormalRandomVariable[Mean=" + meanOffTimeStr + 
+                            "|Variance=" + varOffTimeStr +
+                            "|Bound=" + boundOffTimeStr + "]";
+    NS_LOG_DEBUG ("onTimeRv=" << onTimeRv);
+    NS_LOG_DEBUG ("offTimeRv=" << offTimeRv);
+
+    uint64_t adjustedAppDataRate = DataRate (appDataRate).GetBitRate () * onoffPeriodMean / onTime;
+    NS_LOG_DEBUG ("adjustedAppDataRate=" << DataRate (adjustedAppDataRate)); // TODO why 313 instead of 300? Maybe it's trying to tx the queued data from BI 0
+
+    // attributes
+    onoff.SetAttribute ("PacketSize", UintegerValue (packetSize));
+    onoff.SetAttribute ("OnTime", StringValue (onTimeRv));
+    onoff.SetAttribute ("OffTime", StringValue (offTimeRv));
+    onoff.SetAttribute ("DataRate", DataRateValue (DataRate (adjustedAppDataRate)));
+    srcApp = onoff.Install (srcNode);
   }
 else if (applicationType == "bulk")
   {
     // Bulk Send needs TCP sockets
     socketType = "ns3::TcpSocketFactory";
-    BulkSendHelper src (socketType, dstInet);
-    srcApp = src.Install (srcNode);
+    BulkSendHelper bulk (socketType, dstInet);
+    srcApp = bulk.Install (srcNode);
   }
 else if (applicationType == "crazyTaxi" || applicationType == "fourElements")
   {
@@ -200,7 +230,7 @@ int
 main (int argc, char *argv[])
 {
   uint32_t bufferSize = 131072;                   /* TCP Send/Receive Buffer Size [bytes]. */
-  uint32_t queueSize = 1000;                      /* Wifi MAC Queue Size [packets]. */
+  uint32_t queueSize = 0xFFFFFFFF;                /* Wifi MAC Queue Size [packets]. */
   std::string appDataRate = "300Mbps";            /* Application data rate. */
   bool frameCapture = false;                      /* Use a frame capture model. */
   double frameCaptureMargin = 10;                 /* Frame capture margin [dB]. */
@@ -229,43 +259,41 @@ main (int argc, char *argv[])
 
   /* Command line argument parser setup. */
   CommandLine cmd;
-  cmd.AddValue ("applicationType", "Type of the Tx Application: onoff or bulk", applicationType);
-  cmd.AddValue ("packetSize", "Application packet size [bytes]", packetSize);
-  cmd.AddValue ("dataRate", "Application data rate", appDataRate);
-  cmd.AddValue ("tcpVariant", "Transport protocol to use: TcpHighSpeed, TcpVegas, TcpNewReno, TcpWestwood, TcpWestwoodPlus", tcpVariant);
+  cmd.AddValue ("applicationType", "Type of the Tx Application: constant, onoff, bulk, crazyTaxi, fourElements", applicationType);
+  // cmd.AddValue ("packetSize", "Application packet size [bytes]", packetSize);
+  cmd.AddValue ("appDataRate", "Average application data rate", appDataRate);
+  // cmd.AddValue ("tcpVariant", "Transport protocol to use: TcpHighSpeed, TcpVegas, TcpNewReno, TcpWestwood, TcpWestwoodPlus", tcpVariant);
   cmd.AddValue ("socketType", "Socket type (default: ns3::UdpSocketFactory)", socketType);
-  cmd.AddValue ("bufferSize", "TCP Buffer Size (Send/Receive) [bytes]", bufferSize);
-  cmd.AddValue ("msduAggregation", "The maximum aggregation size for A-MSDU [bytes]", msduAggregationSize);
-  cmd.AddValue ("mpduAggregation", "The maximum aggregation size for A-MPDU [bytes]", mpduAggregationSize);
-  cmd.AddValue ("queueSize", "The maximum size of the Wifi MAC Queue [packets]", queueSize);
-  cmd.AddValue ("frameCapture", "Use a frame capture model", frameCapture);
-  cmd.AddValue ("frameCaptureMargin", "Frame capture model margin [dB]", frameCaptureMargin);
-  cmd.AddValue ("phyMode", "802.11ad PHY Mode", phyMode);
-  cmd.AddValue ("verbose", "turn on all WifiNetDevice log components", verbose);
+  // cmd.AddValue ("bufferSize", "TCP Buffer Size (Send/Receive) [bytes]", bufferSize);
+  // cmd.AddValue ("msduAggregation", "The maximum aggregation size for A-MSDU [bytes]", msduAggregationSize);
+  cmd.AddValue ("mpduAggregationSize", "The maximum aggregation size for A-MPDU [bytes]", mpduAggregationSize);
+  // cmd.AddValue ("queueSize", "The maximum size of the Wifi MAC Queue [packets]", queueSize);
+  // cmd.AddValue ("frameCapture", "Use a frame capture model", frameCapture);
+  // cmd.AddValue ("frameCaptureMargin", "Frame capture model margin [dB]", frameCaptureMargin);
+  cmd.AddValue ("phyMode", "802.11ad PHY Mode in the format DMG_MCSX where X=1,...,12", phyMode);
+  // cmd.AddValue ("verbose", "turn on all WifiNetDevice log components", verbose);
   cmd.AddValue ("simulationTime", "Simulation time [s]", simulationTime);
-  cmd.AddValue ("qdChannelFolder", "The name of the folder containing the QD-Channel files", qdChannelFolder);
-  cmd.AddValue ("numSTAs", "The number of DMG STA", numStas);
-  cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
-  cmd.AddValue ("interAllocation", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance);
-  cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
-  cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
-  cmd.AddValue ("tLogEnd", "Log end [s]", tLogEnd);
-  cmd.AddValue ("schedulerTypeIdx", "Scheduler type: 0 CbapOnly, 1 Basic, >=2 Periodic", schedulerTypeIdx);
-  cmd.AddValue ("allowAccessCbapIfAllocated", "Enable the access to a broadcast CBAP for a STA with scheduled SP/CBAP", accessCbapIfAllocated);
+  // cmd.AddValue ("qdChannelFolder", "The name of the folder containing the QD-Channel files", qdChannelFolder);
+  cmd.AddValue ("numStas", "The number of DMG STA", numStas);
+  // cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
+  // cmd.AddValue ("interAllocDistance", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance); // TODO check
+  // cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
+  // cmd.AddValue ("tLogStart", "Log start [s]", tLogStart);
+  // cmd.AddValue ("tLogEnd", "Log end [s]", tLogEnd);
+  cmd.AddValue ("allocationPeriod", "TSPEC period equal to BI/allocationPeriod: 0 CbapOnly, >=1 Periodic", allocationPeriod);
+  cmd.AddValue ("accessCbapIfAllocated", "Enable the access to a broadcast CBAP for a STA with scheduled SP/CBAP", accessCbapIfAllocated);
+  cmd.AddValue ("biDurationUs", "Duration of a BI [us]. Must be a multiple of 1024 us", biDurationUs);
+  cmd.AddValue ("onoffPeriodMean", "On/off application mean period [s]", onoffPeriodMean);
+  cmd.AddValue ("onoffPeriodStdev", "On/off application period stdev [s] (normal distribution)", onoffPeriodStdev);
   cmd.Parse (argc, argv);
 
-  if (schedulerTypeIdx == 0)
+  if (allocationPeriod == 0)
   {
     schedulerType = "ns3::CbapOnlyDmgWifiScheduler";
-  }
-  else if (schedulerTypeIdx == 1)
-  {
-    schedulerType = "ns3::BasicDmgWifiScheduler";
   }
   else
   {
     schedulerType = "ns3::PeriodicDmgWifiScheduler";
-    allocationPeriod = schedulerTypeIdx;
   }
 
   /* Initialize traces */
@@ -283,6 +311,7 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("999999"));
   Config::SetDefault ("ns3::QueueBase::MaxPackets", UintegerValue (queueSize));
+  Config::SetDefault ("ns3::WifiMacQueue::DropPolicy", EnumValue (WifiMacQueue::DROP_OLDEST));
   Config::SetDefault ("ns3::BasicDmgWifiScheduler::InterAllocationDistance", UintegerValue (interAllocDistance));
   Config::SetDefault ("ns3::DmgWifiMac::AccessCbapIfAllocated", BooleanValue (accessCbapIfAllocated));
   /* Enable Log of specific components from tLogStart to tLogEnd */  
@@ -378,7 +407,7 @@ main (int argc, char *argv[])
                          "VO_MaxAmsduSize", UintegerValue (msduAggregationSize));
 
   wifiMacHelper.SetAttribute ("SSSlotsPerABFT", UintegerValue (8), "SSFramesPerSlot", UintegerValue (13),
-                              "BeaconInterval", TimeValue (MicroSeconds (102400)),
+                              "BeaconInterval", TimeValue (MicroSeconds (biDurationUs)),
                               "ATIPresent", BooleanValue (false));
   
   /* Set Parametric Codebook for the DMG AP */
@@ -517,7 +546,7 @@ main (int argc, char *argv[])
       NS_ABORT_MSG_IF (it == communicationPairMap.end (), "Could not find application for this node.");
       CommunicationPair& communicationPair = it->second;
 
-      ap.communicationPair = communicationPair; // &?
+      ap.communicationPair = communicationPair; // TODO &?
       ap.staWifiMac = staWifiMac;
 
       macTxDataFailed.insert (std::make_pair (staWifiMac->GetAddress (), 0));
@@ -545,7 +574,7 @@ main (int argc, char *argv[])
   Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
 
   /* Print Output */
-  NS_LOG_UNCOND ("Application Layer Throughput per Communicating Pair [Mbps]");
+  std::cout << "Application Layer Throughput per Communicating Pair [Mbps]" << std::endl;
   std::string rowOutput = "Time [s],";
   std::string columnName;
   for (auto it = communicationPairMap.cbegin (); it != communicationPairMap.cend (); ++it)
@@ -553,7 +582,7 @@ main (int argc, char *argv[])
       columnName = " SrcNodeId=" + std::to_string (it->second.srcApp->GetNode ()->GetId ()) + ",";
       rowOutput += columnName;
     }
-  NS_LOG_UNCOND (rowOutput + " Aggregate");
+  std::cout << rowOutput + " Aggregate" << std::endl;
 
   /* Schedule Throughput Calulcations */
   Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput, thrLogPeriodicity, communicationPairMap);

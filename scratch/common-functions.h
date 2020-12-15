@@ -42,7 +42,7 @@ bool operator!= (const CommunicationPair& a, const CommunicationPair& b);
 
 struct AssocParams
 {
-  CommunicationPair communicationPair; // &?
+  CommunicationPair communicationPair; // TODO &?
   std::string phyMode;
   Ptr<DmgApWifiMac> apWifiMac;
   Ptr<DmgStaWifiMac> staWifiMac;
@@ -300,8 +300,8 @@ DmgTspecElement
 GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation, uint32_t maxAllocation, uint16_t period)
 {
   /* Simple assert for the moment */
-  NS_ABORT_MSG_IF (minAllocation > maxAllocation, "Minimum Allocation cannot be greater than Maximum Allocation");
-  NS_ABORT_MSG_IF (maxAllocation > MAX_SP_BLOCK_DURATION, "Maximum Allocation exceeds Max SP block duration");
+  NS_ABORT_MSG_IF (minAllocation > maxAllocation, minAllocation << " > " << maxAllocation);
+  NS_ABORT_MSG_IF (maxAllocation > MAX_SP_BLOCK_DURATION, maxAllocation << " > " << MAX_SP_BLOCK_DURATION);
   DmgTspecElement element;
   DmgAllocationInfo info;
   info.SetAllocationID (allocId);
@@ -327,11 +327,17 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
 void
 StationAssociated (AssocParams params, Mac48Address apAddress, uint16_t aid)
 {
-  // NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << apAddress << ", AID=" << aid << std::endl;
+  // std::cout << "DMG STA=" << params.staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << apAddress << ", AID=" << aid << std::endl;
 
   uint32_t spDuration = ComputeServicePeriodDuration (params.communicationPair.appDataRate,
                                                       WifiMode (params.phyMode).GetPhyRate (),
                                                       params.apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
+  while (spDuration > MAX_SP_BLOCK_DURATION)
+    {
+      std::cout << "spDuration=" << spDuration << " > " << MAX_SP_BLOCK_DURATION << "=MAX_SP_BLOCK_DURATION, splitting SP" << std::endl;
+      params.staWifiMac->CreateAllocation (GetDmgTspecElement (params.allocationId++, true, MAX_SP_BLOCK_DURATION, MAX_SP_BLOCK_DURATION, params.allocationPeriod));
+      spDuration -= MAX_SP_BLOCK_DURATION;
+    }
   params.staWifiMac->CreateAllocation (GetDmgTspecElement (params.allocationId, true, spDuration, spDuration, params.allocationPeriod));
 }
 
@@ -339,7 +345,7 @@ StationAssociated (AssocParams params, Mac48Address apAddress, uint16_t aid)
 void
 StationDeAssociated (CommunicationPair& communicationPair, Ptr<DmgWifiMac> staWifiMac, Mac48Address apAddress)
 {
-  // NS_LOG_DEBUG ("DMG STA=" << staWifiMac->GetAddress () << " deassociated from DMG PCP/AP=" << apAddress << std::endl;
+  // std::cout << "DMG STA=" << staWifiMac->GetAddress () << " deassociated from DMG PCP/AP=" << apAddress << std::endl;
 
   communicationPair.srcApp->StopApplication ();
 }
@@ -349,7 +355,7 @@ void
 ADDTSResponseReceived (std::string schedulerType, CommunicationPair& communicationPair, Mac48Address address, StatusCode status, DmgTspecElement element)
 {
   // TODO: Add this code to DmgStaWifiMac class.
-  // NS_LOG_DEBUG ("DMG STA=" << address << " received ADDTS response with status=" << status.IsSuccess () << std::endl;
+  // std::cout << "DMG STA=" << address << " received ADDTS response with status=" << status.IsSuccess () << std::endl;
   if (status.IsSuccess () || (schedulerType == "ns3::CbapOnlyDmgWifiScheduler"))
     {
       communicationPair.startTime = Simulator::Now ();
@@ -373,7 +379,7 @@ SLSCompleted (Ptr<Parameters> parameters,
   else
     stationType = "DMG STA=";
 
-  // NS_LOG_DEBUG (stationType << parameters->wifiMac->GetAddress () << " completed SLS phase with " << address 
+  // std::cout << stationType << parameters->wifiMac->GetAddress () << " completed SLS phase with " << address 
   //               << ", antennaID=" << +antennaId << ", sectorID=" << +sectorId << ", accessPeriod=" << accessPeriod
   //               << ", IsInitiator=" << (beamformingDirection == 0) << std::endl;
     

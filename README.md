@@ -57,7 +57,7 @@ The current implementation is based on ns3-26. As I changed some of the Wifi mod
 
 The previous command builds the required models only to run IEEE 802.11ad with its provided scripts in debug mode. To build the project in optimized mode for fast execution type the following command:
 
-    ./waf configure --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static -d optimized
+    ./waf configure --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static -d optimized --out=build/optimized
     ./waf build
 
 ## Tutorial Scripts:
