@@ -186,25 +186,36 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 
       NS_LOG_DEBUG ("Allocation Period=" << allocPeriod 
                                          << " AllocDuration=" << allocDuration
-                                         << " - Schedule one SP every " << spInterval);
+                                         << " - Schedule one SP every " << spInterval << " us");
 
       blocks = GetAvailableBlocks (allocDuration, spInterval, MAX_NUM_BLOCKS);
 
       if (blocks.size () <= 1)
         {
-          if (info.GetAllocationFormat () == ISOCHRONOUS && minimumAllocation < allocDuration)
+          if (info.GetAllocationFormat () == ISOCHRONOUS && minimumAllocation <= allocDuration)
             {
               // Get number of available blocks using minimum allocation duration 
               blocks = GetAvailableBlocks (minimumAllocation, spInterval, MAX_NUM_BLOCKS); 
-              if (blocks.size () <= 1)
+              if (blocks.size () == 0 ||
+                  (allocPeriod > 1 && blocks.size () <= 1))
                 {
                   // if we cannot guarantee AT LEAST TWO periodic SPs, the request is rejected
+                  NS_LOG_INFO ("Failed status: AllocationFormat required=" << info.GetAllocationFormat () <<
+                               ", minimumAllocation=" << minimumAllocation <<
+                               ", allocDuration=" << allocDuration <<
+                               ", allocated blocks=" << blocks.size () <<
+                               ", allocPeriod=" << allocPeriod);
                   status.SetFailure ();
                   return status;
                 }
             }
           else
             {
+              NS_LOG_INFO ("Failed status: AllocationFormat required=" << info.GetAllocationFormat () <<
+                           ", minimumAllocation=" << minimumAllocation <<
+                           ", allocDuration=" << allocDuration <<
+                           ", allocated blocks=" << blocks.size () <<
+                           ", allocPeriod=" << allocPeriod);
               status.SetFailure ();
               return status;
             }
@@ -215,18 +226,30 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
       blocks = GetAvailableBlocks (allocDuration, 0, 1);
       if (blocks.size () == 0)
         {
-          if (info.GetAllocationFormat () == ISOCHRONOUS && minimumAllocation < allocDuration)
+          if (info.GetAllocationFormat () == ISOCHRONOUS && minimumAllocation <= allocDuration)
             {
               // Get number of available blocks using minimum allocation duration 
               blocks = GetAvailableBlocks (minimumAllocation, 0, 1); 
               if (blocks.size () == 0)
                 {
+                  
+                  NS_LOG_INFO ("Failed status: AllocationFormat required=" << info.GetAllocationFormat () <<
+                               ", minimumAllocation=" << minimumAllocation <<
+                               ", allocDuration=" << allocDuration <<
+                               ", allocated blocks=" << blocks.size () <<
+                               ", allocPeriod=" << allocPeriod);
                   status.SetFailure ();
                   return status;
                 }
             }
           else
             {
+              
+              NS_LOG_INFO ("Failed status: AllocationFormat required=" << info.GetAllocationFormat () <<
+                           ", minimumAllocation=" << minimumAllocation <<
+                           ", allocDuration=" << allocDuration <<
+                           ", allocated blocks=" << blocks.size () <<
+                           ", allocPeriod=" << allocPeriod);
               status.SetFailure ();
               return status;
             }
