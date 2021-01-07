@@ -1,0 +1,36 @@
+# Create the environment with the following command
+# conda env create -f 11ad-env.yml --name <the-desired-name>
+# or
+# conda env create -f 11ad-env.yml --prefix <the-desired-prefix>
+#
+# Additionally, run the following line to install the correct version of sem
+# python3 -m pip install --user sem-0.2.3-py3-none-any.whl
+# WARNING: installing the sem wheel this way makes it install for the given user, irrespective of the conda env. This might create some problems.
+# NOTE 1: sem-0.2.3-py3-none-any.whl has beem obtained from develop branch, `poetry build`, creating the wheel in the `dist/` folder
+# NOTE 2: since python 2.7 is the default one, you need to launch sem scripts using python3
+name: 11ad-env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - zlib==1.2.11=h7b6447c_3
+  - _libgcc_mutex==0.1=main
+  - ncurses==6.2=he6710b0_1
+  - sqlite==3.31.1=h62c20be_1
+  - wheel==0.33.6=py27_0
+  - pip==19.3.1=py27_0
+  - libgcc-ng==9.1.0=hdf63c60_0
+  - libffi==3.3=he6710b0_1
+  - libstdcxx-ng==9.1.0=hdf63c60_0
+  - ca-certificates
+  - python==2.7.18=h15b4118_1
+  - readline==8.0=h7b6447c_0
+  - libedit==3.1.20181209=hc058e9b_0
+  - setuptools==44.0.0=py27_0
+  - certifi
+  - tk==8.6.8=hbc83047_0
+  - numpy==1.16.6
+  - pandas==0.24.2
+  - matplotlib==2.1.2
+  - xarray==0.11.3
+  - seaborn==0.9.0
