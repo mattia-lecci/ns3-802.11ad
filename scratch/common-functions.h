@@ -291,7 +291,7 @@ ComputeServicePeriodDuration (uint64_t appDataRate, uint64_t phyModeDataRate, ui
   // uint64_t biDurationUs = apWifiMac->GetBeaconInterval ().GetMicroSeconds ();
   uint32_t spDuration = ceil (dataRateRatio * biDurationUs);
 
-  return spDuration * 1.3;
+  return spDuration * 1.2;
 }
 
 
@@ -312,8 +312,6 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
   element.SetDmgAllocationInfo (info);
   if (period > 0)
     {
-      minAllocation /= period;
-      maxAllocation /= period;
       element.SetAllocationPeriod (period, false); // false: The allocation period must not be a multiple of the BI
     }
   element.SetMinimumAllocation (minAllocation);
@@ -329,16 +327,23 @@ StationAssociated (AssocParams params, Mac48Address apAddress, uint16_t aid)
 {
   // std::cout << "DMG STA=" << params.staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << apAddress << ", AID=" << aid << std::endl;
 
-  uint32_t spDuration = ComputeServicePeriodDuration (params.communicationPair.appDataRate,
+  uint32_t maxAllocation = ComputeServicePeriodDuration (params.communicationPair.appDataRate,
                                                       WifiMode (params.phyMode).GetPhyRate (),
                                                       params.apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
-  while (spDuration > MAX_SP_BLOCK_DURATION)
+  uint32_t minAllocation = maxAllocation;                                                
+  if (params.allocationPeriod > 0)
     {
-      std::cout << "spDuration=" << spDuration << " > " << MAX_SP_BLOCK_DURATION << "=MAX_SP_BLOCK_DURATION, splitting SP" << std::endl;
-      params.staWifiMac->CreateAllocation (GetDmgTspecElement (params.allocationId++, true, MAX_SP_BLOCK_DURATION, MAX_SP_BLOCK_DURATION, params.allocationPeriod));
-      spDuration -= MAX_SP_BLOCK_DURATION;
+      minAllocation /= params.allocationPeriod;
+      maxAllocation /= params.allocationPeriod;
     }
-  params.staWifiMac->CreateAllocation (GetDmgTspecElement (params.allocationId, true, spDuration, spDuration, params.allocationPeriod));
+  while (maxAllocation > MAX_SP_BLOCK_DURATION)
+    {
+      std::cout << "maxAllocation=" << maxAllocation << " > " << MAX_SP_BLOCK_DURATION << "=MAX_SP_BLOCK_DURATION, splitting SP" << std::endl;
+      params.staWifiMac->CreateAllocation (GetDmgTspecElement (params.allocationId++, true, MAX_SP_BLOCK_DURATION, MAX_SP_BLOCK_DURATION, params.allocationPeriod));
+      maxAllocation -= MAX_SP_BLOCK_DURATION;
+      minAllocation = maxAllocation;
+    }
+  params.staWifiMac->CreateAllocation (GetDmgTspecElement (params.allocationId, true, minAllocation, maxAllocation, params.allocationPeriod));
 }
 
 
