@@ -321,10 +321,6 @@ if __name__ == '__main__':
     script = "scheduler_comparison_qd_dense"
     campaign_dir = os.path.join(ns_path, "campaigns", "scheduler_comparison_qd_dense-" + campaign_name)
     img_dir = os.path.join(campaign_dir, 'img', args.paramSet)
-    
-    if not os.path.exists(img_dir):
-        print("Making dir '{}'".format(img_dir))
-        os.makedirs(img_dir)
 
     # Set up campaign
     # skip_configuration parameter is not included in the official SEM release as of December 2020
@@ -339,6 +335,11 @@ if __name__ == '__main__':
     )
 
     print("campaign: " + str(campaign))
+
+    # Need to create the img/ folder after setting up a new campaign
+    if not os.path.exists(img_dir):
+        print("Making dir '{}'".format(img_dir))
+        os.makedirs(img_dir)
 
     # Set up baseline parameters
     applicationType = args.applicationType
@@ -415,6 +416,8 @@ if __name__ == '__main__':
                          filename='jain_fairness_vs_aggrRate.png')
 
         # bar plots
+        bar_plots_params = param_combination
+        bar_plots_params['appDataRate'] = [bar_plots_params['appDataRate'][-1]]
         assert len(bar_plots_params['numStas']) == 1, "Cannot plot bar metric over list of numStas"
         out_labels = ["AP"] + ["STA {}".format(i+1) for i in range(bar_plots_params['numStas'][0])]
         plot_bar_metric(campaign,
