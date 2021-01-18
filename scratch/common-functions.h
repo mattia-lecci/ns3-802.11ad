@@ -317,7 +317,7 @@ ContentionPeriodEnded (Ptr<OutputStreamWrapper> spTrace, Mac48Address address, T
 void 
 OnOffTrace (Ptr<OutputStreamWrapper> appTrace, uint32_t staID, Ptr<Packet const> packet)
 {
-  *appTrace->GetStream () << "," << staID << "," << packet->GetSize() << std::endl;
+  *appTrace->GetStream () << Simulator::Now ().GetNanoSeconds () "," << staID << "," << packet->GetSize() << std::endl;
 }
 
 uint32_t
