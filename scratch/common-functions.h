@@ -54,6 +54,7 @@ bool operator!= (const AssocParams& a, const AssocParams& b);
 
 typedef std::map<Ptr<Node>, CommunicationPair> CommunicationPairMap;
 typedef std::map<Mac48Address, uint32_t> Mac2IdMap;
+typedef std::map<Mac48Address, std::pair<uint32_t, bool>> Mac2AppMap;
 typedef std::map<Mac48Address, uint64_t> PacketCountMap;
 
 /* Functions */
@@ -194,6 +195,12 @@ GetInputPath (std::vector<std::string> &pathComponents)
   return inputPath;
 }
 
+void
+StartApplication(CommunicationPair& communicationPair)
+{
+  communicationPair.startTime = Simulator::Now ();
+  communicationPair.srcApp->StartApplication ();
+}
 
 void
 ReceivedPacket (Ptr<OutputStreamWrapper> receivedPktsTrace, CommunicationPairMap* communicationPairMap, Ptr<Node> srcNode, Ptr<const Packet> packet, const Address &address)
@@ -256,9 +263,30 @@ DtiStarted (Ptr<OutputStreamWrapper> spTrace, Mac2IdMap* mac2IdMap, Mac48Address
 
 
 void
-ServicePeriodStarted (Ptr<OutputStreamWrapper> spTrace, Mac2IdMap* mac2IdMap, Mac48Address srcAddr, Mac48Address destAddr, bool isSource)
+ServicePeriodStartedSmart (Ptr<OutputStreamWrapper> spTrace, 
+  Mac2AppMap* mac2AppMap, 
+  CommunicationPair& communicationPair,
+  Mac48Address srcAddr, 
+  Mac48Address destAddr, 
+  bool isSource)
 {
-  *spTrace->GetStream () << mac2IdMap->at (srcAddr) << "," << Simulator::Now ().GetNanoSeconds () << "," << true << std::endl;
+  if (!mac2AppMap->at (srcAddr).second)
+  {
+    StartApplication (communicationPair);
+    mac2AppMap->at (srcAddr).second = true;
+  }
+  *spTrace->GetStream () << mac2AppMap->at (srcAddr).first << "," << Simulator::Now ().GetNanoSeconds () << "," << true << std::endl;
+}
+
+
+void
+ServicePeriodStarted (Ptr<OutputStreamWrapper> spTrace, 
+  Mac2AppMap* mac2AppMap, 
+  Mac48Address srcAddr, 
+  Mac48Address destAddr, 
+  bool isSource)
+{
+  *spTrace->GetStream () << mac2AppMap->at (srcAddr).first << "," << Simulator::Now ().GetNanoSeconds () << "," << true << std::endl;
 }
 
 
@@ -282,6 +310,11 @@ ContentionPeriodEnded (Ptr<OutputStreamWrapper> spTrace, Mac48Address address, T
   *spTrace->GetStream () << 255 << "," << Simulator::Now ().GetNanoSeconds () << "," << false << std::endl;
 }
 
+void 
+OnOffTrace (Ptr<OutputStreamWrapper> appTrace, uint32_t staID, Ptr<Packet const> packet)
+{
+  *appTrace->GetStream () << "," << staID << "," << packet->GetSize() << std::endl;
+}
 
 // TODO: improve
 uint32_t
@@ -355,19 +388,44 @@ StationDeAssociated (CommunicationPair& communicationPair, Ptr<DmgWifiMac> staWi
   communicationPair.srcApp->StopApplication ();
 }
 
-
 void
-ADDTSResponseReceived (std::string schedulerType, CommunicationPair& communicationPair, Mac48Address address, StatusCode status, DmgTspecElement element)
+ADDTSResponseReceived (std::string schedulerType, 
+  CommunicationPair& communicationPair, 
+  Mac48Address address, 
+  StatusCode status, 
+  DmgTspecElement element)
 {
   // TODO: Add this code to DmgStaWifiMac class.
   // std::cout << "DMG STA=" << address << " received ADDTS response with status=" << status.IsSuccess () << std::endl;
-  if (status.IsSuccess () || (schedulerType == "ns3::CbapOnlyDmgWifiScheduler"))
-    {
-      communicationPair.startTime = Simulator::Now ();
-      communicationPair.srcApp->StartApplication ();
-    }
+  if (status.IsSuccess () || schedulerType == "ns3::CbapOnlyDmgWifiScheduler")
+  {
+    StartApplication (communicationPair);
+  }
 }
 
+void
+ADDTSResponseReceivedSmart (std::string schedulerType, 
+    CommunicationPair& communicationPair, 
+    uint64_t biDurationUs,
+    Mac48Address address, 
+    StatusCode status, 
+    DmgTspecElement element)
+{
+  // TODO: Add this code to DmgStaWifiMac class.
+  // std::cout << "DMG STA=" << address << " received ADDTS response with status=" << status.IsSuccess () << std::endl;
+  
+  if (schedulerType == "ns3::CbapOnlyDmgWifiScheduler")
+  {
+    // With smartStart at true, the applications at the STAs begin at distributed
+    // time-instants, on an interval of BI duration.
+    Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
+    x->SetAttribute ("Min", DoubleValue (0));
+    x->SetAttribute ("Max", DoubleValue (biDurationUs));
+    Time startTime = MicroSeconds(x->GetValue ());
+    Simulator::Schedule (startTime, &StartApplication, communicationPair);
+  }
+  
+}
 
 void
 SLSCompleted (Ptr<Parameters> parameters,

@@ -100,6 +100,7 @@ double onoffPeriodMean = 102.4e-3;                 /* On/off application mean pe
 double onoffPeriodStdev = 0;                       /* On/off application period stdev [s] (normal distribution) */
 
 Mac2IdMap mac2IdMap;
+Mac2AppMap mac2AppMap;
 
 /** Applications **/
 CommunicationPairMap communicationPairMap;  /* List of communicating devices. */
@@ -116,7 +117,8 @@ Ptr<OutputStreamWrapper> receivedPktsTrace;
 Ptr<OutputStreamWrapper> spTrace;
 /* MAC queue size output stream */
 Ptr<OutputStreamWrapper> queueTrace;
-
+/* APP output stream */
+Ptr<OutputStreamWrapper> appTrace;
 
 CommunicationPair
 InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address srcIp, Ipv4Address dstIp, std::string appDataRate, uint16_t appNumber)
@@ -245,6 +247,7 @@ main (int argc, char *argv[])
   std::string appDataRateStr = "";                /* List of App Data Rates for each SP allocation separated by ':' */
   uint32_t interAllocDistance = 10;               /* Duration of a broadcast CBAP between two ADDTS allocations [us] */
   bool accessCbapIfAllocated = true;              /* Enable the access to a broadcast CBAP for a STA with scheduled SP/CBAP */
+  bool smartStart = false;                        /* Enable the applications to start at optimized instants */
 
   /** TCP Variants **/
   tcpVariants.insert (std::make_pair ("NewReno",       "ns3::TcpNewReno"));
@@ -275,6 +278,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("simulationTime", "Simulation time [s]", simulationTime);
   // cmd.AddValue ("qdChannelFolder", "The name of the folder containing the QD-Channel files", qdChannelFolder);
   cmd.AddValue ("numStas", "The number of DMG STA", numStas);
+  cmd.AddValue ("smartStart", "Enable applications smart start", smartStart);
   // cmd.AddValue ("pcap", "Enable PCAP Tracing", pcapTracing);
   // cmd.AddValue ("interAllocDistance", "Duration of a broadcast CBAP between two ADDTS allocations [us]", interAllocDistance); // TODO check
   // cmd.AddValue ("logComponentsStr", "Components to be logged from tLogStart to tLogEnd separated by ':'", logComponentsStr);
@@ -306,6 +310,8 @@ main (int argc, char *argv[])
   *spTrace->GetStream () << "SrcNodeId,Timestamp_ns,isStart" << std::endl;
   queueTrace = ascii.CreateFileStream ("queueTrace.csv");
   *queueTrace->GetStream () << "SrcNodeId,Timestamp_ns,queueSize_pkts" << std::endl;
+  appTrace = ascii.CreateFileStream ("appTrace.csv");
+  *appTrace->GetStream () << "SrcNodeId,Timestamp_ns,PktSize" << std::endl;
 
   /* Global params: no fragmentation, no RTS/CTS, fixed rate for all packets */
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
@@ -448,6 +454,7 @@ main (int argc, char *argv[])
     {
       netDevice = StaticCast<WifiNetDevice> (devices.Get (i));
       mac2IdMap[netDevice->GetMac ()->GetAddress ()] = netDevice->GetNode ()->GetId ();
+      mac2AppMap[netDevice->GetMac ()->GetAddress ()] = std::make_pair(netDevice->GetNode ()->GetId (), false);
     }
 
   /* Setting mobility model for AP */
@@ -558,8 +565,16 @@ main (int argc, char *argv[])
       remoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeBoundCallback (&MacTxDataFailed, macTxDataFailed, staWifiMac));
       staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, ap));
       staWifiMac->TraceConnectWithoutContext ("DeAssoc", MakeBoundCallback (&StationDeAssociated, communicationPair, staWifiMac));
-      staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, schedulerType, communicationPair));
-      staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeBoundCallback (&ServicePeriodStarted, spTrace, &mac2IdMap));
+      if (smartStart)
+      {
+        staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceivedSmart, schedulerType, communicationPair, biDurationUs));
+        staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeBoundCallback (&ServicePeriodStartedSmart, spTrace, &mac2AppMap, communicationPair));
+      }
+      else
+      {
+        staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, schedulerType, communicationPair));
+        staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeBoundCallback (&ServicePeriodStarted, spTrace, &mac2AppMap));
+      }
       staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeBoundCallback (&ServicePeriodEnded, spTrace, &mac2IdMap));
       beQueue->TraceConnectWithoutContext ("OccupancyChanged", MakeBoundCallback (&MacQueueChanged, queueTrace, staWifiNodes.Get (i)));
 
@@ -567,6 +582,10 @@ main (int argc, char *argv[])
       parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();
       parameters->wifiMac = staWifiMac;
       staWifiMac->TraceConnectWithoutContext ("SLSCompleted", MakeBoundCallback (&SLSCompleted, parameters));
+      
+      Ptr<OnOffApplication> onoffTrace;
+      onoffTrace = StaticCast<OnOffApplication> (it->second.srcApp);
+      onoffTrace->TraceConnectWithoutContext ("Tx", MakeBoundCallback (&OnOffTrace, appTrace, it->second.srcApp->GetNode ()->GetId ()));
     }
 
   /* Install FlowMonitor on all nodes */

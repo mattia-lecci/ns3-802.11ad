@@ -96,6 +96,7 @@ uint8_t allocationId = 1;                          /* The allocation ID of the D
 Time thrLogPeriodicity = MilliSeconds (100);       /* The log periodicity for the throughput of each STA [ms] */
 
 Mac2IdMap mac2IdMap;
+Mac2AppMap mac2AppMap;
 
 /** Applications **/
 CommunicationPairMap communicationPairMap;  /* List of communicating devices. */
@@ -168,11 +169,13 @@ main (int argc, char *argv[])
   std::map<std::string, std::string> tcpVariants; /* List of the TCP Variants */
   std::string qdChannelFolder = "DenseScenario";  /* The name of the folder containing the QD-Channel files. */
   std::string logComponentsStr = "";              /* Components to be logged from tLogStart to tLogEnd separated by ':' */
+  uint32_t biDurationUs = 102400;                    /* Duration of a BI [us]. Must be a multiple of 1024 us */
   double tLogStart = 0.0;                         /* Log start [s] */
   double tLogEnd = simulationTime;                /* Log end [s] */
   std::string appDataRateStr = "";                /* List of App Data Rates for each SP allocation separated by ':' */
   uint32_t interAllocDistance = 10;               /* Duration of a broadcast CBAP between two ADDTS allocations [us] */
   bool accessCbapIfAllocated = true;              /* Enable the access to a broadcast CBAP for a STA with scheduled SP/CBAP */
+  bool smartStart = false;                        /* Enable the applications to start at optimized instants */
 
   /** TCP Variants **/
   tcpVariants.insert (std::make_pair ("NewReno",       "ns3::TcpNewReno"));
@@ -210,6 +213,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("tLogEnd", "Log end [s]", tLogEnd);
   cmd.AddValue ("schedulerTypeIdx", "Scheduler type: 0 CbapOnly, 1 Basic, >=2 Periodic", schedulerTypeIdx);
   cmd.AddValue ("allowAccessCbapIfAllocated", "Enable the access to a broadcast CBAP for a STA with scheduled SP/CBAP", accessCbapIfAllocated);
+  cmd.AddValue ("smartStart", "Enable applications smart start", smartStart);
   cmd.Parse (argc, argv);
 
   if (schedulerTypeIdx == 0)
@@ -376,6 +380,7 @@ main (int argc, char *argv[])
     {
       netDevice = StaticCast<WifiNetDevice> (devices.Get (i));
       mac2IdMap[netDevice->GetMac ()->GetAddress ()] = netDevice->GetNode ()->GetId ();
+      mac2AppMap[netDevice->GetMac ()->GetAddress ()] = std::make_pair(netDevice->GetNode ()->GetId (), false);
     }
 
   /* Setting mobility model for AP */
@@ -486,8 +491,16 @@ main (int argc, char *argv[])
       remoteStationManager->TraceConnectWithoutContext ("MacTxDataFailed", MakeBoundCallback (&MacTxDataFailed, macTxDataFailed, staWifiMac));
       staWifiMac->TraceConnectWithoutContext ("Assoc", MakeBoundCallback (&StationAssociated, ap));
       staWifiMac->TraceConnectWithoutContext ("DeAssoc", MakeBoundCallback (&StationDeAssociated, communicationPair, staWifiMac));
-      staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, schedulerType, communicationPair));
-      staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeBoundCallback (&ServicePeriodStarted, spTrace, &mac2IdMap));
+      if (smartStart)
+      {
+        staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceivedSmart, schedulerType, communicationPair, biDurationUs));
+        staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeBoundCallback (&ServicePeriodStartedSmart, spTrace, &mac2AppMap, communicationPair));
+      }
+      else
+      {
+        staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, schedulerType, communicationPair));
+        staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeBoundCallback (&ServicePeriodStarted, spTrace, &mac2AppMap));
+      }
       staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeBoundCallback (&ServicePeriodEnded, spTrace, &mac2IdMap));
       beQueue->TraceConnectWithoutContext ("OccupancyChanged", MakeBoundCallback (&MacQueueChanged, queueTrace, staWifiNodes.Get (i)));
 
