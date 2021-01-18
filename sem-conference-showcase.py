@@ -272,6 +272,9 @@ if __name__ == '__main__':
                         help="The baseline applicationType. Default: constant",
                         type=str,
                         default="constant")
+    parser.add_argument('--smartStartOn', dest='smartStart', action='store_true')
+    parser.add_argument('--smartStartOff', dest='smartStart', action='store_false')
+    parser.set_defaults(smartStart=True)
     parser.add_argument("--normOfferedTraffic",
                         help="The baseline normOfferedTraffic. Default: 0.75",
                         type=float,
@@ -344,6 +347,7 @@ if __name__ == '__main__':
 
     # Set up baseline parameters
     applicationType = args.applicationType
+    smartStart = args.smartStart
     socketType = args.socketType
     mpduAggregationSize = args.mpduAggregationSize
     phyMode = args.phyMode
@@ -360,7 +364,6 @@ if __name__ == '__main__':
 
     if args.paramSet == 'basic':
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
-        smartStart = [True, False]
         norm_offered_traffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
         appDataRate = getAppDataRate(phyMode, numStas, norm_offered_traffic)
 
@@ -441,7 +444,6 @@ if __name__ == '__main__':
     elif args.paramSet == 'onoff':
         applicationType = "onoff"
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
-        smartStart = [True, False]
         norm_offered_traffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
         appDataRate = getAppDataRate(phyMode, numStas, norm_offered_traffic)
 
@@ -522,7 +524,6 @@ if __name__ == '__main__':
     elif args.paramSet == 'onoff_stdev':
         applicationType = "onoff"
         allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
-        smartStart = [True, False]
         onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
         onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
 
@@ -609,7 +610,6 @@ if __name__ == '__main__':
         applicationType = ["constant", "onoff", "crazyTaxi", "fourElements"]
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
         onoffPeriodStdev = 1e-2 * onoffPeriodMean
-        smartStart = [True, False]
         param_combination = run_simulations(applicationType, appDataRate, socketType, mpduAggregationSize,
                                             phyMode, simulationTime, numStas, allocationPeriod,
                                             accessCbapIfAllocated, biDurationUs, onoffPeriodMean,
@@ -687,7 +687,6 @@ if __name__ == '__main__':
     elif args.paramSet == 'onoffPeriodicity':
         applicationType = "onoff"
         allocationPeriod = [0, 2]  # 0: CbapOnly, n>0: BI/n
-        smartStart = [True, False]
         onoffPeriodRatio = [1, 1.75*0.5, 1.5*0.5, 1.25*0.5, 1.1*0.5, 0.5, 0.5/1.1, 0.5/1.25, 0.5/1.5, 0.5/1.75, 1/4]
         onoffPeriodMean = [r * biDurationUs/1e6 for r in onoffPeriodRatio]
 
