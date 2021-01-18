@@ -460,6 +460,8 @@ main (int argc, char *argv[])
   /* Connect DMG STA traces */
   AssocParams ap;
   ap.phyMode = phyMode;
+  ap.msduAggregationSize = msduAggregationSize;
+  ap.mpduAggregationSize = mpduAggregationSize; 
   ap.apWifiMac = apWifiMac;
   ap.allocationId = allocationId;
   ap.allocationPeriod = allocationPeriod;
