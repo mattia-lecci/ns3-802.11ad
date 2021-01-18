@@ -23,14 +23,22 @@ pkts.RxTimestamp_s = pkts.RxTimestamp_s / 1e9; % RxTimestamp_s is actually in [n
 % Add delay info
 pkts.Delay_s = pkts.RxTimestamp_s - pkts.TxTimestamp_s;
 
+app = readtable(fullfile(campaign, "appTrace.csv"));
+app.Properties.VariableNames = {'SrcNodeId', 'Timestamp_s', 'PktSize_B'}; % times are actually in [ns]
+app.Timestamp_s = app.Timestamp_s / 1e9; % Timestamp_s is actually in [ns]
+
 sps = readtable(fullfile(campaign, "spTrace.csv"));
 sps.Properties.VariableNames = {'SrcNodeId', 'Timestamp_s', 'isStart'}; % times are actually in [ns]
 sps.Timestamp_s = sps.Timestamp_s / 1e9; % Timestamp_s is actually in [ns]
 
+queue = readtable(fullfile(campaign, "queueTrace.csv"));
+queue.Properties.VariableNames = {'SrcNodeId', 'Timestamp_s', 'queueSize_pkts'}; % times are actually in [ns]
+queue.Timestamp_s = queue.Timestamp_s / 1e9; % Timestamp_s is actually in [ns]
+
 %% Global params
 nodeId = 1; % reference STA
 sta1Mask = pkts.SrcNodeId == nodeId;
-numStas = 8;
+numStas = 4;
 
 %% Compute DTI structure
 dtiStructure = struct();
@@ -87,11 +95,10 @@ height = biDuration_s * 1e3;
 
 figure
 plotDti(dtiStructure, height)
-
 set(gca,'ColorOrderIndex', 1)
 for i = 1:numStas
     mask = pkts.SrcNodeId == i;
-    p(i) = stem(pkts.RxTimestamp_s(mask), pkts.Delay_s(mask) * 1e3, 'DisplayName', sprintf('SrcNodeId %d', i));
+    p(i) = stem(pkts.RxTimestamp_s(mask), pkts.Delay_s(mask) * 1e3, 'DisplayName', sprintf('SrcNodeId %d', i)); hold on
 end
 legend(p)
 xlabel('Time [s]')
@@ -134,6 +141,37 @@ ylabel('Mean Delay [ms]')
 
 errorbar(groupedPkts.SrcNodeId, groupedPkts.mean_Delay_s*1e3, groupedPkts.std_Delay_s*1e3, 'k', 'LineStyle', 'none')
 
+%%
+height = biDuration_s * 1e3;
+
+figure
+plotDti(dtiStructure, height)
+
+set(gca,'ColorOrderIndex', 1)
+for i = 1:numStas
+    mask = app.SrcNodeId == i;
+    p(i) = stem(app.Timestamp_s(mask), app.PktSize_B(mask)/10, 'DisplayName', sprintf('SrcNodeId %d', i)); hold on
+end
+legend(p)
+xlabel('Time [s]')
+ylabel('Delay [ms]')
+title(strrep(campaign, '_', '\_'))
+
+%% PLOT QUEUE
+height = biDuration_s * 1e3;
+
+figure
+plotDti(dtiStructure, height)
+
+set(gca,'ColorOrderIndex', 1)
+for i = 1:numStas
+    mask = app.SrcNodeId == i;
+    stairs(queue.Timestamp_s(mask), queue.queueSize_pkts(mask)/10); hold on
+end
+legend(strcat("SrcNodeId ", string(1:numStas)), 'NumColumns', 2, 'Location', 'southeast')
+xlabel('Time [s]')
+ylabel('Queue Size [pkts]')
+title(strrep(campaign, '_', '\_'))
 
 %% UTILS
 function plotSp(spStruct, height, alpha)
