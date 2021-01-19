@@ -317,7 +317,7 @@ ContentionPeriodEnded (Ptr<OutputStreamWrapper> spTrace, Mac48Address address, T
 void 
 OnOffTrace (Ptr<OutputStreamWrapper> appTrace, uint32_t staID, Ptr<Packet const> packet)
 {
-  *appTrace->GetStream () << Simulator::Now ().GetNanoSeconds () "," << staID << "," << packet->GetSize() << std::endl;
+  *appTrace->GetStream () << Simulator::Now ().GetNanoSeconds () << "," << staID << "," << packet->GetSize() << std::endl;
 }
 
 uint32_t
@@ -354,6 +354,96 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
   element.SetMinimumDuration (minAllocation);
 
   return element;
+}
+
+
+uint64_t
+GetWifiRate (std::string phyMode, uint32_t msduAggregationSize_B, uint32_t mpduAggregationSize_B, std::string rateType)
+{
+  if (rateType == "phy")
+  {
+    uint64_t rate = WifiMode (phyMode).GetPhyRate ();
+    return rate;
+  }
+  
+  if (rateType == "mac")
+  {
+    int mcs = std::stoi (phyMode.substr (7));
+    
+    if (msduAggregationSize_B == 7935 && mpduAggregationSize_B == 0)
+    {
+      switch (mcs)
+      {
+        case 0:
+          return 34908414;
+        case 1:
+          return 254512319;
+        case 2:
+          return 379912948;
+        case 3:
+          return 420954907;
+        case 4:
+          return 455202086;
+        case 5:
+          return 467890645;
+        case 6:
+          return 504683434;
+        case 7:
+          return 539629057;
+        case 8:
+          return 566234187;
+        case 9:
+          return 576709613;
+        case 10:
+          return 603839501;
+        case 11:
+          return 628175602;
+        case 12:
+          return 644883635;
+        default:
+          NS_FATAL_ERROR ("mcs=" << mcs << " not recognized (phyMode=" << phyMode << ")");
+      }
+
+    }
+    else if (msduAggregationSize_B == 7935 && mpduAggregationSize_B == 262143)
+    {
+      switch (mcs)
+      {
+        case 0:
+          return 36610012;
+        case 1:
+          return 379110719;
+        case 2:
+          return 746778458;
+        case 3:
+          return 926434274;
+        case 4:
+          return 1103569911;
+        case 5:
+          return 1191091513;
+        case 6:
+          return 1449796626;
+        case 7:
+          return 1785991762;
+        case 8:
+          return 2113204353;
+        case 9:
+          return 2273125221;
+        case 10:
+          return 2739606669;
+        case 11:
+          return 3332262090;
+        case 12:
+          return 3893826210;
+        default:
+          NS_FATAL_ERROR ("mcs=" << mcs << " not recognized (phyMode=" << phyMode << ")");
+      }
+    }
+  }
+
+  NS_FATAL_ERROR ("Invalid configuration: phyMode=" << phyMode << ", msduAggregationSize_B=" << msduAggregationSize_B <<
+                  ", mpduAggregationSize_B=" << mpduAggregationSize_B << ", rateType=" << rateType);
+  return 0;
 }
 
 
@@ -477,94 +567,6 @@ void
 MacTxOk (PacketCountMap& macTxDataOk, Ptr<DmgWifiMac> wifiMac, Mac48Address address)
 {
   macTxDataOk.at (wifiMac->GetAddress ()) += 1;
-}
-
-
-uint64_t
-GetWifiRate (std::string phyMode, uint32_t msduAggregationSize_B, uint32_t mpduAggregationSize_B, std::string rateType)
-{
-  if (rateType == "phy")
-  {
-    uint64_t rate = WifiMode (params.phyMode).GetPhyRate ();
-    return rate;
-  }
-  
-  if (rateType == "mac")
-  {
-    if (msduAggregationSize_B == 7935 && mpduAggregationSize_B == 0)
-    {
-      switch (phyMode)
-      {
-        case "DMG_MCS0":
-          return 34908414;
-        case "DMG_MCS1":
-          return 254512319;
-        case "DMG_MCS2":
-          return 379912948;
-        case "DMG_MCS3":
-          return 420954907;
-        case "DMG_MCS4":
-          return 455202086;
-        case "DMG_MCS5":
-          return 467890645;
-        case "DMG_MCS6":
-          return 504683434;
-        case "DMG_MCS7":
-          return 539629057;
-        case "DMG_MCS8":
-          return 566234187;
-        case "DMG_MCS9":
-          return 576709613;
-        case "DMG_MCS10":
-          return 603839501;
-        case "DMG_MCS11":
-          return 628175602;
-        case "DMG_MCS12":
-          return 644883635;
-        default:
-          NS_FATAL_ERROR ("phyMode=" << phyMode << " not recognized");
-      }
-
-    }
-    else if (msduAggregationSize_B == 7935 && mpduAggregationSize_B == 262143)
-    {
-      switch (phyMode)
-      {
-        case "DMG_MCS0":
-          return 36610012;
-        case "DMG_MCS1":
-          return 379110719;
-        case "DMG_MCS2":
-          return 746778458;
-        case "DMG_MCS3":
-          return 926434274;
-        case "DMG_MCS4":
-          return 1103569911;
-        case "DMG_MCS5":
-          return 1191091513;
-        case "DMG_MCS6":
-          return 1449796626;
-        case "DMG_MCS7":
-          return 1785991762;
-        case "DMG_MCS8":
-          return 2113204353;
-        case "DMG_MCS9":
-          return 2273125221;
-        case "DMG_MCS10":
-          return 2739606669;
-        case "DMG_MCS11":
-          return 3332262090;
-        case "DMG_MCS12":
-          return 3893826210;
-        default:
-          NS_FATAL_ERROR ("phyMode=" << phyMode << " not recognized");
-      }
-    }
-  }
-
-  NS_FATAL_ERROR ("Invalid configuration: phyMode=" << phyMode << ", msduAggregationSize_B=" << msduAggregationSize_B <<
-                  ", mpduAggregationSize_B=" << mpduAggregationSize_B << ", rateType=" << rateType);
-  return 0;
 }
 
 } // namespace ns3
