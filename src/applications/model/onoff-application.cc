@@ -235,6 +235,13 @@ void OnOffApplication::StopApplication () // Called at time specified by Stop
     }
 }
 
+void OnOffApplication::SuspendApplication ()
+{
+  NS_LOG_FUNCTION (this);
+
+  CancelEvents ();
+}
+
 void OnOffApplication::CancelEvents ()
 {
   NS_LOG_FUNCTION (this);

@@ -207,6 +207,16 @@ StartApplication(CommunicationPair& communicationPair)
 }
 
 void
+SuspendApplication(CommunicationPair& communicationPair)
+{
+  Ptr<OnOffApplication> app = DynamicCast<OnOffApplication> (communicationPair.srcApp);
+  if (app != 0)
+  {
+    app->SuspendApplication ();
+  }
+}
+
+void
 ReceivedPacket (Ptr<OutputStreamWrapper> receivedPktsTrace, CommunicationPairMap* communicationPairMap, Ptr<Node> srcNode, Ptr<const Packet> packet, const Address &address)
 {
   TimestampTag timestamp;
@@ -517,6 +527,16 @@ ADDTSResponseReceivedSmart (std::string schedulerType,
     x->SetAttribute ("Max", DoubleValue (biDurationUs));
     Time startTime = MicroSeconds(x->GetValue ());
     Simulator::Schedule (startTime, &StartApplication, communicationPair);
+  }
+  else
+  {
+    // APP is started right away if using SPs
+    // Looks like there are problems to start directly from a SP (probably the setup of block ACKs)
+    // The app is thus started during the CBAP and suspended immediately
+    // NOTE: stopping the application results in closing the socket (cannot restart in a later moment).
+    // The application is thus suspended (custom method)
+    StartApplication (communicationPair);
+    Simulator::Schedule (MilliSeconds (1), &SuspendApplication, communicationPair);
   }
   
 }

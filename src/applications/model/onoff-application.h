@@ -134,6 +134,11 @@ public:
   virtual void StartApplication (void);    // Called at time specified by Start
   // inherited from Application base class.
   virtual void StopApplication (void);     // Called at time specified by Stop
+  /**
+   * Stop the application without closing the socket.
+   * This allows to restart the application later.
+   */
+  virtual void SuspendApplication (void);     // Called at time specified by Stop
 
 protected:
   virtual void DoDispose (void);
