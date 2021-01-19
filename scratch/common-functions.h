@@ -452,23 +452,25 @@ StationAssociated (AssocParams params, Mac48Address apAddress, uint16_t aid)
 {
   // std::cout << "DMG STA=" << params.staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << apAddress << ", AID=" << aid << std::endl;
 
-  uint32_t maxAllocation = ComputeServicePeriodDuration (params.communicationPair.appDataRate,
+  uint32_t spDurationOverBi = ComputeServicePeriodDuration (params.communicationPair.appDataRate,
                                                       GetWifiRate (params.phyMode, params.msduAggregationSize, params.mpduAggregationSize, "mac"),
                                                       params.apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
-  uint32_t minAllocation = maxAllocation;                                                
+  
+  uint32_t spBlockDuration = spDurationOverBi;
   if (params.allocationPeriod > 0)
     {
-      minAllocation /= params.allocationPeriod;
-      maxAllocation /= params.allocationPeriod;
+      spBlockDuration /= params.allocationPeriod;
     }
-  while (maxAllocation > MAX_SP_BLOCK_DURATION)
-    {
-      std::cout << "maxAllocation=" << maxAllocation << " > " << MAX_SP_BLOCK_DURATION << "=MAX_SP_BLOCK_DURATION, splitting SP" << std::endl;
-      params.staWifiMac->CreateAllocation (GetDmgTspecElement (params.allocationId++, true, MAX_SP_BLOCK_DURATION, MAX_SP_BLOCK_DURATION, params.allocationPeriod));
-      maxAllocation -= MAX_SP_BLOCK_DURATION;
-      minAllocation = maxAllocation;
-    }
-  params.staWifiMac->CreateAllocation (GetDmgTspecElement (params.allocationId, true, minAllocation, maxAllocation, params.allocationPeriod));
+
+  // spBlockDuration might be larger than MAX_SP_BLOCK_DURATION: split it in sub blocks of equal duration
+  uint32_t nSubBlocks = std::ceil (double (spBlockDuration) / MAX_SP_BLOCK_DURATION);
+  uint32_t subBlockDuration = spBlockDuration / nSubBlocks;
+
+  std::cout << "nSubBlocks=" << nSubBlocks << " of duration subBlockDuration=" << subBlockDuration << std::endl;
+  for (uint32_t i = 0; i < nSubBlocks; i++)
+  {
+    params.staWifiMac->CreateAllocation (GetDmgTspecElement (params.allocationId, true, subBlockDuration, subBlockDuration, params.allocationPeriod));
+  }
 }
 
 
