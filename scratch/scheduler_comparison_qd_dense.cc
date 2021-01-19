@@ -169,7 +169,7 @@ InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address srcIp, Ipv
     NS_LOG_DEBUG ("offTimeRv=" << offTimeRv);
 
     uint64_t adjustedAppDataRate = DataRate (appDataRate).GetBitRate () * onoffPeriodMean / onTime;
-    NS_LOG_DEBUG ("adjustedAppDataRate=" << DataRate (adjustedAppDataRate)); // TODO why 313 instead of 300? Maybe it's trying to tx the queued data from BI 0
+    NS_LOG_DEBUG ("adjustedAppDataRate=" << DataRate (adjustedAppDataRate));
 
     // attributes
     onoff.SetAttribute ("PacketSize", UintegerValue (packetSize));
