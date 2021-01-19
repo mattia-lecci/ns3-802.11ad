@@ -17,23 +17,19 @@ set(groot, 'DefaultAxesColorOrder', colors)
 campaign = "results/scheduler_comparison_v1/data/0a3ec207-581a-4019-9d53-44fc3a7099ad";
 
 pkts = readtable(fullfile(campaign, "packetsTrace.csv"));
-pkts.Properties.VariableNames = {'SrcNodeId', 'TxTimestamp_s', 'RxTimestamp_s', 'PktSize_B'}; % times are actually in [ns]
-pkts.TxTimestamp_s = pkts.TxTimestamp_s / 1e9; % TxTimestamp_s is actually in [ns]
-pkts.RxTimestamp_s = pkts.RxTimestamp_s / 1e9; % RxTimestamp_s is actually in [ns]
+pkts.TxTimestamp_s = pkts.TxTimestamp_ns / 1e9; % TxTimestamp_s is actually in [ns]
+pkts.RxTimestamp_s = pkts.RxTimestamp_ns / 1e9; % RxTimestamp_s is actually in [ns]
 % Add delay info
 pkts.Delay_s = pkts.RxTimestamp_s - pkts.TxTimestamp_s;
 
 app = readtable(fullfile(campaign, "appTrace.csv"));
-app.Properties.VariableNames = {'SrcNodeId', 'Timestamp_s', 'PktSize_B'}; % times are actually in [ns]
-app.Timestamp_s = app.Timestamp_s / 1e9; % Timestamp_s is actually in [ns]
+app.Timestamp_s = app.Timestamp_ns / 1e9; % Timestamp_s is actually in [ns]
 
 sps = readtable(fullfile(campaign, "spTrace.csv"));
-sps.Properties.VariableNames = {'SrcNodeId', 'Timestamp_s', 'isStart'}; % times are actually in [ns]
-sps.Timestamp_s = sps.Timestamp_s / 1e9; % Timestamp_s is actually in [ns]
+sps.Timestamp_s = sps.Timestamp_ns / 1e9; % Timestamp_s is actually in [ns]
 
 queue = readtable(fullfile(campaign, "queueTrace.csv"));
-queue.Properties.VariableNames = {'SrcNodeId', 'Timestamp_s', 'queueSize_pkts'}; % times are actually in [ns]
-queue.Timestamp_s = queue.Timestamp_s / 1e9; % Timestamp_s is actually in [ns]
+queue.Timestamp_s = queue.Timestamp_ns / 1e9; % Timestamp_s is actually in [ns]
 
 %% Global params
 nodeId = 1; % reference STA
@@ -150,7 +146,7 @@ plotDti(dtiStructure, height)
 set(gca,'ColorOrderIndex', 1)
 for i = 1:numStas
     mask = app.SrcNodeId == i;
-    p(i) = stem(app.Timestamp_s(mask), app.PktSize_B(mask)/10, 'DisplayName', sprintf('SrcNodeId %d', i)); hold on
+    p(i) = stem(app.Timestamp_s(mask), app.PktSize(mask)/10, 'DisplayName', sprintf('SrcNodeId %d', i)); hold on
 end
 legend(p)
 xlabel('Time [s]')
