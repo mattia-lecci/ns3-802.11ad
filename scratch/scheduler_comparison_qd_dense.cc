@@ -119,6 +119,8 @@ Ptr<OutputStreamWrapper> spTrace;
 Ptr<OutputStreamWrapper> queueTrace;
 /* APP output stream */
 Ptr<OutputStreamWrapper> appTrace;
+/* PHY TX begin stream */
+Ptr<OutputStreamWrapper> phyTxBeginTrace;
 
 CommunicationPair
 InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address srcIp, Ipv4Address dstIp, std::string appDataRate, uint16_t appNumber)
@@ -312,6 +314,8 @@ main (int argc, char *argv[])
   *queueTrace->GetStream () << "SrcNodeId,Timestamp_ns,queueSize_pkts" << std::endl;
   appTrace = ascii.CreateFileStream ("appTrace.csv");
   *appTrace->GetStream () << "SrcNodeId,Timestamp_ns,PktSize" << std::endl;
+  phyTxBeginTrace = ascii.CreateFileStream ("phyTxBegin.csv");
+  *phyTxBeginTrace->GetStream () << "SrcNodeId,Timestamp_ns" << std::endl;
 
   /* Global params: no fragmentation, no RTS/CTS, fixed rate for all packets */
   Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold", StringValue ("999999"));
@@ -516,6 +520,7 @@ main (int argc, char *argv[])
 
   Ptr<WifiNetDevice> wifiNetDevice;
   Ptr<DmgStaWifiMac> staWifiMac;
+  Ptr<WifiPhy> wifiPhy;
   Ptr<WifiRemoteStationManager> remoteStationManager;
   /* By default the generated traffic is associated to AC_BE */
   /* Therefore we keep track of changes in the BE Queue */
@@ -550,6 +555,7 @@ main (int argc, char *argv[])
     {
       wifiNetDevice = StaticCast<WifiNetDevice> (staDevices.Get (i));
       staWifiMac = StaticCast<DmgStaWifiMac> (wifiNetDevice->GetMac ());
+      wifiPhy = StaticCast<WifiPhy> (wifiNetDevice->GetPhy ());
       beQueue = staWifiMac->GetBEQueue ()->GetQueue ();
 
       auto it = communicationPairMap.find (staWifiNodes.Get (i));
@@ -580,6 +586,9 @@ main (int argc, char *argv[])
       }
       staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeBoundCallback (&ServicePeriodEnded, spTrace, &mac2IdMap));
       beQueue->TraceConnectWithoutContext ("OccupancyChanged", MakeBoundCallback (&MacQueueChanged, queueTrace, staWifiNodes.Get (i)));
+
+      // NOTE: produces large outputs and slows down the simulation
+      // wifiPhy->TraceConnectWithoutContext ("PhyTxBegin", MakeBoundCallback (&PhyTxBegin, phyTxBeginTrace, staWifiNodes.Get (i)));
 
       Ptr<Parameters> parameters = Create<Parameters> ();
       parameters->srcNodeId = wifiNetDevice->GetNode ()->GetId ();

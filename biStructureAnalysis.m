@@ -14,7 +14,7 @@ colors = [27,158,119;...
 set(groot, 'DefaultAxesColorOrder', colors)
 
 %% Input
-campaign = "results/scheduler_comparison_v1/data/0a3ec207-581a-4019-9d53-44fc3a7099ad";
+campaign = ".";
 
 pkts = readtable(fullfile(campaign, "packetsTrace.csv"));
 pkts.TxTimestamp_s = pkts.TxTimestamp_ns / 1e9; % TxTimestamp_s is actually in [ns]
@@ -30,6 +30,9 @@ sps.Timestamp_s = sps.Timestamp_ns / 1e9; % Timestamp_s is actually in [ns]
 
 queue = readtable(fullfile(campaign, "queueTrace.csv"));
 queue.Timestamp_s = queue.Timestamp_ns / 1e9; % Timestamp_s is actually in [ns]
+
+phyTx = readtable(fullfile(campaign, "phyTxBegin.csv"));
+phyTx.Timestamp_s = phyTx.Timestamp_ns / 1e9; % Timestamp_s is actually in [ns]
 
 %% Global params
 nodeId = 1; % reference STA
@@ -99,6 +102,21 @@ end
 legend(p)
 xlabel('Time [s]')
 ylabel('Delay [ms]')
+title(strrep(campaign, '_', '\_'))
+
+%%
+height = biDuration_s * 1e3;
+
+figure
+plotDti(dtiStructure, height)
+set(gca,'ColorOrderIndex', 1)
+for i = 1:numStas
+    mask = phyTx.SrcNodeId == i;
+    p(i) = stem(phyTx.Timestamp_s(mask), repmat(height, nnz(mask), 1), 'DisplayName', sprintf('SrcNodeId %d', i)); hold on
+end
+legend(p)
+xlabel('Time [s]')
+ylabel('PHY TX Start')
 title(strrep(campaign, '_', '\_'))
 
 %%

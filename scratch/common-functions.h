@@ -571,6 +571,13 @@ MacQueueChanged (Ptr<OutputStreamWrapper> queueTrace, Ptr<Node> srcNode, uint32_
 
 
 void
+PhyTxBegin (Ptr<OutputStreamWrapper> phyTxBeginTrace, Ptr<Node> srcNode, Ptr<Packet const> p)
+{
+  *phyTxBeginTrace->GetStream () << srcNode->GetId () << "," << Simulator::Now ().GetNanoSeconds () << std::endl;
+}
+
+
+void
 MacRxOk (PacketCountMap& macRxDataOk, Ptr<DmgWifiMac> wifiMac, WifiMacType type, 
          Mac48Address address, double snrValue)
 {
