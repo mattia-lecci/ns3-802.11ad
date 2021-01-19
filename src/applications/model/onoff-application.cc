@@ -41,6 +41,7 @@
 #include "ns3/udp-socket-factory.h"
 #include "ns3/string.h"
 #include "ns3/pointer.h"
+#include "ns3/boolean.h"
 #include "timestamp-tag.h"
 
 namespace ns3 {
@@ -96,6 +97,10 @@ OnOffApplication::GetTypeId (void)
                    MakeTypeIdAccessor (&OnOffApplication::m_tid),
                    // This should check for SocketFactory as a parent
                    MakeTypeIdChecker ())
+    .AddAttribute ("StartOn", "Start the application with an On time if true, or Off if false.",
+                   BooleanValue (false),
+                   MakeBooleanAccessor (&OnOffApplication::m_startOn),
+                   MakeBooleanChecker ())
     .AddTraceSource ("Tx", "A new packet is created and is sent",
                      MakeTraceSourceAccessor (&OnOffApplication::m_txTrace),
                      "ns3::Packet::TracedCallback")
@@ -110,7 +115,8 @@ OnOffApplication::OnOffApplication ()
     m_residualBits (0),
     m_lastStartTime (Seconds (0)),
     m_totBytes (0),
-    m_txPackets (0)
+    m_txPackets (0),
+    m_startOn (false)
 {
   NS_LOG_FUNCTION (this);
 }
@@ -204,7 +210,14 @@ void OnOffApplication::StartApplication () // Called at time specified by Start
   // If we are not yet connected, there is nothing to do here
   // The ConnectionComplete upcall will start timers at that time
   //if (!m_connected) return;
-  ScheduleStartEvent ();
+  if (m_startOn)
+    {
+      StartSending ();
+    }
+  else
+    {
+      ScheduleStartEvent ();
+    }
 }
 
 void OnOffApplication::StopApplication () // Called at time specified by Stop

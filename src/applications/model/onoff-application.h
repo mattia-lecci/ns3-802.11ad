@@ -176,6 +176,8 @@ private:
   EventId         m_sendEvent;    //!< Event id of pending "send packet" event
   TypeId          m_tid;          //!< Type of the socket used
 
+  bool            m_startOn;      //!< Start the application with an On time if true, or Off if false
+
   /// Traced Callback: transmitted packets.
   TracedCallback<Ptr<const Packet> > m_txTrace;
 

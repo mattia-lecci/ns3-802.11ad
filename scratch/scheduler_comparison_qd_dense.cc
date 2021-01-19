@@ -483,6 +483,7 @@ main (int argc, char *argv[])
   PopulateArpCache ();
 
   /** Install Applications **/
+  Config::SetDefault ("ns3::OnOffApplication::StartOn", BooleanValue (true));
   std::vector<std::string> appDataRates = SplitString (appDataRateStr, ':');
   NS_ABORT_IF (appDataRates.size () != 0 &&
                appDataRates.size () != staWifiNodes.GetN ());
