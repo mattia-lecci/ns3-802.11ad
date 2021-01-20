@@ -38,7 +38,7 @@ def run_simulations(applicationType, normOfferedTraffic, socketType, mpduAggrega
         "onoffPeriodMean": onoffPeriodMean,
         "onoffPeriodStdev": onoffPeriodStdev,
         "smartStart": smartStart,
-        "RngRun": list(range(numRuns)),
+        # "RngRun": list(range(numRuns)),
     })
 
     campaign.run_missing_simulations(param_combination)
@@ -107,6 +107,7 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     # extract group variable
     metric_dims = list(metric.squeeze().dims)
     metric_dims.remove("metrics")  # multiple output from parsing function mapped into "metrics"
+    metric_dims.remove("runs")  # multiple runs are averaged
     assert len(metric_dims) == 1, f"There must only be one group_var, instead, metric_dims={metric_dims}"
     group_var = metric_dims[0]
 
