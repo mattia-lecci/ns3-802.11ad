@@ -84,9 +84,6 @@ def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, x
     metric_mean = metric.reduce(np.mean, 'runs').squeeze()
     metric_ci95 = metric.reduce(np.std, 'runs').squeeze() * 1.96 / np.sqrt(runs)
 
-    print(metric_mean.values)
-    print(metric_ci95.values)
-
     fig = plt.figure()
     for val in metric_mean.coords[hue_var].values:
         plt.errorbar(xx, metric_mean.sel({hue_var: val}),
@@ -330,7 +327,7 @@ if __name__ == '__main__':
                         default=0.0)
     args = parser.parse_args()
 
-    print('Starting sem simulation with {} core(s)...'.format(args.cores))
+    print(f'Starting sem simulation for paramSet={args.paramSet} with {args.cores} core(s)...')
 
     sem.parallelrunner.MAX_PARALLEL_PROCESSES = args.cores
     ns_path = os.path.dirname(os.path.realpath(__file__))
@@ -374,6 +371,11 @@ if __name__ == '__main__':
     normOfferedTraffic = args.normOfferedTraffic
     numRuns = args.numRuns
 
+    # Setup default plotting params
+    line_plot_kwargs = dict()
+    alias_name = None
+    alias_vals = None
+
     if args.paramSet == 'basic':
         applicationType = "constant"
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
@@ -394,69 +396,13 @@ if __name__ == '__main__':
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
-        # line plots
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_norm_aggr_thr,
-                         numRuns,
-                         normOfferedTraffic,
-                         hue_var="allocationPeriod",
-                         xlabel='Aggr. Offered Rate / PHY Rate',
-                         ylabel='Aggr. Throughput / Aggr. Offered Rate',
-                         filename='thr_vs_aggrRate.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_aggr_delay_ms,
-                         numRuns,
-                         normOfferedTraffic,
-                         hue_var="allocationPeriod",
-                         xlabel='Aggr. Offered Rate / PHY Rate',
-                         ylabel='Avg delay [ms]',
-                         filename='avg_delay_vs_aggrRate.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_std_aggr_delay_ms,
-                         numRuns,
-                         normOfferedTraffic,
-                         hue_var="allocationPeriod",
-                         xlabel='Aggr. Offered Rate / PHY Rate',
-                         ylabel='Delay stdev [ms]',
-                         filename='delay_stdev_vs_aggrRate.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_delay_variation_ms,
-                         numRuns,
-                         normOfferedTraffic,
-                         hue_var="allocationPeriod",
-                         xlabel='Aggr. Offered Rate / PHY Rate',
-                         ylabel='Avg delay variation [ms]',
-                         filename='avg_delay_variation_vs_aggrRate.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_jain_fairness,
-                         numRuns,
-                         normOfferedTraffic,
-                         hue_var="allocationPeriod",
-                         xlabel='Aggr. Offered Rate / PHY Rate',
-                         ylabel="Jain's Fairness Index",
-                         filename='jain_fairness_vs_aggrRate.png')
+        # line plots vars
+        xx = normOfferedTraffic
+        hue_var = "allocationPeriod"
+        xlabel = "Aggr. Offered Rate / PHY Rate"
 
-        # bar plots
+        # bar plots var
         for_each = 'normOfferedTraffic'
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_thr,
-                            numRuns,
-                            for_each=for_each,
-                            ylabel="Throughput [Mbps]",
-                            filename='user_thr.png')
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_avg_delay,
-                            numRuns,
-                            for_each=for_each,
-                            ylabel="Avg delay [ms]",
-                            filename='user_delay.png')
 
     elif args.paramSet == 'onoff':
         applicationType = "onoff"
@@ -478,69 +424,13 @@ if __name__ == '__main__':
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
-        # line plots
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_norm_aggr_thr,
-                         numRuns,
-                         normOfferedTraffic,
-                         hue_var="allocationPeriod",
-                         xlabel='Aggr. Offered Rate / PHY Rate',
-                         ylabel='Aggr. Throughput / Aggr. Offered Rate',
-                         filename='thr_vs_aggrRate.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_aggr_delay_ms,
-                         numRuns,
-                         normOfferedTraffic,
-                         hue_var="allocationPeriod",
-                         xlabel='Aggr. Offered Rate / PHY Rate',
-                         ylabel='Avg delay [ms]',
-                         filename='avg_delay_vs_aggrRate.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_std_aggr_delay_ms,
-                         numRuns,
-                         normOfferedTraffic,
-                         hue_var="allocationPeriod",
-                         xlabel='Aggr. Offered Rate / PHY Rate',
-                         ylabel='Delay stdev [ms]',
-                         filename='delay_stdev_vs_aggrRate.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_delay_variation_ms,
-                         numRuns,
-                         normOfferedTraffic,
-                         hue_var="allocationPeriod",
-                         xlabel='Aggr. Offered Rate / PHY Rate',
-                         ylabel='Avg delay variation [ms]',
-                         filename='avg_delay_variation_vs_aggrRate.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_jain_fairness,
-                         numRuns,
-                         normOfferedTraffic,
-                         hue_var="allocationPeriod",
-                         xlabel='Aggr. Offered Rate / PHY Rate',
-                         ylabel="Jain's Fairness Index",
-                         filename='jain_fairness_vs_aggrRate.png')
+        # line plots vars
+        xx = normOfferedTraffic
+        hue_var = "allocationPeriod"
+        xlabel = "Aggr. Offered Rate / PHY Rate"
 
-        # bar plots
+        # bar plots var
         for_each = 'normOfferedTraffic'
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_thr,
-                            numRuns,
-                            for_each=for_each,
-                            ylabel="Throughput [Mbps]",
-                            filename='user_thr.png')
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_avg_delay,
-                            numRuns,
-                            for_each=for_each,
-                            ylabel="Avg delay [ms]",
-                            filename='user_delay.png')
 
     elif args.paramSet == 'onoff_stdev':
         applicationType = "onoff"
@@ -563,80 +453,16 @@ if __name__ == '__main__':
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
-        # line plots
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_norm_aggr_thr,
-                         numRuns,
-                         onOffPeriodDeviationRatio,
-                         hue_var="allocationPeriod",
-                         xlabel='Period Deviation Ratio',
-                         ylabel='Aggr. Throughput / Aggr. Offered Rate',
-                         filename='thr_vs_PeriodDeviationRatio.png',
-                         xscale="log")
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_aggr_delay_ms,
-                         numRuns,
-                         onOffPeriodDeviationRatio,
-                         hue_var="allocationPeriod",
-                         xlabel='Period Deviation Ratio',
-                         ylabel='Avg delay [ms]',
-                         filename='avg_delay_vs_PeriodDeviationRatio.png',
-                         xscale="log")
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_std_aggr_delay_ms,
-                         numRuns,
-                         onOffPeriodDeviationRatio,
-                         hue_var="allocationPeriod",
-                         xlabel='Period Deviation Ratio',
-                         ylabel='Delay stdev [ms]',
-                         filename='delay_stdev_vs_PeriodDeviationRatio.png',
-                         xscale="log")
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_delay_variation_ms,
-                         numRuns,
-                         onOffPeriodDeviationRatio,
-                         hue_var="allocationPeriod",
-                         xlabel='Period Deviation Ratio',
-                         ylabel='Avg delay variation [ms]',
-                         filename='avg_delay_variation_vs_PeriodDeviationRatio.png',
-                         xscale="log")
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_jain_fairness,
-                         numRuns,
-                         onOffPeriodDeviationRatio,
-                         hue_var="allocationPeriod",
-                         xlabel='Period Deviation Ratio',
-                         ylabel="Jain's Fairness Index",
-                         filename='jain_fairness_vs_PeriodDeviationRatio.png',
-                         xscale="log")
+        # line plots vars
+        xx = onOffPeriodDeviationRatio
+        hue_var = "allocationPeriod"
+        xlabel = "Period Deviation Ratio"
+        line_plot_kwargs = {"xscale": "log"}
 
-        # bar plots
+        # bar plots var
         for_each = 'onoffPeriodStdev'
         alias_name = 'onOffPeriodDeviationRatio'
         alias_vals = onOffPeriodDeviationRatio
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_thr,
-                            numRuns,
-                            for_each=for_each,
-                            alias_name=alias_name,
-                            alias_vals=alias_vals,
-                            ylabel="Throughput [Mbps]",
-                            filename='user_thr.png')
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_avg_delay,
-                            numRuns,
-                            for_each=for_each,
-                            alias_name=alias_name,
-                            alias_vals=alias_vals,
-                            ylabel="Avg delay [ms]",
-                            filename='user_delay.png')
 
     elif args.paramSet == 'spPeriodicity':
         applicationType = ["constant", "onoff", "crazyTaxi", "fourElements"]
@@ -659,69 +485,13 @@ if __name__ == '__main__':
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
-        # line plots
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_norm_aggr_thr,
-                         numRuns,
-                         allocationPeriod,
-                         hue_var="applicationType",
-                         xlabel='Allocation period (BI/n, 0=CBAP)',
-                         ylabel='Aggr. Throughput / Aggr. Offered Rate',
-                         filename='thr_vs_allocationPeriod.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_aggr_delay_ms,
-                         numRuns,
-                         allocationPeriod,
-                         hue_var="applicationType",
-                         xlabel='Allocation period (BI/n, 0=CBAP)',
-                         ylabel='Avg delay [ms]',
-                         filename='avg_delay_vs_allocationPeriod.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_std_aggr_delay_ms,
-                         numRuns,
-                         allocationPeriod,
-                         hue_var="applicationType",
-                         xlabel='Allocation period (BI/n, 0=CBAP)',
-                         ylabel='Delay stdev [ms]',
-                         filename='delay_stdev_vs_allocationPeriod.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_delay_variation_ms,
-                         numRuns,
-                         allocationPeriod,
-                         hue_var="applicationType",
-                         xlabel='Allocation period (BI/n, 0=CBAP)',
-                         ylabel='Avg delay variation [ms]',
-                         filename='avg_delay_variation_vs_allocationPeriod.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_jain_fairness,
-                         numRuns,
-                         allocationPeriod,
-                         hue_var="applicationType",
-                         xlabel='Allocation period (BI/n, 0=CBAP)',
-                         ylabel="Jain's Fairness Index",
-                         filename='jain_fairness_vs_allocationPeriod.png')
+        # line plots vars
+        xx = allocationPeriod
+        hue_var = "applicationType"
+        xlabel = "Allocation period (BI/n, 0=CBAP)"
 
-        # bar plots
+        # bar plots var
         for_each = 'applicationType'
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_thr,
-                            numRuns,
-                            for_each=for_each,
-                            ylabel="Throughput [Mbps]",
-                            filename='user_thr.png')
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_avg_delay,
-                            numRuns,
-                            for_each=for_each,
-                            ylabel="Avg delay [ms]",
-                            filename='user_delay.png')
 
     elif args.paramSet == 'onoffPeriodicity':
         applicationType = "onoff"
@@ -744,75 +514,15 @@ if __name__ == '__main__':
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
-        # line plots
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_norm_aggr_thr,
-                         numRuns,
-                         onoffPeriodRatio,
-                         hue_var="allocationPeriod",
-                         xlabel='OnOff App mean period (BI^-1)',
-                         ylabel='Aggr. Throughput / Aggr. Offered Rate',
-                         filename='thr_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_aggr_delay_ms,
-                         numRuns,
-                         onoffPeriodRatio,
-                         hue_var="allocationPeriod",
-                         xlabel='OnOff App mean period (BI^-1)',
-                         ylabel='Avg delay [ms]',
-                         filename='avg_delay_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_std_aggr_delay_ms,
-                         numRuns,
-                         onoffPeriodRatio,
-                         hue_var="allocationPeriod",
-                         xlabel='OnOff App mean period (BI^-1)',
-                         ylabel='Delay stdev [ms]',
-                         filename='delay_stdev_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_delay_variation_ms,
-                         numRuns,
-                         onoffPeriodRatio,
-                         hue_var="allocationPeriod",
-                         xlabel='OnOff App mean period (BI^-1)',
-                         ylabel='Avg delay variation [ms]',
-                         filename='avg_delay_variation_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_jain_fairness,
-                         numRuns,
-                         onoffPeriodRatio,
-                         hue_var="allocationPeriod",
-                         xlabel='OnOff App mean period (BI^-1)',
-                         ylabel="Jain's Fairness Index",
-                         filename='jain_fairness_vs_onoffPeriodMean.png')
+        # line plots vars
+        xx = onoffPeriodRatio
+        hue_var = "allocationPeriod"
+        xlabel = "OnOff App mean period (BI^-1)"
 
-        # bar plots
-        for_each = 'onoffPeriodMean'
+        # bar plots var
+        for_each = 'phyMode'
         alias_name = 'onoffPeriodRatio'
         alias_vals = onoffPeriodRatio
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_thr,
-                            numRuns,
-                            for_each=for_each,
-                            alias_name=alias_name,
-                            alias_vals=alias_vals,
-                            ylabel="Throughput [Mbps]",
-                            filename='user_thr.png')
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_avg_delay,
-                            numRuns,
-                            for_each=for_each,
-                            alias_name=alias_name,
-                            alias_vals=alias_vals,
-                            ylabel="Avg delay [ms]",
-                            filename='user_delay.png')
 
     elif args.paramSet == "mcs":
         applicationType = "onoff"
@@ -833,69 +543,13 @@ if __name__ == '__main__':
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
-        # line plots
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_norm_aggr_thr,
-                         numRuns,
-                         phyMode,
-                         hue_var="allocationPeriod",
-                         xlabel='MCS',
-                         ylabel='Aggr. Throughput / Aggr. Offered Rate',
-                         filename='thr_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_aggr_delay_ms,
-                         numRuns,
-                         phyMode,
-                         hue_var="allocationPeriod",
-                         xlabel='MCS',
-                         ylabel='Avg delay [ms]',
-                         filename='avg_delay_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_std_aggr_delay_ms,
-                         numRuns,
-                         phyMode,
-                         hue_var="allocationPeriod",
-                         xlabel='MCS',
-                         ylabel='Delay stdev [ms]',
-                         filename='delay_stdev_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_delay_variation_ms,
-                         numRuns,
-                         phyMode,
-                         hue_var="allocationPeriod",
-                         xlabel='MCS',
-                         ylabel='Avg delay variation [ms]',
-                         filename='avg_delay_variation_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_jain_fairness,
-                         numRuns,
-                         phyMode,
-                         hue_var="allocationPeriod",
-                         xlabel='MCS',
-                         ylabel="Jain's Fairness Index",
-                         filename='jain_fairness_vs_onoffPeriodMean.png')
+        # line plots vars
+        xx = phyMode
+        hue_var = "allocationPeriod"
+        xlabel = "MCS"
 
-        # bar plots
+        # bar plots var
         for_each = 'phyMode'
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_thr,
-                            numRuns,
-                            for_each=for_each,
-                            ylabel="Throughput [Mbps]",
-                            filename='user_thr.png')
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_avg_delay,
-                            numRuns,
-                            for_each=for_each,
-                            ylabel="Avg delay [ms]",
-                            filename='user_delay.png')
 
     elif args.paramSet == "numStas":
         applicationType = "onoff"
@@ -916,70 +570,86 @@ if __name__ == '__main__':
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
-        # line plots
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_norm_aggr_thr,
-                         numRuns,
-                         numStas,
-                         hue_var="allocationPeriod",
-                         xlabel='numStas',
-                         ylabel='Aggr. Throughput / Aggr. Offered Rate',
-                         filename='thr_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_aggr_delay_ms,
-                         numRuns,
-                         numStas,
-                         hue_var="allocationPeriod",
-                         xlabel='numStas',
-                         ylabel='Avg delay [ms]',
-                         filename='avg_delay_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_std_aggr_delay_ms,
-                         numRuns,
-                         numStas,
-                         hue_var="allocationPeriod",
-                         xlabel='numStas',
-                         ylabel='Delay stdev [ms]',
-                         filename='delay_stdev_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_avg_delay_variation_ms,
-                         numRuns,
-                         numStas,
-                         hue_var="allocationPeriod",
-                         xlabel='numStas',
-                         ylabel='Avg delay variation [ms]',
-                         filename='avg_delay_variation_vs_onoffPeriodMean.png')
-        plot_line_metric(campaign,
-                         param_combination,
-                         compute_jain_fairness,
-                         numRuns,
-                         numStas,
-                         hue_var="allocationPeriod",
-                         xlabel='numStas',
-                         ylabel="Jain's Fairness Index",
-                         filename='jain_fairness_vs_onoffPeriodMean.png')
-
-        # bar plots
+        # line plots vars
+        xx = numStas
+        hue_var = "allocationPeriod"
+        xlabel = "numStas"
+        
+        # bar plots vars
         for_each = 'numStas'
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_thr,
-                            numRuns,
-                            for_each=for_each,
-                            ylabel="Throughput [Mbps]",
-                            filename='user_thr.png')
-        plot_all_bars_metric(campaign,
-                            param_combination,
-                            compute_user_avg_delay,
-                            numRuns,
-                            for_each=for_each,
-                            ylabel="Avg delay [ms]",
-                            filename='user_delay.png')
-
-
+    
     else:
         raise ValueError('paramsSet={} not recognized'.format(args.paramSet))
+
+
+    # line plots
+    plot_line_metric(campaign=campaign,
+                     parameter_space=param_combination,
+                     result_parsing_function=compute_norm_aggr_thr,
+                     runs=numRuns,
+                     xx=xx,
+                     hue_var=hue_var,
+                     xlabel=xlabel,
+                     ylabel='Aggr. Throughput / Aggr. Offered Rate',
+                     filename='thr.png',
+                     **line_plot_kwargs)
+    plot_line_metric(campaign=campaign,
+                     parameter_space=param_combination,
+                     result_parsing_function=compute_avg_aggr_delay_ms,
+                     runs=numRuns,
+                     xx=xx,
+                     hue_var=hue_var,
+                     xlabel=xlabel,
+                     ylabel='Avg delay [ms]',
+                     filename='avg_delay.png',
+                     **line_plot_kwargs)
+    plot_line_metric(campaign=campaign,
+                     parameter_space=param_combination,
+                     result_parsing_function=compute_std_aggr_delay_ms,
+                     runs=numRuns,
+                     xx=xx,
+                     hue_var=hue_var,
+                     xlabel=xlabel,
+                     ylabel='Delay stdev [ms]',
+                     filename='delay_stdev.png',
+                     **line_plot_kwargs)
+    plot_line_metric(campaign=campaign,
+                     parameter_space=param_combination,
+                     result_parsing_function=compute_avg_delay_variation_ms,
+                     runs=numRuns,
+                     xx=xx,
+                     hue_var=hue_var,
+                     xlabel=xlabel,
+                     ylabel='Avg delay variation [ms]',
+                     filename='avg_delay_variation.png',
+                     **line_plot_kwargs)
+    plot_line_metric(campaign=campaign,
+                     parameter_space=param_combination,
+                     result_parsing_function=compute_jain_fairness,
+                     runs=numRuns,
+                     xx=xx,
+                     hue_var=hue_var,
+                     xlabel=xlabel,
+                     ylabel="Jain's Fairness Index",
+                     filename='jain_fairness.png',
+                     **line_plot_kwargs)
+
+    # bar plots
+    plot_all_bars_metric(campaign=campaign,
+                        parameter_space=param_combination,
+                        result_parsing_function=compute_user_thr,
+                        runs=numRuns,
+                        for_each=for_each,
+                        ylabel="Throughput [Mbps]",
+                        filename='user_thr.png',
+                        alias_name=alias_name,
+                        alias_vals=alias_vals)
+    plot_all_bars_metric(campaign=campaign,
+                        parameter_space=param_combination,
+                        result_parsing_function=compute_user_avg_delay,
+                        runs=numRuns,
+                        for_each=for_each,
+                        ylabel="Avg delay [ms]",
+                        filename='user_delay.png',
+                        alias_name=alias_name,
+                        alias_vals=alias_vals)
