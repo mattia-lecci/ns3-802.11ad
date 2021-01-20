@@ -235,7 +235,7 @@ main (int argc, char *argv[])
 {
   uint32_t bufferSize = 131072;                   /* TCP Send/Receive Buffer Size [bytes]. */
   uint32_t queueSize = 0xFFFFFFFF;                /* Wifi MAC Queue Size [packets]. */
-  std::string appDataRate = "300Mbps";            /* Application data rate. */
+  double normOfferedTraffic = 0.7;                /* Normalized offered traffic, i.e., the aggregated traffic offered by all TXs as a ratio of the PHY rate. [0, 1] */
   bool frameCapture = false;                      /* Use a frame capture model. */
   double frameCaptureMargin = 10;                 /* Frame capture margin [dB]. */
   bool verbose = false;                           /* Print Logging Information. */
@@ -266,7 +266,7 @@ main (int argc, char *argv[])
   CommandLine cmd;
   cmd.AddValue ("applicationType", "Type of the Tx Application: constant, onoff, bulk, crazyTaxi, fourElements", applicationType);
   // cmd.AddValue ("packetSize", "Application packet size [bytes]", packetSize);
-  cmd.AddValue ("appDataRate", "Average application data rate", appDataRate);
+  cmd.AddValue ("normOfferedTraffic", "Normalized offered traffic, i.e., the aggregated traffic offered by all TXs as a ratio of the PHY rate. [0, 1]", normOfferedTraffic);
   // cmd.AddValue ("tcpVariant", "Transport protocol to use: TcpHighSpeed, TcpVegas, TcpNewReno, TcpWestwood, TcpWestwoodPlus", tcpVariant);
   cmd.AddValue ("socketType", "Socket type (default: ns3::UdpSocketFactory)", socketType);
   // cmd.AddValue ("bufferSize", "TCP Buffer Size (Send/Receive) [bytes]", bufferSize);
@@ -488,16 +488,9 @@ main (int argc, char *argv[])
 
   /** Install Applications **/
   Config::SetDefault ("ns3::OnOffApplication::StartOn", BooleanValue (true));
-  std::vector<std::string> appDataRates = SplitString (appDataRateStr, ':');
-  NS_ABORT_IF (appDataRates.size () != 0 &&
-               appDataRates.size () != staWifiNodes.GetN ());
+  std::string dataRate = ComputeUserDataRateFromNormOfferedTraffic (phyMode, numStas, normOfferedTraffic);
   for (uint32_t i = 0; i < staWifiNodes.GetN (); i++)
     {
-      std::string dataRate = appDataRate;
-      if (appDataRates.size () != 0)
-      {
-        dataRate = appDataRates.at (i);
-      }
       communicationPairMap[staWifiNodes.Get (i)] = InstallApplication (staWifiNodes.Get (i), apWifiNode.Get (0),
                                                                        staInterfaces.GetAddress (i), apInterface.GetAddress (0), dataRate, i);
     }

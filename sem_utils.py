@@ -148,3 +148,10 @@ def bar_plot(ax, data, data_yerr=None, colors=None, total_width=0.8, single_widt
     # Draw legend if we need
     if legend:
         ax.legend(bars, data.keys(), loc='best')
+
+
+def sta_data_rate_mbps(num_stas, phy_mode, norm_offered_traffic):
+    phy_rate = MCS_PARAMS[phy_mode]['phy_rate']
+    max_rate_per_sta = phy_rate / num_stas
+    rate_per_sta = norm_offered_traffic * max_rate_per_sta
+    return rate_per_sta

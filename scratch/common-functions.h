@@ -8,6 +8,8 @@
 #include "ns3/wifi-remote-station-manager.h"
 #include "ns3/dmg-information-elements.h"
 #include "ns3/status-code.h"
+#include "ns3/dmg-wifi-phy.h"
+#include <iomanip>
 
 #ifndef COMMON_FUNCTIONS_H
 #define COMMON_FUNCTIONS_H
@@ -597,6 +599,81 @@ MacTxOk (PacketCountMap& macTxDataOk, Ptr<DmgWifiMac> wifiMac, Mac48Address addr
 {
   macTxDataOk.at (wifiMac->GetAddress ()) += 1;
 }
+
+
+uint64_t
+GetDmgPhyRate (std::string phyMode)
+{
+    NS_ABORT_MSG_IF (phyMode.substr (0, 7) != "DMG_MCS", "Invalid phyMode=" << phyMode);
+    int mcs = std::stoi (phyMode.substr (7));
+
+    WifiMode mode;
+    switch (mcs)
+    {
+      case 0:
+        mode = DmgWifiPhy::GetDMG_MCS0 ();
+        break;
+      case 1:
+        mode = DmgWifiPhy::GetDMG_MCS1 ();
+        break;
+      case 2:
+        mode = DmgWifiPhy::GetDMG_MCS2 ();
+        break;
+      case 3:
+        mode = DmgWifiPhy::GetDMG_MCS3 ();
+        break;
+      case 4:
+        mode = DmgWifiPhy::GetDMG_MCS4 ();
+        break;
+      case 5:
+        mode = DmgWifiPhy::GetDMG_MCS5 ();
+        break;
+      case 6:
+        mode = DmgWifiPhy::GetDMG_MCS6 ();
+        break;
+      case 7:
+        mode = DmgWifiPhy::GetDMG_MCS7 ();
+        break;
+      case 8:
+        mode = DmgWifiPhy::GetDMG_MCS8 ();
+        break;
+      case 9:
+        mode = DmgWifiPhy::GetDMG_MCS9 ();
+        break;
+      case 10:
+        mode = DmgWifiPhy::GetDMG_MCS10 ();
+        break;
+      case 11:
+        mode = DmgWifiPhy::GetDMG_MCS11 ();
+        break;
+      case 12:
+        mode = DmgWifiPhy::GetDMG_MCS12 ();
+        break;
+      default:
+        NS_FATAL_ERROR ("Invalid mcs=" << mcs);
+    }
+
+    // For DMG WiFi the inputs are ignored (see GetDataRate)
+    return mode.GetPhyRate (0, 0, 0);
+}
+
+
+std::string 
+ComputeUserDataRateFromNormOfferedTraffic (std::string phyMode, uint16_t numStas, double normOfferedTraffic)
+{
+    NS_ABORT_MSG_IF (normOfferedTraffic < 0.0 || normOfferedTraffic > 1.0, "Invalid normOfferedTraffic=" << normOfferedTraffic);
+    
+    double phyRate = GetDmgPhyRate (phyMode); // avoid integer approximations
+    double maxRatePerSta = phyRate / numStas;
+    double ratePerSta = normOfferedTraffic * maxRatePerSta;
+
+    std::cout << "phyRate=" << phyRate/1e6 << " Mbps, maxRatePerSta=" << maxRatePerSta/1e6 << " Mbps, ratePerSta=" << ratePerSta/1e6 << " Mbps" << std::endl;
+
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(0) << ratePerSta << "bps";
+    return ss.str();
+}
+
 
 } // namespace ns3
 

@@ -20,13 +20,13 @@ import copy
 sys.stdout.flush()
 
 
-def run_simulations(applicationType, appDataRate, socketType, mpduAggregationSize,
+def run_simulations(applicationType, normOfferedTraffic, socketType, mpduAggregationSize,
                     phyMode, simulationTime, numStas, allocationPeriod,
                     accessCbapIfAllocated, biDurationUs, onoffPeriodMean,
                     onoffPeriodStdev, smartStart, numRuns):
     param_combination = OrderedDict({
         "applicationType": applicationType,
-        "appDataRate": appDataRate,
+        "normOfferedTraffic": normOfferedTraffic,
         "socketType": socketType,
         "mpduAggregationSize": mpduAggregationSize,
         "phyMode": phyMode,
@@ -64,21 +64,6 @@ def remove_simulations(broken_results):
             campaign.db.delete_result(result)
     # write updated database to disk
     campaign.db.write_to_disk()
-
-
-def getAppDataRate(phy_mode, num_stas, norm_offered_traffic):
-    phy_rate = sem_utils.MCS_PARAMS[phy_mode]['phy_rate']
-    rate_per_sta = phy_rate / num_stas
-
-    if type(norm_offered_traffic) is list:
-        sta_rate = ["{:.0f}bps".format(r * rate_per_sta)
-                    for r in norm_offered_traffic]
-    elif type(norm_offered_traffic) is float:
-        sta_rate = ["{:.0f}bps".format(norm_offered_traffic * rate_per_sta)]
-    else:
-        ValueError("Type of norm_offered_traffic not supported: ", type(norm_offered_traffic))
-
-    return sta_rate
 
 
 def check_stderr(result):
@@ -204,7 +189,9 @@ def compute_norm_aggr_thr(num_stas, result):
                                      numeric_cols='all')
 
     thr_mbps = compute_avg_thr_mbps(pkts_df)
-    aggr_rate_mbps = sem_utils.data_rate_bps_2_float_mbps(result['params']['appDataRate']) * num_stas
+    aggr_rate_mbps = result['params']['numStas'] * sem_utils.sta_data_rate_mbps(result['params']['numStas'],
+                                                                                result['params']['phyMode'],
+                                                                                result['params']['normOfferedTraffic'])
     norm_thr = thr_mbps / aggr_rate_mbps  # TODO check why sometimes >1
     return norm_thr
 
@@ -384,17 +371,15 @@ if __name__ == '__main__':
     biDurationUs = args.biDurationUs
     onoffPeriodMean = args.onoffPeriodMean
     onoffPeriodStdev = args.onoffPeriodStdev
-
-    appDataRate = getAppDataRate(phyMode, numStas, norm_offered_traffic=args.normOfferedTraffic)
+    normOfferedTraffic = args.normOfferedTraffic
     numRuns = args.numRuns
 
     if args.paramSet == 'basic':
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
-        norm_offered_traffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-        appDataRate = getAppDataRate(phyMode, numStas, norm_offered_traffic)
+        normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
         param_combination = run_simulations(applicationType=applicationType,
-                                            appDataRate=appDataRate,
+                                            normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
                                             phyMode=phyMode,
@@ -413,7 +398,7 @@ if __name__ == '__main__':
                          param_combination,
                          lambda x: compute_norm_aggr_thr(numStas, x),
                          numRuns,
-                         norm_offered_traffic,
+                         normOfferedTraffic,
                          hue_var="allocationPeriod",
                          xlabel='Aggr. Offered Rate / PHY Rate',
                          ylabel='Aggr. Throughput / Aggr. Offered Rate',
@@ -422,7 +407,7 @@ if __name__ == '__main__':
                          param_combination,
                          compute_avg_aggr_delay_ms,
                          numRuns,
-                         norm_offered_traffic,
+                         normOfferedTraffic,
                          hue_var="allocationPeriod",
                          xlabel='Aggr. Offered Rate / PHY Rate',
                          ylabel='Avg delay [ms]',
@@ -431,7 +416,7 @@ if __name__ == '__main__':
                          param_combination,
                          compute_std_aggr_delay_ms,
                          numRuns,
-                         norm_offered_traffic,
+                         normOfferedTraffic,
                          hue_var="allocationPeriod",
                          xlabel='Aggr. Offered Rate / PHY Rate',
                          ylabel='Delay stdev [ms]',
@@ -440,7 +425,7 @@ if __name__ == '__main__':
                          param_combination,
                          compute_avg_delay_variation_ms,
                          numRuns,
-                         norm_offered_traffic,
+                         normOfferedTraffic,
                          hue_var="allocationPeriod",
                          xlabel='Aggr. Offered Rate / PHY Rate',
                          ylabel='Avg delay variation [ms]',
@@ -449,23 +434,19 @@ if __name__ == '__main__':
                          param_combination,
                          compute_jain_fairness,
                          numRuns,
-                         norm_offered_traffic,
+                         normOfferedTraffic,
                          hue_var="allocationPeriod",
                          xlabel='Aggr. Offered Rate / PHY Rate',
                          ylabel="Jain's Fairness Index",
                          filename='jain_fairness_vs_aggrRate.png')
 
         # bar plots
-        for_each = 'appDataRate'
-        alias_name = 'normOfferedTraffic'
-        alias_vals = norm_offered_traffic
+        for_each = 'normOfferedTraffic'
         plot_all_bars_metric(campaign,
                             param_combination,
                             compute_user_thr,
                             numRuns,
                             for_each=for_each,
-                            alias_name=alias_name,
-                            alias_vals=alias_vals,
                             ylabel="Throughput [Mbps]",
                             filename='user_thr.png')
         plot_all_bars_metric(campaign,
@@ -473,19 +454,16 @@ if __name__ == '__main__':
                             compute_user_avg_delay,
                             numRuns,
                             for_each=for_each,
-                            alias_name=alias_name,
-                            alias_vals=alias_vals,
                             ylabel="Avg delay [ms]",
                             filename='user_delay.png')
 
     elif args.paramSet == 'onoff':
         applicationType = "onoff"
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
-        norm_offered_traffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-        appDataRate = getAppDataRate(phyMode, numStas, norm_offered_traffic)
+        normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
         param_combination = run_simulations(applicationType=applicationType,
-                                            appDataRate=appDataRate,
+                                            normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
                                             phyMode=phyMode,
@@ -504,7 +482,7 @@ if __name__ == '__main__':
                          param_combination,
                          lambda x: compute_norm_aggr_thr(numStas, x),
                          numRuns,
-                         norm_offered_traffic,
+                         normOfferedTraffic,
                          hue_var="allocationPeriod",
                          xlabel='Aggr. Offered Rate / PHY Rate',
                          ylabel='Aggr. Throughput / Aggr. Offered Rate',
@@ -513,7 +491,7 @@ if __name__ == '__main__':
                          param_combination,
                          compute_avg_aggr_delay_ms,
                          numRuns,
-                         norm_offered_traffic,
+                         normOfferedTraffic,
                          hue_var="allocationPeriod",
                          xlabel='Aggr. Offered Rate / PHY Rate',
                          ylabel='Avg delay [ms]',
@@ -522,7 +500,7 @@ if __name__ == '__main__':
                          param_combination,
                          compute_std_aggr_delay_ms,
                          numRuns,
-                         norm_offered_traffic,
+                         normOfferedTraffic,
                          hue_var="allocationPeriod",
                          xlabel='Aggr. Offered Rate / PHY Rate',
                          ylabel='Delay stdev [ms]',
@@ -531,7 +509,7 @@ if __name__ == '__main__':
                          param_combination,
                          compute_avg_delay_variation_ms,
                          numRuns,
-                         norm_offered_traffic,
+                         normOfferedTraffic,
                          hue_var="allocationPeriod",
                          xlabel='Aggr. Offered Rate / PHY Rate',
                          ylabel='Avg delay variation [ms]',
@@ -540,23 +518,19 @@ if __name__ == '__main__':
                          param_combination,
                          compute_jain_fairness,
                          numRuns,
-                         norm_offered_traffic,
+                         normOfferedTraffic,
                          hue_var="allocationPeriod",
                          xlabel='Aggr. Offered Rate / PHY Rate',
                          ylabel="Jain's Fairness Index",
                          filename='jain_fairness_vs_aggrRate.png')
 
         # bar plots
-        for_each = 'appDataRate'
-        alias_name = 'normOfferedTraffic'
-        alias_vals = norm_offered_traffic
+        for_each = 'normOfferedTraffic'
         plot_all_bars_metric(campaign,
                             param_combination,
                             compute_user_thr,
                             numRuns,
                             for_each=for_each,
-                            alias_name=alias_name,
-                            alias_vals=alias_vals,
                             ylabel="Throughput [Mbps]",
                             filename='user_thr.png')
         plot_all_bars_metric(campaign,
@@ -564,8 +538,6 @@ if __name__ == '__main__':
                             compute_user_avg_delay,
                             numRuns,
                             for_each=for_each,
-                            alias_name=alias_name,
-                            alias_vals=alias_vals,
                             ylabel="Avg delay [ms]",
                             filename='user_delay.png')
 
@@ -576,7 +548,7 @@ if __name__ == '__main__':
         onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
 
         param_combination = run_simulations(applicationType=applicationType,
-                                            appDataRate=appDataRate,
+                                            normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
                                             phyMode=phyMode,
@@ -672,7 +644,7 @@ if __name__ == '__main__':
         onoffPeriodStdev = 0.1 * onoffPeriodMean
 
         param_combination = run_simulations(applicationType=applicationType,
-                                            appDataRate=appDataRate,
+                                            normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
                                             phyMode=phyMode,
@@ -757,7 +729,7 @@ if __name__ == '__main__':
         onoffPeriodMean = [r * biDurationUs/1e6 for r in onoffPeriodRatio]
 
         param_combination = run_simulations(applicationType=applicationType,
-                                            appDataRate=appDataRate,
+                                            normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
                                             phyMode=phyMode,
