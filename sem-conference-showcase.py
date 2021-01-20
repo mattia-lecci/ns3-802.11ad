@@ -813,6 +813,89 @@ if __name__ == '__main__':
                             ylabel="Avg delay [ms]",
                             filename='user_delay.png')
 
+    elif args.paramSet == "mcs":
+        applicationType = "onoff"
+        phyMode = [f"DMG_MCS{n}" for n in range(12)]  # MCS 0, ..., MCS 12
+
+        param_combination = run_simulations(applicationType=applicationType,
+                                            normOfferedTraffic=normOfferedTraffic,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
+
+        # line plots
+        plot_line_metric(campaign,
+                         param_combination,
+                         lambda x: compute_norm_aggr_thr(numStas, x),
+                         numRuns,
+                         phyMode,
+                         hue_var="allocationPeriod",
+                         xlabel='MCS',
+                         ylabel='Aggr. Throughput / Aggr. Offered Rate',
+                         filename='thr_vs_onoffPeriodMean.png')
+        plot_line_metric(campaign,
+                         param_combination,
+                         compute_avg_aggr_delay_ms,
+                         numRuns,
+                         phyMode,
+                         hue_var="allocationPeriod",
+                         xlabel='MCS',
+                         ylabel='Avg delay [ms]',
+                         filename='avg_delay_vs_onoffPeriodMean.png')
+        plot_line_metric(campaign,
+                         param_combination,
+                         compute_std_aggr_delay_ms,
+                         numRuns,
+                         phyMode,
+                         hue_var="allocationPeriod",
+                         xlabel='MCS',
+                         ylabel='Delay stdev [ms]',
+                         filename='delay_stdev_vs_onoffPeriodMean.png')
+        plot_line_metric(campaign,
+                         param_combination,
+                         compute_avg_delay_variation_ms,
+                         numRuns,
+                         phyMode,
+                         hue_var="allocationPeriod",
+                         xlabel='MCS',
+                         ylabel='Avg delay variation [ms]',
+                         filename='avg_delay_variation_vs_onoffPeriodMean.png')
+        plot_line_metric(campaign,
+                         param_combination,
+                         compute_jain_fairness,
+                         numRuns,
+                         phyMode,
+                         hue_var="allocationPeriod",
+                         xlabel='MCS',
+                         ylabel="Jain's Fairness Index",
+                         filename='jain_fairness_vs_onoffPeriodMean.png')
+
+        # bar plots
+        for_each = 'phyMode'
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_thr,
+                            numRuns,
+                            for_each=for_each,
+                            ylabel="Throughput [Mbps]",
+                            filename='user_thr.png')
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_avg_delay,
+                            numRuns,
+                            for_each=for_each,
+                            ylabel="Avg delay [ms]",
+                            filename='user_delay.png')
+
 
     else:
         raise ValueError('paramsSet={} not recognized'.format(args.paramSet))
