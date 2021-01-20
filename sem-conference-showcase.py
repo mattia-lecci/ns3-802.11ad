@@ -367,10 +367,20 @@ if __name__ == '__main__':
         norm_offered_traffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
         appDataRate = getAppDataRate(phyMode, numStas, norm_offered_traffic)
 
-        param_combination = run_simulations(applicationType, appDataRate, socketType, mpduAggregationSize,
-                                            phyMode, simulationTime, numStas, allocationPeriod,
-                                            accessCbapIfAllocated, biDurationUs, onoffPeriodMean,
-                                            onoffPeriodStdev, smartStart, numRuns)
+        param_combination = run_simulations(applicationType=applicationType,
+                                            appDataRate=appDataRate,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
 
         # line plots
         plot_line_metric(campaign,
@@ -447,10 +457,20 @@ if __name__ == '__main__':
         norm_offered_traffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
         appDataRate = getAppDataRate(phyMode, numStas, norm_offered_traffic)
 
-        param_combination = run_simulations(applicationType, appDataRate, socketType, mpduAggregationSize,
-                                            phyMode, simulationTime, numStas, allocationPeriod,
-                                            accessCbapIfAllocated, biDurationUs, onoffPeriodMean,
-                                            onoffPeriodStdev, smartStart, numRuns)
+        param_combination = run_simulations(applicationType=applicationType,
+                                            appDataRate=appDataRate,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
 
         # line plots
         plot_line_metric(campaign,
@@ -527,10 +547,20 @@ if __name__ == '__main__':
         onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
         onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
 
-        param_combination = run_simulations(applicationType, appDataRate, socketType, mpduAggregationSize,
-                                            phyMode, simulationTime, numStas, allocationPeriod,
-                                            accessCbapIfAllocated, biDurationUs, onoffPeriodMean,
-                                            onoffPeriodStdev, numRuns)
+        param_combination = run_simulations(applicationType=applicationType,
+                                            appDataRate=appDataRate,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
 
         # line plots
         plot_line_metric(campaign,
@@ -609,11 +639,23 @@ if __name__ == '__main__':
     elif args.paramSet == 'spPeriodicity':
         applicationType = ["constant", "onoff", "crazyTaxi", "fourElements"]
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
-        onoffPeriodStdev = 1e-2 * onoffPeriodMean
-        param_combination = run_simulations(applicationType, appDataRate, socketType, mpduAggregationSize,
-                                            phyMode, simulationTime, numStas, allocationPeriod,
-                                            accessCbapIfAllocated, biDurationUs, onoffPeriodMean,
-                                            onoffPeriodStdev, numRuns)
+        onoffPeriodMean = 1 / 30  # 30 FPS
+        onoffPeriodStdev = 0.1 * onoffPeriodMean
+
+        param_combination = run_simulations(applicationType=applicationType,
+                                            appDataRate=appDataRate,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
 
         # line plots
         plot_line_metric(campaign,
@@ -690,10 +732,20 @@ if __name__ == '__main__':
         onoffPeriodRatio = [1, 1.75*0.5, 1.5*0.5, 1.25*0.5, 1.1*0.5, 0.5, 0.5/1.1, 0.5/1.25, 0.5/1.5, 0.5/1.75, 1/4]
         onoffPeriodMean = [r * biDurationUs/1e6 for r in onoffPeriodRatio]
 
-        param_combination = run_simulations(applicationType, appDataRate, socketType, mpduAggregationSize,
-                                            phyMode, simulationTime, numStas, allocationPeriod,
-                                            accessCbapIfAllocated, biDurationUs, onoffPeriodMean,
-                                            onoffPeriodStdev, numRuns)
+        param_combination = run_simulations(applicationType=applicationType,
+                                            appDataRate=appDataRate,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
 
         # line plots
         plot_line_metric(campaign,
