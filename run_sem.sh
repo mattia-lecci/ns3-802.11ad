@@ -8,3 +8,5 @@ python3 sem-conference-showcase.py --cores=$CORES --numRuns=$NUM_RUNS --paramSet
 python3 sem-conference-showcase.py --cores=$CORES --numRuns=$NUM_RUNS --paramSet=onoff_stdev
 python3 sem-conference-showcase.py --cores=$CORES --numRuns=$NUM_RUNS --paramSet=spPeriodicity
 python3 sem-conference-showcase.py --cores=$CORES --numRuns=$NUM_RUNS --paramSet=onoffPeriodicity
+python3 sem-conference-showcase.py --cores=$CORES --numRuns=$NUM_RUNS --paramSet=mcs
+python3 sem-conference-showcase.py --cores=$CORES --numRuns=$NUM_RUNS --paramSet=numStas
