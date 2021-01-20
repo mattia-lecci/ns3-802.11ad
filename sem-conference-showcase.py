@@ -282,9 +282,9 @@ if __name__ == '__main__':
                         default=5)
     # baseline parameters
     parser.add_argument("--applicationType",
-                        help="The baseline applicationType. Default: constant",
+                        help="The baseline applicationType. Default: onoff",
                         type=str,
-                        default="constant")
+                        default="onoff")
     parser.add_argument('--smartStartOn', dest='smartStart', action='store_true')
     parser.add_argument('--smartStartOff', dest='smartStart', action='store_false')
     parser.set_defaults(smartStart=True)
@@ -375,6 +375,7 @@ if __name__ == '__main__':
     numRuns = args.numRuns
 
     if args.paramSet == 'basic':
+        applicationType = "constant"
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
         normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
