@@ -91,7 +91,7 @@ def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, x
     for val in metric_mean.coords[hue_var].values:
         plt.errorbar(xx, metric_mean.sel({hue_var: val}),
                      yerr=metric_ci95.sel({hue_var: val}),
-                     label="{}={}".format(hue_var, val))
+                     label=f"{hue_var}={val}")
     plt.xscale(xscale)
     plt.yscale(yscale)
     plt.xlabel(xlabel)
@@ -175,14 +175,14 @@ def compute_avg_delay_ms(pkts_df):
     return delay
 
 
-def compute_avg_user_metric(pkts_df, metric):
+def compute_avg_user_metric(num_stas, pkts_df, metric):
     user_metric = [metric(pkts_df[pkts_df['SrcNodeId'] == srcNodeId])
-                for srcNodeId in range(numStas + 1)]
+                for srcNodeId in range(num_stas + 1)]
 
     return user_metric
 
 
-def compute_norm_aggr_thr(num_stas, result):
+def compute_norm_aggr_thr(result):
     pkts_df = sem_utils.output_to_df(result,
                                      data_filename="packetsTrace.csv",
                                      column_sep=',',
@@ -202,7 +202,7 @@ def compute_user_thr(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr_mbps = compute_avg_user_metric(pkts_df, compute_avg_thr_mbps)
+    user_thr_mbps = compute_avg_user_metric(result['params']['numStas'], pkts_df, compute_avg_thr_mbps)
     return user_thr_mbps
 
 
@@ -212,7 +212,7 @@ def compute_user_avg_delay(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_delay_ms = compute_avg_user_metric(pkts_df, compute_avg_delay_ms)
+    user_delay_ms = compute_avg_user_metric(result['params']['numStas'], pkts_df, compute_avg_delay_ms)
     return user_delay_ms
 
 
@@ -259,7 +259,7 @@ def compute_jain_fairness(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr = compute_avg_user_metric(pkts_df, compute_avg_thr_mbps)
+    user_thr = compute_avg_user_metric(result['params']['numStas'], pkts_df, compute_avg_thr_mbps)
     jain = sem_utils.jain_fairness(user_thr[1:])  # exclude user 0: AP
     return jain
 
@@ -397,7 +397,7 @@ if __name__ == '__main__':
         # line plots
         plot_line_metric(campaign,
                          param_combination,
-                         lambda x: compute_norm_aggr_thr(numStas, x),
+                         compute_norm_aggr_thr,
                          numRuns,
                          normOfferedTraffic,
                          hue_var="allocationPeriod",
@@ -481,7 +481,7 @@ if __name__ == '__main__':
         # line plots
         plot_line_metric(campaign,
                          param_combination,
-                         lambda x: compute_norm_aggr_thr(numStas, x),
+                         compute_norm_aggr_thr,
                          numRuns,
                          normOfferedTraffic,
                          hue_var="allocationPeriod",
@@ -566,7 +566,7 @@ if __name__ == '__main__':
         # line plots
         plot_line_metric(campaign,
                          param_combination,
-                         lambda x: compute_norm_aggr_thr(numStas, x),
+                         compute_norm_aggr_thr,
                          numRuns,
                          onOffPeriodDeviationRatio,
                          hue_var="allocationPeriod",
@@ -662,7 +662,7 @@ if __name__ == '__main__':
         # line plots
         plot_line_metric(campaign,
                          param_combination,
-                         lambda x: compute_norm_aggr_thr(numStas, x),
+                         compute_norm_aggr_thr,
                          numRuns,
                          allocationPeriod,
                          hue_var="applicationType",
@@ -747,7 +747,7 @@ if __name__ == '__main__':
         # line plots
         plot_line_metric(campaign,
                          param_combination,
-                         lambda x: compute_norm_aggr_thr(numStas, x),
+                         compute_norm_aggr_thr,
                          numRuns,
                          onoffPeriodRatio,
                          hue_var="allocationPeriod",
@@ -836,7 +836,7 @@ if __name__ == '__main__':
         # line plots
         plot_line_metric(campaign,
                          param_combination,
-                         lambda x: compute_norm_aggr_thr(numStas, x),
+                         compute_norm_aggr_thr,
                          numRuns,
                          phyMode,
                          hue_var="allocationPeriod",

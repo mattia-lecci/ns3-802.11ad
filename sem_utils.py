@@ -151,7 +151,7 @@ def bar_plot(ax, data, data_yerr=None, colors=None, total_width=0.8, single_widt
 
 
 def sta_data_rate_mbps(num_stas, phy_mode, norm_offered_traffic):
-    phy_rate = MCS_PARAMS[phy_mode]['phy_rate']
-    max_rate_per_sta = phy_rate / num_stas
+    phy_rate_mbps = MCS_PARAMS[phy_mode]['phy_rate'] / 1e6
+    max_rate_per_sta = phy_rate_mbps / num_stas
     rate_per_sta = norm_offered_traffic * max_rate_per_sta
     return rate_per_sta
