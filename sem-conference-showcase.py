@@ -15,6 +15,7 @@ from collections import OrderedDict
 import sem_utils
 import numpy as np
 from matplotlib import pyplot as plt
+import copy
 
 sys.stdout.flush()
 
@@ -124,7 +125,7 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     # extract group variable
     metric_dims = list(metric.squeeze().dims)
     metric_dims.remove("metrics")  # multiple output from parsing function mapped into "metrics"
-    assert len(metric_dims) == 1, "There must only be one group_var, instead, metric_dims={}".format(metric_dims)
+    assert len(metric_dims) == 1, f"There must only be one group_var, instead, metric_dims={metric_dims}"
     group_var = metric_dims[0]
 
     # extract dict from xarray: each key corresponds to a group, each element is the array related to the x-axis
@@ -141,6 +142,31 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     ax.set_xticks(range(len(out_labels)))
     ax.set_xticklabels(out_labels)
     fig.savefig(os.path.join(img_dir, filename))
+
+
+def plot_all_bars_metric(campaign, parameter_space, result_parsing_function, runs, for_each, ylabel, filename, alias_name=None, alias_vals=None):
+        if alias_name is None:
+            alias_name = for_each
+            alias_vals = parameter_space[for_each]
+
+        bar_plots_params = copy.deepcopy(parameter_space)
+        for val, alias in zip(parameter_space[for_each], alias_vals):
+            bar_plots_params[for_each] = [val]
+            assert len(bar_plots_params['numStas']) == 1, "Cannot plot bar metric over list of numStas"
+            
+            folder_name = f"{alias_name}_{alias}_bars"
+            os.makedirs(os.path.join(img_dir, folder_name), exist_ok=True)
+
+            xtick_labels = ["AP"] + ["STA {}".format(i + 1) for i in range(bar_plots_params['numStas'][0])]
+
+            plot_bar_metric(campaign,
+                            bar_plots_params,
+                            result_parsing_function,
+                            xtick_labels,
+                            runs,
+                            xlabel="Node ID",
+                            ylabel=ylabel,
+                            filename=os.path.join(folder_name, filename))
 
 
 def compute_avg_thr_mbps(pkts_df):
@@ -430,26 +456,27 @@ if __name__ == '__main__':
                          filename='jain_fairness_vs_aggrRate.png')
 
         # bar plots
-        bar_plots_params = param_combination
-        bar_plots_params['appDataRate'] = [bar_plots_params['appDataRate'][-1]]
-        assert len(bar_plots_params['numStas']) == 1, "Cannot plot bar metric over list of numStas"
-        out_labels = ["AP"] + ["STA {}".format(i+1) for i in range(bar_plots_params['numStas'][0])]
-        plot_bar_metric(campaign,
-                        param_combination,
-                        compute_user_thr,
-                        out_labels,
-                        numRuns,
-                        xlabel="Node ID",
-                        ylabel="Throughput [Mbps]",
-                        filename='user_thr.png')
-        plot_bar_metric(campaign,
-                        param_combination,
-                        compute_user_avg_delay,
-                        out_labels,
-                        numRuns,
-                        xlabel="Node ID",
-                        ylabel="Avg delay [ms]",
-                        filename='user_delay.png')
+        for_each = 'appDataRate'
+        alias_name = 'normOfferedTraffic'
+        alias_vals = norm_offered_traffic
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_thr,
+                            numRuns,
+                            for_each=for_each,
+                            alias_name=alias_name,
+                            alias_vals=alias_vals,
+                            ylabel="Throughput [Mbps]",
+                            filename='user_thr.png')
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_avg_delay,
+                            numRuns,
+                            for_each=for_each,
+                            alias_name=alias_name,
+                            alias_vals=alias_vals,
+                            ylabel="Avg delay [ms]",
+                            filename='user_delay.png')
 
     elif args.paramSet == 'onoff':
         applicationType = "onoff"
@@ -520,26 +547,27 @@ if __name__ == '__main__':
                          filename='jain_fairness_vs_aggrRate.png')
 
         # bar plots
-        bar_plots_params = param_combination
-        bar_plots_params['appDataRate'] = [bar_plots_params['appDataRate'][-1]]
-        assert len(bar_plots_params['numStas']) == 1, "Cannot plot bar metric over list of numStas"
-        out_labels = ["AP"] + ["STA {}".format(i + 1) for i in range(bar_plots_params['numStas'][0])]
-        plot_bar_metric(campaign,
-                        param_combination,
-                        compute_user_thr,
-                        out_labels,
-                        numRuns,
-                        xlabel="Node ID",
-                        ylabel="Throughput [Mbps]",
-                        filename='user_thr.png')
-        plot_bar_metric(campaign,
-                        param_combination,
-                        compute_user_avg_delay,
-                        out_labels,
-                        numRuns,
-                        xlabel="Node ID",
-                        ylabel="Avg delay [ms]",
-                        filename='user_delay.png')
+        for_each = 'appDataRate'
+        alias_name = 'normOfferedTraffic'
+        alias_vals = norm_offered_traffic
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_thr,
+                            numRuns,
+                            for_each=for_each,
+                            alias_name=alias_name,
+                            alias_vals=alias_vals,
+                            ylabel="Throughput [Mbps]",
+                            filename='user_thr.png')
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_avg_delay,
+                            numRuns,
+                            for_each=for_each,
+                            alias_name=alias_name,
+                            alias_vals=alias_vals,
+                            ylabel="Avg delay [ms]",
+                            filename='user_delay.png')
 
     elif args.paramSet == 'onoff_stdev':
         applicationType = "onoff"
@@ -615,26 +643,27 @@ if __name__ == '__main__':
                          xscale="log")
 
         # bar plots
-        bar_plots_params = param_combination
-        bar_plots_params['onoffPeriodStdev'] = [bar_plots_params['onoffPeriodStdev'][-1]]
-        assert len(bar_plots_params['numStas']) == 1, "Cannot plot bar metric over list of numStas"
-        out_labels = ["AP"] + ["STA {}".format(i + 1) for i in range(bar_plots_params['numStas'][0])]
-        plot_bar_metric(campaign,
-                        param_combination,
-                        compute_user_thr,
-                        out_labels,
-                        numRuns,
-                        xlabel="Node ID",
-                        ylabel="Throughput [Mbps]",
-                        filename='user_thr.png')
-        plot_bar_metric(campaign,
-                        param_combination,
-                        compute_user_avg_delay,
-                        out_labels,
-                        numRuns,
-                        xlabel="Node ID",
-                        ylabel="Avg delay [ms]",
-                        filename='user_delay.png')
+        for_each = 'onoffPeriodStdev'
+        alias_name = 'onOffPeriodDeviationRatio'
+        alias_vals = onOffPeriodDeviationRatio
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_thr,
+                            numRuns,
+                            for_each=for_each,
+                            alias_name=alias_name,
+                            alias_vals=alias_vals,
+                            ylabel="Throughput [Mbps]",
+                            filename='user_thr.png')
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_avg_delay,
+                            numRuns,
+                            for_each=for_each,
+                            alias_name=alias_name,
+                            alias_vals=alias_vals,
+                            ylabel="Avg delay [ms]",
+                            filename='user_delay.png')
 
     elif args.paramSet == 'spPeriodicity':
         applicationType = ["constant", "onoff", "crazyTaxi", "fourElements"]
@@ -705,26 +734,21 @@ if __name__ == '__main__':
                          filename='jain_fairness_vs_allocationPeriod.png')
 
         # bar plots
-        bar_plots_params = param_combination
-        bar_plots_params['allocationPeriod'] = [bar_plots_params['allocationPeriod'][0]]
-        assert len(bar_plots_params['numStas']) == 1, "Cannot plot bar metric over list of numStas"
-        out_labels = ["AP"] + ["STA {}".format(i + 1) for i in range(bar_plots_params['numStas'][0])]
-        plot_bar_metric(campaign,
-                        param_combination,
-                        compute_user_thr,
-                        out_labels,
-                        numRuns,
-                        xlabel="Node ID",
-                        ylabel="Throughput [Mbps]",
-                        filename='user_thr.png')
-        plot_bar_metric(campaign,
-                        param_combination,
-                        compute_user_avg_delay,
-                        out_labels,
-                        numRuns,
-                        xlabel="Node ID",
-                        ylabel="Avg delay [ms]",
-                        filename='user_delay.png')
+        for_each = 'applicationType'
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_thr,
+                            numRuns,
+                            for_each=for_each,
+                            ylabel="Throughput [Mbps]",
+                            filename='user_thr.png')
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_avg_delay,
+                            numRuns,
+                            for_each=for_each,
+                            ylabel="Avg delay [ms]",
+                            filename='user_delay.png')
 
     elif args.paramSet == 'onoffPeriodicity':
         applicationType = "onoff"
@@ -795,26 +819,27 @@ if __name__ == '__main__':
                          filename='jain_fairness_vs_onoffPeriodMean.png')
 
         # bar plots
-        bar_plots_params = param_combination
-        bar_plots_params['onoffPeriodMean'] = [bar_plots_params['onoffPeriodMean'][-1]]
-        assert len(bar_plots_params['numStas']) == 1, "Cannot plot bar metric over list of numStas"
-        out_labels = ["AP"] + ["STA {}".format(i + 1) for i in range(bar_plots_params['numStas'][0])]
-        plot_bar_metric(campaign,
-                        param_combination,
-                        compute_user_thr,
-                        out_labels,
-                        numRuns,
-                        xlabel="Node ID",
-                        ylabel="Throughput [Mbps]",
-                        filename='user_thr.png')
-        plot_bar_metric(campaign,
-                        param_combination,
-                        compute_user_avg_delay,
-                        out_labels,
-                        numRuns,
-                        xlabel="Node ID",
-                        ylabel="Avg delay [ms]",
-                        filename='user_delay.png')
+        for_each = 'onoffPeriodMean'
+        alias_name = 'onoffPeriodRatio'
+        alias_vals = onoffPeriodRatio
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_thr,
+                            numRuns,
+                            for_each=for_each,
+                            alias_name=alias_name,
+                            alias_vals=alias_vals,
+                            ylabel="Throughput [Mbps]",
+                            filename='user_thr.png')
+        plot_all_bars_metric(campaign,
+                            param_combination,
+                            compute_user_avg_delay,
+                            numRuns,
+                            for_each=for_each,
+                            alias_name=alias_name,
+                            alias_vals=alias_vals,
+                            ylabel="Avg delay [ms]",
+                            filename='user_delay.png')
 
 
     else:
