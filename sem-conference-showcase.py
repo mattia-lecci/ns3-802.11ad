@@ -586,6 +586,60 @@ if __name__ == '__main__':
         
         # bar plots vars
         for_each = 'numStas'
+
+    elif args.paramSet == "smartStart":
+        applicationType = "onoff"
+        smartStart = [True, False]
+
+        param_combination = run_simulations(applicationType=applicationType,
+                                            normOfferedTraffic=normOfferedTraffic,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
+
+        # line plots vars
+        xx = smartStart
+        hue_var = "allocationPeriod"
+        xlabel = "smartStart"
+        
+        # bar plots vars
+        for_each = 'allocationPeriod'
+
+    elif args.paramSet == "accessCbapIfAllocated":
+        applicationType = "onoff"
+        accessCbapIfAllocated = [True, False]
+
+        param_combination = run_simulations(applicationType=applicationType,
+                                            normOfferedTraffic=normOfferedTraffic,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
+
+        # line plots vars
+        xx = accessCbapIfAllocated
+        hue_var = "allocationPeriod"
+        xlabel = "accessCbapIfAllocated"
+        
+        # bar plots vars
+        for_each = 'allocationPeriod'
     
     else:
         raise ValueError('paramsSet={} not recognized'.format(args.paramSet))
