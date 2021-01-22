@@ -38,7 +38,7 @@ def run_simulations(applicationType, normOfferedTraffic, socketType, mpduAggrega
         "onoffPeriodMean": onoffPeriodMean,
         "onoffPeriodStdev": onoffPeriodStdev,
         "smartStart": smartStart,
-        # "RngRun": list(range(numRuns)),
+        "RngRun": list(range(numRuns)),
     })
 
     campaign.run_missing_simulations(param_combination)
@@ -51,6 +51,8 @@ def run_simulations(applicationType, normOfferedTraffic, socketType, mpduAggrega
     # campaign.run_missing_simulations(
     #     param_combination
     # )
+
+    param_combination.pop("RngRun")
 
     return param_combination
 
