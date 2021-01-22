@@ -286,6 +286,9 @@ if __name__ == '__main__':
                         help="The number of runs per simulation. Default: 5",
                         type=int,
                         default=5)
+    parser.add_argument("--campaignName",
+                        help="MANDATORY parameter for the campaign name. Suggested: commit hash",
+                        default=None)
     # baseline parameters
     parser.add_argument("--applicationType",
                         help="The baseline applicationType. Default: onoff",
@@ -318,10 +321,9 @@ if __name__ == '__main__':
                         help="The baseline numStas. Default: 4",
                         type=int,
                         default=4)
-    parser.add_argument("--accessCbapIfAllocated",
-                        help="The baseline accessCbapIfAllocated. Default: true",
-                        type=str,
-                        default="true")
+    parser.add_argument('--accessCbapIfAllocated', dest='accessCbapIfAllocated', action='store_true')
+    parser.add_argument('--dontAccessCbapIfAllocated', dest='accessCbapIfAllocated', action='store_false')
+    parser.set_defaults(accessCbapIfAllocated=True)
     parser.add_argument("--biDurationUs",
                         help="The baseline biDurationUs [us]. Default: 102400",
                         type=int,
@@ -336,11 +338,12 @@ if __name__ == '__main__':
                         default=0.0)
     args = parser.parse_args()
 
+    assert args.campaignName is not None, "Undefined parameter --campaignName"
     print(f'Starting sem simulation for paramSet={args.paramSet} with {args.cores} core(s)...')
 
     sem.parallelrunner.MAX_PARALLEL_PROCESSES = args.cores
     ns_path = os.path.dirname(os.path.realpath(__file__))
-    campaign_name = "BasicTest"
+    campaign_name = args.campaignName
     script = "scheduler_comparison_qd_dense"
     campaign_dir = os.path.join(ns_path, "campaigns", "scheduler_comparison_qd_dense-" + campaign_name)
     img_dir = os.path.join(campaign_dir, 'img', args.paramSet)
