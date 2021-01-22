@@ -70,7 +70,7 @@ def remove_simulations(broken_results):
 
 def check_stderr(result):
     if len(result['output']['stderr']) > 0:
-        print('Invalid simulation: ', result['meta']['id'])
+        print('Invalid simulation: ', result['meta']['id'], file=sys.stderr)
         return result
     else:
         return []
@@ -97,6 +97,7 @@ def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, x
     plt.ylabel(ylabel)
     plt.legend()
     fig.savefig(os.path.join(img_dir, filename))
+    plt.close(fig)
 
 
 def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labels, runs, xlabel, ylabel, filename):
@@ -109,7 +110,8 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     # extract group variable
     metric_dims = list(metric.squeeze().dims)
     metric_dims.remove("metrics")  # multiple output from parsing function mapped into "metrics"
-    metric_dims.remove("runs")  # multiple runs are averaged
+    if runs > 1:
+        metric_dims.remove("runs")  # multiple runs are averaged
     assert len(metric_dims) == 1, f"There must only be one group_var, instead, metric_dims={metric_dims}"
     group_var = metric_dims[0]
 
@@ -127,6 +129,7 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     ax.set_xticks(range(len(out_labels)))
     ax.set_xticklabels(out_labels)
     fig.savefig(os.path.join(img_dir, filename))
+    plt.close(fig)
 
 
 def plot_all_bars_metric(campaign, parameter_space, result_parsing_function, runs, for_each, ylabel, filename, alias_name=None, alias_vals=None):
@@ -214,7 +217,7 @@ def compute_user_avg_delay(result):
 
     user_delay_ms = compute_avg_user_metric(result['params']['numStas'], pkts_df, compute_avg_delay_ms)
     if np.any(np.isnan(user_delay_ms)):
-        print(f"nan delay for {result['meta']['id']}")
+        print(f"nan delay for {result['meta']['id']}", file=sys.stderr)
     return user_delay_ms
 
 
@@ -226,7 +229,7 @@ def compute_avg_aggr_delay_ms(result):
 
     delay = compute_avg_delay_ms(pkts_df)
     if np.isnan(delay):
-        print(f"no packets for {result['meta']['id']}")
+        print(f"no packets for {result['meta']['id']}", file=sys.stderr)
     return delay
 
 
@@ -240,7 +243,7 @@ def compute_std_aggr_delay_ms(result):
         delay_std_s = (pkts_df['RxTimestamp_ns'] - pkts_df['TxTimestamp_ns']).std() / 1e9 * 1e3  # [ms]
     else:
         delay_std_s = np.nan
-        print(f"no packets for {result['meta']['id']}")
+        print(f"no packets for {result['meta']['id']}", file=sys.stderr)
     return delay_std_s
 
 
@@ -255,7 +258,7 @@ def compute_avg_delay_variation_ms(result):
         dv_s = np.mean(np.abs(np.diff(delay_s)))
     else:
         dv_s = np.nan
-        print(f"no packets for {result['meta']['id']}")
+        print(f"no packets for {result['meta']['id']}", file=sys.stderr)
     return dv_s
 
 
