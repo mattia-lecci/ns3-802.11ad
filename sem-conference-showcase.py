@@ -213,6 +213,8 @@ def compute_user_avg_delay(result):
                                      numeric_cols='all')
 
     user_delay_ms = compute_avg_user_metric(result['params']['numStas'], pkts_df, compute_avg_delay_ms)
+    if np.any(np.isnan(user_delay_ms)):
+        print(f"nan delay for {result['meta']['id']}")
     return user_delay_ms
 
 
@@ -223,6 +225,8 @@ def compute_avg_aggr_delay_ms(result):
                                      numeric_cols='all')
 
     delay = compute_avg_delay_ms(pkts_df)
+    if np.isnan(delay):
+        print(f"no packets for {result['meta']['id']}")
     return delay
 
 
@@ -236,6 +240,7 @@ def compute_std_aggr_delay_ms(result):
         delay_std_s = (pkts_df['RxTimestamp_ns'] - pkts_df['TxTimestamp_ns']).std() / 1e9 * 1e3  # [ms]
     else:
         delay_std_s = np.nan
+        print(f"no packets for {result['meta']['id']}")
     return delay_std_s
 
 
@@ -250,6 +255,7 @@ def compute_avg_delay_variation_ms(result):
         dv_s = np.mean(np.abs(np.diff(delay_s)))
     else:
         dv_s = np.nan
+        print(f"no packets for {result['meta']['id']}")
     return dv_s
 
 
