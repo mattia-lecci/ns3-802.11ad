@@ -190,14 +190,14 @@ PeriodicDmgWifiScheduler::AddNewAllocation (uint8_t sourceAid, const DmgTspecEle
 
       blocks = GetAvailableBlocks (allocDuration, spInterval, MAX_NUM_BLOCKS);
 
-      if (blocks.size () <= 1)
+      if (blocks.size () < allocPeriod)
         {
           if (info.GetAllocationFormat () == ISOCHRONOUS && minimumAllocation <= allocDuration)
             {
               // Get number of available blocks using minimum allocation duration 
               blocks = GetAvailableBlocks (minimumAllocation, spInterval, MAX_NUM_BLOCKS); 
               if (blocks.size () == 0 ||
-                  (allocPeriod > 1 && blocks.size () <= 1))
+                  (allocPeriod >= 1 && blocks.size () < allocPeriod))
                 {
                   // if we cannot guarantee AT LEAST TWO periodic SPs, the request is rejected
                   NS_LOG_INFO ("Failed status: AllocationFormat required=" << info.GetAllocationFormat () <<
