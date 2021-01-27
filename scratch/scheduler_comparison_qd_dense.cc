@@ -332,7 +332,7 @@ main (int argc, char *argv[])
   std::string systemPath = SystemPath::FindSelfDirectory ();
   std::vector<std::string> pathComponents = SplitString (systemPath, '/');
   std::string inputPath = GetInputPath (pathComponents);
-  NS_LOG_UNCOND (inputPath);
+  std::cout << inputPath << std::endl;
 
   /*** Configure TCP Options ***/
   std::map<std::string, std::string>::const_iterator iter = tcpVariants.find (tcpVariant);
