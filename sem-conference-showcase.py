@@ -76,7 +76,7 @@ def check_stderr(result):
         return []
 
 
-def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, xx, hue_var, xlabel, ylabel, filename, xscale="linear", yscale="linear"):
+def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, xx, hue_var, xlabel, ylabel, filename, ylim=None, xscale="linear", yscale="linear"):
     print("Plotting (line): ", result_parsing_function.__name__)
     metric = campaign.get_results_as_xarray(parameter_space,
                                             result_parsing_function,
@@ -95,7 +95,9 @@ def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, x
     plt.yscale(yscale)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
+    plt.ylim(ylim)
     plt.legend()
+    plt.grid()
     fig.savefig(os.path.join(img_dir, filename))
     plt.close(fig)
 
@@ -128,6 +130,7 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     ax.set_ylabel(ylabel)
     ax.set_xticks(range(len(out_labels)))
     ax.set_xticklabels(out_labels)
+    plt.grid()
     fig.savefig(os.path.join(img_dir, filename))
     plt.close(fig)
 
@@ -671,6 +674,17 @@ if __name__ == '__main__':
                      xlabel=xlabel,
                      ylabel='Avg delay [ms]',
                      filename='avg_delay.png',
+                     **line_plot_kwargs)
+    plot_line_metric(campaign=campaign,
+                     parameter_space=param_combination,
+                     result_parsing_function=compute_avg_aggr_delay_ms,
+                     runs=numRuns,
+                     xx=xx,
+                     hue_var=hue_var,
+                     xlabel=xlabel,
+                     ylabel='Avg delay [ms]',
+                     filename='avg_delay_100ms.png',
+                     ylim=(0, 100),
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
