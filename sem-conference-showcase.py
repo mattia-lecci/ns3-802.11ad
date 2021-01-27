@@ -160,12 +160,10 @@ def plot_all_bars_metric(campaign, parameter_space, result_parsing_function, run
                             filename=os.path.join(folder_name, filename))
 
 
-def compute_avg_thr_mbps(pkts_df):
+def compute_avg_thr_mbps(pkts_df, dt):
     if len(pkts_df) > 0:
-        tstart = pkts_df['TxTimestamp_ns'].iloc[0] / 1e9
-        tend = pkts_df['RxTimestamp_ns'].iloc[-1] / 1e9
         rx_mb = pkts_df['PktSize_B'].sum() * 8 / 1e6
-        thr_mbps = rx_mb / (tend - tstart)
+        thr_mbps = rx_mb / dt
     else:
         thr_mbps = 0
 
@@ -194,7 +192,7 @@ def compute_norm_aggr_thr(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    thr_mbps = compute_avg_thr_mbps(pkts_df)
+    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params']['simulationTime'])
     aggr_rate_mbps = result['params']['numStas'] * sem_utils.sta_data_rate_mbps(result['params']['numStas'],
                                                                                 result['params']['phyMode'],
                                                                                 result['params']['normOfferedTraffic'])
@@ -208,7 +206,7 @@ def compute_user_thr(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr_mbps = compute_avg_user_metric(result['params']['numStas'], pkts_df, compute_avg_thr_mbps)
+    user_thr_mbps = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']['simulationTime']))
     return user_thr_mbps
 
 
