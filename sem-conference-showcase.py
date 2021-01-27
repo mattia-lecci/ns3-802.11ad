@@ -544,7 +544,7 @@ if __name__ == '__main__':
 
     elif args.paramSet == "mcs":
         applicationType = "onoff"
-        phyMode = [f"DMG_MCS{n}" for n in range(12)]  # MCS 0, ..., MCS 12
+        phyMode = [f"DMG_MCS{n}" for n in range(12 + 1)]  # MCS 0, ..., MCS 12
 
         param_combination = run_simulations(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
