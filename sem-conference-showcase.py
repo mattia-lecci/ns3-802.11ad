@@ -179,6 +179,18 @@ def compute_avg_delay_ms(pkts_df):
     return delay
 
 
+def get_allocated_stas(result):
+    sp_trace_df = sem_utils.output_to_df(result,
+                                      data_filename="spTrace.csv",
+                                      column_sep=',',
+                                      numeric_cols='all')
+
+    unique_stas = set(sp_trace_df['SrcNodeId'])
+    # remove AP (0) and CBAP (255)
+    unique_stas -= {0, 255}
+    return list(unique_stas)
+
+
 def compute_avg_user_metric(num_stas, pkts_df, metric):
     user_metric = [metric(pkts_df[pkts_df['SrcNodeId'] == srcNodeId])
                 for srcNodeId in range(num_stas + 1)]
@@ -269,8 +281,16 @@ def compute_jain_fairness(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr = compute_avg_user_metric(result['params']['numStas'], pkts_df, compute_avg_thr_mbps)
-    jain = sem_utils.jain_fairness(user_thr[1:])  # exclude user 0: AP
+    user_thr = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']['simulationTime']))
+    
+    if result['params']['allocationPeriod'] == 0:
+        # fairness among all STAs
+        # idx=0 is the AP and range() exlcudes last element
+        allocated_stas = list(range(1, result['params']['numStas'] + 1))
+    else:
+          # fairness only among STAs with allocated SPs
+        allocated_stas = get_allocated_stas(result)
+    jain = sem_utils.jain_fairness([user_thr[i] for i in allocated_stas])
     return jain
 
 
