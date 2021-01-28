@@ -1,0 +1,31 @@
+#!/bin/bash
+
+#SBATCH --job-name 11ad_waf
+#SBATCH --output 11ad_waf.o%j
+#SBATCH --error 11ad_waf.e%j
+#SBATCH --mail-user leccimat@dei.unipd.it
+#SBATCH --mail-type ALL
+#SBATCH
+#SBATCH --time 365-00:00:00
+#SBATCH --ntasks 1
+#SBATCH --cpus-per-task 32
+#SBATCH --partition allgroups
+#SBATCH --exclude runner-[04-08,13-15,16-19],gpu1,gpu2
+#SBATCH --mem 64G
+
+
+cd $SLURM_SUBMIT_DIR
+
+source /nfsd/opt/anaconda37/anaconda.sh
+source activate /nfsd/signet3/leccimat/private/conda_envs/11ad-env
+
+# tap-device breaks the compilation with a warning
+# CXXFLAGS="-Wall" ./waf configure --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static -d optimized --out=build/optimized
+
+# Looks like optimized build is broken
+./waf configure --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static -d debug --out=build/
+./waf build
+
+# NS_LOG="DmgWifiMac=**:DmgStaWifiMac=**:DmgApWifiMac=**:MacLow=**" ./waf --run "scratch/scheduler_comparison_qd_dense"
+# ./waf --run "scratch/scheduler_comparison_qd_dense"
+./waf --run "scratch/scheduler_comparison_qd_dense --applicationType=onoff --normOfferedTraffic=0.75 --socketType=ns3::UdpSocketFactory --mpduAggregationSize=262143 --phyMode=DMG_MCS4 --simulationTime=10.0 --numStas=4 --allocationPeriod=0 --accessCbapIfAllocated=true --biDurationUs=102400 --onoffPeriodMean=0.1024 --onoffPeriodStdev=0.0 --smartStart=true --RngRun=0"
