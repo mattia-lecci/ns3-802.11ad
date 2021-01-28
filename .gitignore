@@ -38,6 +38,8 @@ build/
 /.cproject
 /.project
 
-results/
 # sem campaigns
+results/
 campaigns/
+
+*.csv
