@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#SBATCH --job-name 11ad_sem
+#SBATCH --output 11ad_sem.o%j
+#SBATCH --error 11ad_sem.e%j
+#SBATCH --mail-user leccimat@dei.unipd.it
+#SBATCH --mail-type ALL
+#SBATCH
+#SBATCH --time 365-00:00:00
+#SBATCH --ntasks 1
+#SBATCH --cpus-per-task 32
+#SBATCH --partition allgroups
+#SBATCH --exclude runner-[04-08,13-15,16-19],gpu1,gpu2
+#SBATCH --mem 64G
+
+
+cd $SLURM_SUBMIT_DIR
+
+source /nfsd/opt/anaconda37/anaconda.sh
+source activate /nfsd/signet3/leccimat/private/conda_envs/11ad-env
+
+# NOTE: the optimized build is not working properly on the blade
+./waf configure --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static -d debug --out=build/
+./waf build
+
+srun ./run_sem.sh

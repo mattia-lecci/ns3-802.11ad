@@ -20,60 +20,34 @@ import copy
 sys.stdout.flush()
 
 
-def run_simulations(applicationType, normOfferedTraffic, socketType, mpduAggregationSize,
+def to_list(x):
+    if type(x) == list:
+        return x
+    else:
+        return [x]
+
+
+def get_param_combination(applicationType, normOfferedTraffic, socketType, mpduAggregationSize,
                     phyMode, simulationTime, numStas, allocationPeriod,
                     accessCbapIfAllocated, biDurationUs, onoffPeriodMean,
                     onoffPeriodStdev, smartStart, numRuns):
     param_combination = OrderedDict({
-        "applicationType": applicationType,
-        "normOfferedTraffic": normOfferedTraffic,
-        "socketType": socketType,
-        "mpduAggregationSize": mpduAggregationSize,
-        "phyMode": phyMode,
-        "simulationTime": simulationTime,
-        "numStas": numStas,
-        "allocationPeriod": allocationPeriod,
-        "accessCbapIfAllocated": accessCbapIfAllocated,
-        "biDurationUs": biDurationUs,
-        "onoffPeriodMean": onoffPeriodMean,
-        "onoffPeriodStdev": onoffPeriodStdev,
-        "smartStart": smartStart,
-        "RngRun": list(range(numRuns)),
+        "applicationType": to_list(applicationType),
+        "normOfferedTraffic": to_list(normOfferedTraffic),
+        "socketType": to_list(socketType),
+        "mpduAggregationSize": to_list(mpduAggregationSize),
+        "phyMode": to_list(phyMode),
+        "simulationTime": to_list(simulationTime),
+        "numStas": to_list(numStas),
+        "allocationPeriod": to_list(allocationPeriod),
+        "accessCbapIfAllocated": to_list(accessCbapIfAllocated),
+        "biDurationUs": to_list(biDurationUs),
+        "onoffPeriodMean": to_list(onoffPeriodMean),
+        "onoffPeriodStdev": to_list(onoffPeriodStdev),
+        "smartStart": to_list(smartStart)
     })
 
-    campaign.run_missing_simulations(param_combination)
-    broken_results = campaign.get_results_as_numpy_array(param_combination,
-                                                         check_stderr,
-                                                         numRuns)
-    # remove_simulations(broken_results)
-    #
-    # print("Run simulations with param_combination " + str(param_combination))
-    # campaign.run_missing_simulations(
-    #     param_combination
-    # )
-
-    param_combination.pop("RngRun")
-
     return param_combination
-
-
-def remove_simulations(broken_results):
-    print("Removing broken simulations")
-    # TODO test map(campaign.db.delete_result, broken_results.flatten())
-    for result in broken_results.flatten():
-        if result:
-            print("removing ", str(result))
-            campaign.db.delete_result(result)
-    # write updated database to disk
-    campaign.db.write_to_disk()
-
-
-def check_stderr(result):
-    if len(result['output']['stderr']) > 0:
-        print('Invalid simulation: ', result['meta']['id'], file=sys.stderr)
-        return result
-    else:
-        return []
 
 
 def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, xx, hue_var, xlabel, ylabel, filename, ylim=None, xscale="linear", yscale="linear"):
@@ -299,10 +273,6 @@ def compute_jain_fairness(result):
 ###############
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--cores",
-                        help="Value of sem.parallelrunner.MAX_PARALLEL_PROCESSES. Default: 1",
-                        type=int,
-                        default=1)
     parser.add_argument("--paramSet",
                         help="The parameter set of a given campaign. Available: {basic, onoff, onoff_stdev}. Mandatory parameter!",
                         default='')
@@ -363,23 +333,21 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     assert args.campaignName is not None, "Undefined parameter --campaignName"
-    print(f'Starting sem simulation for paramSet={args.paramSet} with {args.cores} core(s)...')
+    print(f'Starting to produce plots for for paramSet={args.paramSet}...')
 
-    sem.parallelrunner.MAX_PARALLEL_PROCESSES = args.cores
+    sem.parallelrunner.MAX_PARALLEL_PROCESSES = 1
     ns_path = os.path.dirname(os.path.realpath(__file__))
     campaign_name = args.campaignName
-    script = "scheduler_comparison_qd_dense"
     campaign_dir = os.path.join(ns_path, "campaigns", "scheduler_comparison_qd_dense-" + campaign_name)
     img_dir = os.path.join(campaign_dir, 'img', args.paramSet)
 
     # Set up campaign
     # skip_configuration parameter is not included in the official SEM release as of December 2020
     # It was, though, included in the develop branch https://github.com/signetlabdei/sem/tree/develop
-    campaign = sem.CampaignManager.new(
-        ns_path, script, campaign_dir,
-        overwrite=False,
+    campaign = sem.CampaignManager.load(
+        campaign_dir, ns_path,
         runner_type="ParallelRunner",
-        optimized=True,
+        optimized=False,
         skip_configuration=True,
         check_repo=False
     )
@@ -417,7 +385,7 @@ if __name__ == '__main__':
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
         normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
-        param_combination = run_simulations(applicationType=applicationType,
+        param_combination = get_param_combination(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
@@ -445,7 +413,7 @@ if __name__ == '__main__':
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
         normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
-        param_combination = run_simulations(applicationType=applicationType,
+        param_combination = get_param_combination(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
@@ -474,7 +442,7 @@ if __name__ == '__main__':
         onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
         onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
 
-        param_combination = run_simulations(applicationType=applicationType,
+        param_combination = get_param_combination(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
@@ -506,7 +474,7 @@ if __name__ == '__main__':
         onoffPeriodMean = 1 / 30  # 30 FPS
         onoffPeriodStdev = 0.1 * onoffPeriodMean
 
-        param_combination = run_simulations(applicationType=applicationType,
+        param_combination = get_param_combination(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
@@ -535,7 +503,7 @@ if __name__ == '__main__':
         onoffPeriodRatio = [1, 1.75*0.5, 1.5*0.5, 1.25*0.5, 1.1*0.5, 0.5, 0.5/1.1, 0.5/1.25, 0.5/1.5, 0.5/1.75, 1/4]
         onoffPeriodMean = [r * biDurationUs/1e6 for r in onoffPeriodRatio]
 
-        param_combination = run_simulations(applicationType=applicationType,
+        param_combination = get_param_combination(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
@@ -556,15 +524,13 @@ if __name__ == '__main__':
         xlabel = "OnOff App mean period (BI^-1)"
 
         # bar plots var
-        for_each = 'phyMode'
-        alias_name = 'onoffPeriodRatio'
-        alias_vals = onoffPeriodRatio
+        for_each = 'allocationPeriod'
 
     elif args.paramSet == "mcs":
         applicationType = "onoff"
         phyMode = [f"DMG_MCS{n}" for n in range(12 + 1)]  # MCS 0, ..., MCS 12
 
-        param_combination = run_simulations(applicationType=applicationType,
+        param_combination = get_param_combination(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
@@ -591,7 +557,7 @@ if __name__ == '__main__':
         applicationType = "onoff"
         numStas = [2, 4, 6, 8, 10]
 
-        param_combination = run_simulations(applicationType=applicationType,
+        param_combination = get_param_combination(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
@@ -618,7 +584,7 @@ if __name__ == '__main__':
         applicationType = "onoff"
         smartStart = [True, False]
 
-        param_combination = run_simulations(applicationType=applicationType,
+        param_combination = get_param_combination(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
@@ -645,7 +611,7 @@ if __name__ == '__main__':
         applicationType = "onoff"
         accessCbapIfAllocated = [True, False]
 
-        param_combination = run_simulations(applicationType=applicationType,
+        param_combination = get_param_combination(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
                                             socketType=socketType,
                                             mpduAggregationSize=mpduAggregationSize,
