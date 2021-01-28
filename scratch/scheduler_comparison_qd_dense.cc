@@ -156,7 +156,7 @@ InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address srcIp, Ipv
     OnOffHelper onoff (socketType, dstInet);
 
     // params: constant on time (burst), truncated positive gaussian off time
-    double onTime = 10e-6;
+    double onTime = 50e-6;
     std::string onTimeStr = std::to_string (onTime);
     
     std::string meanOffTimeStr = std::to_string (onoffPeriodMean - onTime);

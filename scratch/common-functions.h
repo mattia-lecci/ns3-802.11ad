@@ -338,7 +338,7 @@ ComputeServicePeriodDuration (uint64_t appDataRate, uint64_t phyModeDataRate, ui
   double dataRateRatio = double (appDataRate) / phyModeDataRate;
   uint32_t spDuration = ceil (dataRateRatio * biDurationUs);
 
-  return spDuration * 1.2;
+  return spDuration * 1.05;
 }
 
 
