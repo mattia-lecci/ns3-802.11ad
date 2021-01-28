@@ -488,7 +488,8 @@ main (int argc, char *argv[])
 
   /** Install Applications **/
   Config::SetDefault ("ns3::OnOffApplication::StartOn", BooleanValue (true));
-  std::string dataRate = ComputeUserDataRateFromNormOfferedTraffic (phyMode, numStas, normOfferedTraffic);
+  std::string rateType = "phy";
+  std::string dataRate = ComputeUserDataRateFromNormOfferedTraffic (phyMode, numStas, normOfferedTraffic, msduAggregationSize, mpduAggregationSize, rateType);
   for (uint32_t i = 0; i < staWifiNodes.GetN (); i++)
     {
       communicationPairMap[staWifiNodes.Get (i)] = InstallApplication (staWifiNodes.Get (i), apWifiNode.Get (0),

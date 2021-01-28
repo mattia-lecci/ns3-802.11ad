@@ -659,15 +659,28 @@ GetDmgPhyRate (std::string phyMode)
 
 
 std::string 
-ComputeUserDataRateFromNormOfferedTraffic (std::string phyMode, uint16_t numStas, double normOfferedTraffic)
+ComputeUserDataRateFromNormOfferedTraffic (std::string phyMode, uint16_t numStas, double normOfferedTraffic, uint32_t msduAggregationSize_B, uint32_t mpduAggregationSize_B, std::string rateType)
 {
     NS_ABORT_MSG_IF (normOfferedTraffic < 0.0 || normOfferedTraffic > 1.0, "Invalid normOfferedTraffic=" << normOfferedTraffic);
+    double rate = 0;
     
-    double phyRate = GetDmgPhyRate (phyMode); // avoid integer approximations
-    double maxRatePerSta = phyRate / numStas;
+    if (rateType == "phy")
+    {
+      rate = GetWifiRate (phyMode, msduAggregationSize_B, mpduAggregationSize_B, "phy"); 
+    }
+    else if (rateType == "mac")
+    {
+      rate = GetWifiRate (phyMode, msduAggregationSize_B, mpduAggregationSize_B, "mac");
+    }
+    else
+    {
+      NS_FATAL_ERROR ("Invalid rate type " << rateType);
+    }
+    
+    double maxRatePerSta = rate / numStas;
     double ratePerSta = normOfferedTraffic * maxRatePerSta;
 
-    std::cout << "phyRate=" << phyRate/1e6 << " Mbps, maxRatePerSta=" << maxRatePerSta/1e6 << " Mbps, ratePerSta=" << ratePerSta/1e6 << " Mbps" << std::endl;
+    std::cout << "phyRate=" << rate/1e6 << " Mbps, maxRatePerSta=" << maxRatePerSta/1e6 << " Mbps, ratePerSta=" << ratePerSta/1e6 << " Mbps" << std::endl;
 
     std::stringstream ss;
     ss << std::fixed << std::setprecision(0) << ratePerSta << "bps";
