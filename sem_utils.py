@@ -11,20 +11,32 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-MCS_PARAMS = {"DMG_MCS0": {"phy_rate": 27.5e6},
-              "DMG_MCS1": {"phy_rate": 385e6},
-              "DMG_MCS2": {"phy_rate": 770e6},
-              "DMG_MCS3": {"phy_rate": 962.5e6},
-              "DMG_MCS4": {"phy_rate": 1155e6},
-              "DMG_MCS5": {"phy_rate": 1251.25e6},
-              "DMG_MCS6": {"phy_rate": 1540e6},
-              "DMG_MCS7": {"phy_rate": 1925e6},
-              "DMG_MCS8": {"phy_rate": 2310e6},
-              "DMG_MCS9": {"phy_rate": 2502.5e6},
-              "DMG_MCS10": {"phy_rate": 3080e6},
-              "DMG_MCS11": {"phy_rate": 3850e6},
-              "DMG_MCS12": {"phy_rate": 4620e6}}
-
+MCS_PARAMS = {"DMG_MCS0": {"phy_rate": 27.5e6,
+                           "mac_rate": 36610012},
+              "DMG_MCS1": {"phy_rate": 385e6,
+                           "mac_rate": 379110719},
+              "DMG_MCS2": {"phy_rate": 770e6,
+                           "mac_rate": 746778458},
+              "DMG_MCS3": {"phy_rate": 962.5e6,
+                           "mac_rate": 926434274},
+              "DMG_MCS4": {"phy_rate": 1155e6,
+                           "mac_rate": 1103569911},
+              "DMG_MCS5": {"phy_rate": 1251.25e6,
+                           "mac_rate": 1191091513},
+              "DMG_MCS6": {"phy_rate": 1540e6,
+                           "mac_rate": 1449796626},
+              "DMG_MCS7": {"phy_rate": 1925e6,
+                           "mac_rate": 1785991762},
+              "DMG_MCS8": {"phy_rate": 2310e6,
+                           "mac_rate": 2113204353},
+              "DMG_MCS9": {"phy_rate": 2502.5e6,
+                           "mac_rate": 2273125221},
+              "DMG_MCS10": {"phy_rate": 3080e6,
+                            "mac_rate": 2739606669},
+              "DMG_MCS11": {"phy_rate": 3850e6,
+                            "mac_rate": 3332262090},
+              "DMG_MCS12": {"phy_rate": 4620e6,
+                            "mac_rate": 3893826210}}
 
 def data_rate_bps_2_float_mbps(str):
     if str[-3:] == "bps" and str[:-3].isnumeric():
@@ -150,8 +162,9 @@ def bar_plot(ax, data, data_yerr=None, colors=None, total_width=0.8, single_widt
         ax.legend(bars, data.keys(), loc='best')
 
 
-def sta_data_rate_mbps(num_stas, phy_mode, norm_offered_traffic):
-    phy_rate_mbps = MCS_PARAMS[phy_mode]['phy_rate'] / 1e6
+def sta_data_rate_mbps(num_stas, phy_mode, norm_offered_traffic, mpduAggregationSize):
+    assert mpduAggregationSize == 262143, f"Only max A-MPDU support (262143), requesting for {mpduAggregationSize}, instead"
+    phy_rate_mbps = MCS_PARAMS[phy_mode]['mac_rate'] / 1e6
     max_rate_per_sta = phy_rate_mbps / num_stas
     rate_per_sta = norm_offered_traffic * max_rate_per_sta
     return rate_per_sta

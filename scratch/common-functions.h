@@ -21,6 +21,9 @@ class DmgApWifiMac;
 class DmgStaWifiMac;
 class PacketSink;
 
+/* define const */
+const std::string RATE_NORMALIZATION_TYPE = "mac";
+
 /* Type definitions */
 struct Parameters : public SimpleRefCount<Parameters>
 {
@@ -370,15 +373,15 @@ GetDmgTspecElement (uint8_t allocId, bool isPseudoStatic, uint32_t minAllocation
 
 
 uint64_t
-GetWifiRate (std::string phyMode, uint32_t msduAggregationSize_B, uint32_t mpduAggregationSize_B, std::string rateType)
+GetWifiRate (std::string phyMode, uint32_t msduAggregationSize_B, uint32_t mpduAggregationSize_B)
 {
-  if (rateType == "phy")
+  if (RATE_NORMALIZATION_TYPE == "phy")
   {
     uint64_t rate = WifiMode (phyMode).GetPhyRate ();
     return rate;
   }
   
-  if (rateType == "mac")
+  if (RATE_NORMALIZATION_TYPE == "mac")
   {
     int mcs = std::stoi (phyMode.substr (7));
     
@@ -454,8 +457,7 @@ GetWifiRate (std::string phyMode, uint32_t msduAggregationSize_B, uint32_t mpduA
   }
 
   NS_FATAL_ERROR ("Invalid configuration: phyMode=" << phyMode << ", msduAggregationSize_B=" << msduAggregationSize_B <<
-                  ", mpduAggregationSize_B=" << mpduAggregationSize_B << ", rateType=" << rateType);
-  return 0;
+                  ", mpduAggregationSize_B=" << mpduAggregationSize_B << ", RATE_NORMALIZATION_TYPE=" << RATE_NORMALIZATION_TYPE);
 }
 
 
@@ -465,7 +467,7 @@ StationAssociated (AssocParams params, Mac48Address apAddress, uint16_t aid)
   // std::cout << "DMG STA=" << params.staWifiMac->GetAddress () << " associated with DMG PCP/AP=" << apAddress << ", AID=" << aid << std::endl;
 
   uint32_t spDurationOverBi = ComputeServicePeriodDuration (params.communicationPair.appDataRate,
-                                                      GetWifiRate (params.phyMode, params.msduAggregationSize, params.mpduAggregationSize, "mac"),
+                                                      GetWifiRate (params.phyMode, params.msduAggregationSize, params.mpduAggregationSize),
                                                       params.apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
   
   uint32_t spBlockDuration = spDurationOverBi;
@@ -659,24 +661,10 @@ GetDmgPhyRate (std::string phyMode)
 
 
 std::string 
-ComputeUserDataRateFromNormOfferedTraffic (std::string phyMode, uint16_t numStas, double normOfferedTraffic, uint32_t msduAggregationSize_B, uint32_t mpduAggregationSize_B, std::string rateType)
+ComputeUserDataRateFromNormOfferedTraffic (std::string phyMode, uint16_t numStas, double normOfferedTraffic, uint32_t msduAggregationSize_B, uint32_t mpduAggregationSize_B)
 {
     NS_ABORT_MSG_IF (normOfferedTraffic < 0.0 || normOfferedTraffic > 1.0, "Invalid normOfferedTraffic=" << normOfferedTraffic);
-    double rate = 0;
-    
-    if (rateType == "phy")
-    {
-      rate = GetWifiRate (phyMode, msduAggregationSize_B, mpduAggregationSize_B, "phy"); 
-    }
-    else if (rateType == "mac")
-    {
-      rate = GetWifiRate (phyMode, msduAggregationSize_B, mpduAggregationSize_B, "mac");
-    }
-    else
-    {
-      NS_FATAL_ERROR ("Invalid rate type " << rateType);
-    }
-    
+    double rate = GetWifiRate (phyMode, msduAggregationSize_B, mpduAggregationSize_B);     
     double maxRatePerSta = rate / numStas;
     double ratePerSta = normOfferedTraffic * maxRatePerSta;
 

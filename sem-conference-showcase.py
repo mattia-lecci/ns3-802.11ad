@@ -207,7 +207,8 @@ def compute_norm_aggr_thr(result):
     thr_mbps = compute_avg_thr_mbps(pkts_df, result['params']['simulationTime'])
     aggr_rate_mbps = result['params']['numStas'] * sem_utils.sta_data_rate_mbps(result['params']['numStas'],
                                                                                 result['params']['phyMode'],
-                                                                                result['params']['normOfferedTraffic'])
+                                                                                result['params']['normOfferedTraffic'],
+                                                                                result['params']['mpduAggregationSize'])
     norm_thr = thr_mbps / aggr_rate_mbps  # TODO check why sometimes >1
     return norm_thr
 
@@ -556,9 +557,7 @@ if __name__ == '__main__':
         xlabel = "OnOff App mean period (BI^-1)"
 
         # bar plots var
-        for_each = 'phyMode'
-        alias_name = 'onoffPeriodRatio'
-        alias_vals = onoffPeriodRatio
+        for_each = 'allocationPeriod'
 
     elif args.paramSet == "mcs":
         applicationType = "onoff"
