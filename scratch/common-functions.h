@@ -483,7 +483,10 @@ StationAssociated (AssocParams params, Mac48Address apAddress, uint16_t aid)
   std::cout << "nSubBlocks=" << nSubBlocks << " of duration subBlockDuration=" << subBlockDuration << std::endl;
   for (uint32_t i = 0; i < nSubBlocks; i++)
   {
-    params.staWifiMac->CreateAllocation (GetDmgTspecElement (params.allocationId, true, subBlockDuration, subBlockDuration, params.allocationPeriod));
+    uint8_t allocationId = params.allocationId + i;
+    NS_ABORT_MSG_IF (allocationId == 0 || allocationId > 0xF,
+                     "Invalid value for allocationId=" << +allocationId << ": it should be non-zero (for SPs) and 4 bits long");
+    params.staWifiMac->CreateAllocation (GetDmgTspecElement (allocationId, true, subBlockDuration, subBlockDuration, params.allocationPeriod));
   }
 }
 
