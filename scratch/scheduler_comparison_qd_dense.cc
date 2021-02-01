@@ -580,7 +580,7 @@ main (int argc, char *argv[])
         staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeBoundCallback (&ServicePeriodStarted, spTrace, &mac2AppMap));
       }
       staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeBoundCallback (&ServicePeriodEnded, spTrace, &mac2IdMap));
-      beQueue->TraceConnectWithoutContext ("OccupancyChanged", MakeBoundCallback (&MacQueueChanged, queueTrace, staWifiNodes.Get (i)));
+      // beQueue->TraceConnectWithoutContext ("OccupancyChanged", MakeBoundCallback (&MacQueueChanged, queueTrace, staWifiNodes.Get (i)));
 
       // NOTE: produces large outputs and slows down the simulation
       // wifiPhy->TraceConnectWithoutContext ("PhyTxBegin", MakeBoundCallback (&PhyTxBegin, phyTxBeginTrace, staWifiNodes.Get (i)));
@@ -592,7 +592,7 @@ main (int argc, char *argv[])
       
       Ptr<OnOffApplication> onoffTrace;
       onoffTrace = StaticCast<OnOffApplication> (it->second.srcApp);
-      onoffTrace->TraceConnectWithoutContext ("Tx", MakeBoundCallback (&OnOffTrace, appTrace, it->second.srcApp->GetNode ()->GetId ()));
+      // onoffTrace->TraceConnectWithoutContext ("Tx", MakeBoundCallback (&OnOffTrace, appTrace, it->second.srcApp->GetNode ()->GetId ()));
     }
 
   /* Install FlowMonitor on all nodes */
