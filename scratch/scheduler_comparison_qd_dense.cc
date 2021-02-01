@@ -121,6 +121,8 @@ Ptr<OutputStreamWrapper> queueTrace;
 Ptr<OutputStreamWrapper> appTrace;
 /* PHY TX begin stream */
 Ptr<OutputStreamWrapper> phyTxBeginTrace;
+/* Flow monitor stream */
+Ptr<OutputStreamWrapper> flowMonitorTrace;
 
 CommunicationPair
 InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address srcIp, Ipv4Address dstIp, std::string appDataRate, uint16_t appNumber)
@@ -616,6 +618,10 @@ main (int argc, char *argv[])
   Simulator::Destroy ();
 
   /* Print per flow statistics */
+  flowMonitorTrace = ascii.CreateFileStream ("flowMonitorTrace.csv");
+  *flowMonitorTrace->GetStream () << "timeFirstTxPacket,timeFirstRxPacket,timeLastTxPacket,timeLastRxPacket,avgDelay," << 
+                                     "avgJitter,lastDelay,txBytes,rxBytes,txPackets,rxPackets,lostPackets,timesForwarded" << std::endl;
+
   monitor->CheckForLostPackets ();
   Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
   FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
@@ -627,6 +633,23 @@ main (int argc, char *argv[])
       std::cout << "  Tx Bytes:   " << i->second.txBytes << std::endl;
       std::cout << "  Rx Packets: " << i->second.rxPackets << std::endl;
       std::cout << "  Rx Bytes:   " << i->second.rxBytes << std::endl;
+      
+      double avgDelay = i->second.rxPackets > 0 ? double(i->second.delaySum.GetNanoSeconds ()) / i->second.rxPackets : NAN;
+      double avgJitter = i->second.rxPackets > 1 ? double(i->second.jitterSum.GetNanoSeconds ()) / (i->second.rxPackets - 1) : NAN;
+      *flowMonitorTrace->GetStream () << i->second.timeFirstTxPacket.GetNanoSeconds () << "," <<
+                                        i->second.timeFirstRxPacket.GetNanoSeconds () << "," <<
+                                        i->second.timeLastTxPacket.GetNanoSeconds () << "," <<
+                                        i->second.timeLastRxPacket.GetNanoSeconds () << "," <<
+                                        avgDelay << "," <<
+                                        avgJitter << "," <<
+                                        i->second.lastDelay.GetNanoSeconds () << "," <<
+                                        i->second.txBytes << "," <<
+                                        i->second.rxBytes << "," <<
+                                        i->second.txPackets << "," <<
+                                        i->second.rxPackets << "," <<
+                                        i->second.lostPackets << "," <<
+                                        i->second.timesForwarded <<
+                                        std::endl;
     }
 
   /* Print Application Layer Results Summary */
