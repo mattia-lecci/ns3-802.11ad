@@ -41,6 +41,7 @@ struct CommunicationPair
   Time lastDelayValue = Seconds (0);
   uint64_t appDataRate;
   Time startTime;
+  bool inSlowStart = false;
 };
 bool operator== (const CommunicationPair& a, const CommunicationPair& b);
 bool operator!= (const CommunicationPair& a, const CommunicationPair& b);
@@ -71,7 +72,7 @@ operator== (const CommunicationPair& a, const CommunicationPair& b)
   return a.srcApp == b.srcApp && a.packetSink == b.packetSink &&
     a.totalRx == b.totalRx && a.jitter == b.jitter &&
     a.lastDelayValue == b.lastDelayValue && a.appDataRate == b.appDataRate &&
-    a.startTime == b.startTime;
+    a.startTime == b.startTime && a.inSlowStart == b.inSlowStart;
 }
 
 bool
@@ -341,7 +342,7 @@ ComputeServicePeriodDuration (uint64_t appDataRate, uint64_t phyModeDataRate, ui
   double dataRateRatio = double (appDataRate) / phyModeDataRate;
   uint32_t spDuration = ceil (dataRateRatio * biDurationUs);
 
-  return spDuration * 1.05;
+  return spDuration * 1.1;
 }
 
 
@@ -500,6 +501,12 @@ StationDeAssociated (CommunicationPair& communicationPair, Ptr<DmgWifiMac> staWi
 }
 
 void
+SetAppDataRate (CommunicationPair& communicationPair, DataRateValue drv)
+{
+  communicationPair.srcApp->SetAttribute ("DataRate", drv);   
+}
+
+void
 ADDTSResponseReceived (std::string schedulerType, 
   CommunicationPair& communicationPair, 
   Mac48Address address, 
@@ -539,11 +546,29 @@ ADDTSResponseReceivedSmart (std::string schedulerType,
   {
     // APP is started right away if using SPs
     // Looks like there are problems to start directly from a SP (probably the setup of block ACKs)
-    // The app is thus started during the CBAP and suspended immediately
+    // The app is thus started during the CBAP with a few packets and suspended immediately
     // NOTE: stopping the application results in closing the socket (cannot restart in a later moment).
     // The application is thus suspended (custom method)
-    StartApplication (communicationPair);
-    Simulator::Schedule (MilliSeconds (1), &SuspendApplication, communicationPair);
+    if (!communicationPair.inSlowStart)
+      {
+        // necessary when users have multiple SPs
+        communicationPair.inSlowStart = true;
+
+        // For high required rates, the first few packets might create lots of collisions which need
+        // to be dealt with during the first few SPs, producing an initial transient.
+        // Reducing the rate to 10Gbps (remember: just a few tens of us for a burst) produces enough
+        // packets to setup the connection while still being able to handle them with no transient
+        DataRateValue originalRate;
+        communicationPair.srcApp->GetAttribute ("DataRate", originalRate);
+        communicationPair.srcApp->SetAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
+
+        StartApplication (communicationPair);
+
+        // Immediately suspend the app and reset the data rate to the original one
+        Simulator::Schedule (MilliSeconds (1), &SuspendApplication, communicationPair);
+        Simulator::Schedule (MilliSeconds (1), &SetAppDataRate, communicationPair, originalRate);
+
+      }
   }
   
 }
