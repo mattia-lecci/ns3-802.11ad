@@ -205,7 +205,6 @@ if __name__ == '__main__':
 
     elif args.paramSet == 'onoff':
         applicationType = "onoff"
-        allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
         normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
         param_combination = run_simulations(applicationType=applicationType,
@@ -225,7 +224,6 @@ if __name__ == '__main__':
 
     elif args.paramSet == 'onoff_stdev':
         applicationType = "onoff"
-        allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
         onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
         onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
 
