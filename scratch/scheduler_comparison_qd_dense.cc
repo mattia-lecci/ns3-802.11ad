@@ -207,7 +207,7 @@ else if (applicationType == "crazyTaxi" || applicationType == "fourElements")
       }
 
     GameStreamingApplicationHelper serverStreamingHelper (gamingServerId, dstInet);
-    serverStreamingHelper.SetAttribute ("BitRate", DataRateValue (DataRate (appDataRate)));
+    serverStreamingHelper.SetAttribute ("DataRate", DataRateValue (DataRate (appDataRate)));
 
     srcApp = serverStreamingHelper.Install (srcNode);
   }

@@ -36,7 +36,7 @@ GameStreamingApplication::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::GameStreamingApplication")
     .SetParent<Application> ()
     .SetGroupName ("Applications")
-    .AddAttribute ("BitRate",
+    .AddAttribute ("DataRate",
                    "Application's data rate. If 0 bps, the default application bitrate is used.",
                    DataRateValue (DataRate ("0bps")),
                    MakeDataRateAccessor (&GameStreamingApplication::GetTargetDataRate,
@@ -65,7 +65,8 @@ GameStreamingApplication::GameStreamingApplication ()
     m_totalFailedPackets (0),
     m_totalSentBytes (0),
     m_totalReceivedBytes (0),
-    m_socket (0)
+    m_socket (0),
+    m_isOn (false)
 {
   NS_LOG_FUNCTION (this);
 }
@@ -156,6 +157,12 @@ void
 GameStreamingApplication::Send (Ptr<TrafficStream> traffic)
 {
   NS_LOG_FUNCTION (this);
+  if (!m_isOn)
+  {
+    NS_LOG_LOGIC ("App is not on: packet not sent");
+    return;
+  }
+
   NS_ASSERT (traffic->sendEvent.IsExpired ());
 
   std::stringstream addrString;
@@ -294,6 +301,7 @@ GameStreamingApplication::StartApplication (void)
   m_socket->Connect (m_peerAddress);
   m_socket->SetRecvCallback (MakeCallback (&GameStreamingApplication::HandleRead, this));
   m_socket->SetAllowBroadcast (true);
+  m_isOn = true;
 
   for (auto &traffic : m_trafficStreams)
     {
@@ -305,13 +313,10 @@ void
 GameStreamingApplication::StopApplication ()
 {
   NS_LOG_FUNCTION (this);
-  for (const auto &traffic : m_trafficStreams)
-    {
-      if (traffic->sendEvent.IsRunning ())
-        {
-          Simulator::Cancel (traffic->sendEvent);
-        }
-    }
+  
+  CancelEvents ();
+  m_isOn = false;
+
   if (m_socket != 0)
     {
       m_socket->Close ();
@@ -319,6 +324,29 @@ GameStreamingApplication::StopApplication ()
   else
     {
       NS_LOG_WARN ("GameStreamingApplication found null socket to close in StopApplication");
+    }
+}
+
+void
+GameStreamingApplication::SuspendApplication ()
+{
+  NS_LOG_FUNCTION (this);
+
+  CancelEvents ();
+  m_isOn = false;
+}
+
+void
+GameStreamingApplication::CancelEvents ()
+{
+  NS_LOG_FUNCTION (this);
+
+  for (const auto &traffic : m_trafficStreams)
+    {
+      if (traffic->sendEvent.IsRunning ())
+        {
+          Simulator::Cancel (traffic->sendEvent);
+        }
     }
 }
 

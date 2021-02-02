@@ -133,7 +133,7 @@ main (int argc, char *argv[])
 
   /* Gaming streaming server*/
   GameStreamingApplicationHelper serverStreamingHelper (gamingServerId, InetSocketAddress (interfaces.GetAddress (0), 9));
-  serverStreamingHelper.SetAttribute ("BitRate", DataRateValue (DataRate (serverBitrate)));
+  serverStreamingHelper.SetAttribute ("DataRate", DataRateValue (DataRate (serverBitrate)));
   ApplicationContainer serverApps = serverStreamingHelper.Install (nodes.Get (1));
   gamingServer = StaticCast<GameStreamingApplication> (serverApps.Get (0));
   serverApps.Start (Seconds (0.01));

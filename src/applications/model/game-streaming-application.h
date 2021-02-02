@@ -108,6 +108,11 @@ public:
 
   virtual void StartApplication (void) override;
   virtual void StopApplication (void) override;
+  /**
+   * Stop the application without closing the socket.
+   * This allows to restart the application later.
+   */
+  virtual void SuspendApplication (void);     // Called at time specified by Stop
 
   /**
    * Set the target application data rate of the game streaming application.
@@ -139,6 +144,11 @@ protected:
    *  Initialize the parameters of different streams
    */
   virtual void InitializeStreams () = 0;
+
+  /**
+   *  Cancel scheduled traffic events
+   */
+  void CancelEvents (void);
 
   DataRate m_referenceDataRate;  //!< Reference bit-rate
   double m_scalingFactor;        //!< Traffic scaling factor
@@ -186,6 +196,7 @@ private:
   Ptr<Socket>  m_socket;               //!< Socket
   Address      m_peerAddress;          //!< Remote peer address
   DataRate     m_tagetDataRate;        //!< Target application data rate
+  bool         m_isOn;                 //!< Whether the app is on or suspended/stopped
 
   struct TrafficStream : public SimpleRefCount<TrafficStream>
   {
