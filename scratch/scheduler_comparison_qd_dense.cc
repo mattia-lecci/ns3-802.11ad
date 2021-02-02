@@ -576,7 +576,7 @@ main (int argc, char *argv[])
       }
       else
       {
-        staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, schedulerType, communicationPair));
+        staWifiMac->TraceConnectWithoutContext ("ADDTSResponse", MakeBoundCallback (&ADDTSResponseReceived, schedulerType, communicationPair, biDurationUs));
         staWifiMac->TraceConnectWithoutContext ("ServicePeriodStarted", MakeBoundCallback (&ServicePeriodStarted, spTrace, &mac2AppMap));
       }
       staWifiMac->TraceConnectWithoutContext ("ServicePeriodEnded", MakeBoundCallback (&ServicePeriodEnded, spTrace, &mac2IdMap));

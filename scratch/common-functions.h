@@ -508,16 +508,22 @@ SetAppDataRate (CommunicationPair& communicationPair, DataRateValue drv)
 
 void
 ADDTSResponseReceived (std::string schedulerType, 
-  CommunicationPair& communicationPair, 
+  CommunicationPair& communicationPair,
+  uint64_t biDurationUs, 
   Mac48Address address, 
   StatusCode status, 
   DmgTspecElement element)
 {
   // TODO: Add this code to DmgStaWifiMac class.
-  // std::cout << "DMG STA=" << address << " received ADDTS response with status=" << status.IsSuccess () << std::endl;
   if (status.IsSuccess () || schedulerType == "ns3::CbapOnlyDmgWifiScheduler")
   {
-    StartApplication (communicationPair);
+    // By default, the applications at the STAs begin at distributed
+    // time-instants, on an interval equivalent to the BI duration.
+    Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
+    x->SetAttribute ("Min", DoubleValue (0));
+    x->SetAttribute ("Max", DoubleValue (biDurationUs));
+    Time startTime = MicroSeconds(x->GetValue ());
+    Simulator::Schedule (startTime, &StartApplication, communicationPair);
   }
 }
 
