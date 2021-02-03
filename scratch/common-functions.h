@@ -274,7 +274,7 @@ CalculateSingleStreamThroughput (Ptr<PacketSink> sink, uint64_t &lastTotalRx, do
 
 
 void
-CalculateThroughput (Time thrLogPeriodicity, CommunicationPairMap& communicationPairMap)
+CalculateThroughput (Time thrLogPeriodicity, CommunicationPairMap& communicationPairMap, uint32_t biIdx)
 {
   double totalThr = 0;
   double thr;
@@ -290,9 +290,9 @@ CalculateThroughput (Time thrLogPeriodicity, CommunicationPairMap& communication
       totalThr += thr;
       thrString += to_string_with_precision<double> (thr, 3) + ", ";
     }
-  std::cout << duration << thrString << totalThr << std::endl;
+  std::cout << biIdx++ << ", " << thrString << totalThr << std::endl;
 
-  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput, thrLogPeriodicity, communicationPairMap);
+  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput, thrLogPeriodicity, communicationPairMap, biIdx);
 }
 
 
@@ -503,7 +503,7 @@ StationAssociated (AssocParams params, Mac48Address apAddress, uint16_t aid)
   uint32_t nSubBlocks = std::ceil (double (spBlockDuration) / MAX_SP_BLOCK_DURATION);
   uint32_t subBlockDuration = spBlockDuration / nSubBlocks;
 
-  std::cout << "nSubBlocks=" << nSubBlocks << " of duration subBlockDuration=" << subBlockDuration << std::endl;
+  // std::cout << "nSubBlocks=" << nSubBlocks << " of duration subBlockDuration=" << subBlockDuration << std::endl;
   for (uint32_t i = 0; i < nSubBlocks; i++)
   {
     uint8_t allocationId = params.allocationId + i;
@@ -747,7 +747,7 @@ ComputeUserDataRateFromNormOfferedTraffic (std::string phyMode, uint16_t numStas
     double maxRatePerSta = rate / numStas;
     double ratePerSta = normOfferedTraffic * maxRatePerSta;
 
-    std::cout << "phyRate=" << rate/1e6 << " Mbps, maxRatePerSta=" << maxRatePerSta/1e6 << " Mbps, ratePerSta=" << ratePerSta/1e6 << " Mbps" << std::endl;
+    // std::cout << "phyRate=" << rate/1e6 << " Mbps, maxRatePerSta=" << maxRatePerSta/1e6 << " Mbps, ratePerSta=" << ratePerSta/1e6 << " Mbps" << std::endl;
 
     std::stringstream ss;
     ss << std::fixed << std::setprecision(0) << ratePerSta << "bps";

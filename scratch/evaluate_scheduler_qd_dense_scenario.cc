@@ -93,7 +93,6 @@ uint32_t msduAggregationSize = 7935;               /* The maximum aggregation si
 uint32_t mpduAggregationSize = 262143;             /* The maximum aggregation size for A-MPDU [bytes]. */
 double simulationTime = 10;                        /* Simulation time [s]. */
 uint8_t allocationId = 1;                          /* The allocation ID of the DMG Tspec element to create */
-Time thrLogPeriodicity = MilliSeconds (100);       /* The log periodicity for the throughput of each STA [ms] */
 
 Mac2IdMap mac2IdMap;
 Mac2AppMap mac2AppMap;
@@ -170,6 +169,7 @@ main (int argc, char *argv[])
   std::string qdChannelFolder = "DenseScenario";  /* The name of the folder containing the QD-Channel files. */
   std::string logComponentsStr = "";              /* Components to be logged from tLogStart to tLogEnd separated by ':' */
   uint32_t biDurationUs = 102400;                    /* Duration of a BI [us]. Must be a multiple of 1024 us */
+  Time thrLogPeriodicity = MicroSeconds (biDurationUs);       /* The log periodicity for the throughput of each STA [ms] */
   double tLogStart = 0.0;                         /* Log start [s] */
   double tLogEnd = simulationTime;                /* Log end [s] */
   std::string appDataRateStr = "";                /* List of App Data Rates for each SP allocation separated by ':' */
@@ -518,7 +518,7 @@ main (int argc, char *argv[])
 
   /* Print Output */
   NS_LOG_UNCOND ("Application Layer Throughput per Communicating Pair [Mbps]");
-  std::string rowOutput = "Time [s],";
+  std::string rowOutput = "BI idx,";
   std::string columnName;
   for (auto it = communicationPairMap.cbegin (); it != communicationPairMap.cend (); ++it)
     {
@@ -528,7 +528,7 @@ main (int argc, char *argv[])
   NS_LOG_UNCOND (rowOutput + " Aggregate");
 
   /* Schedule Throughput Calulcations */
-  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput, thrLogPeriodicity, communicationPairMap);
+  Simulator::Schedule (thrLogPeriodicity, &CalculateThroughput, thrLogPeriodicity, communicationPairMap, 0);
 
   Simulator::Stop (Seconds (simulationTime + 0.101));
   Simulator::Run ();
