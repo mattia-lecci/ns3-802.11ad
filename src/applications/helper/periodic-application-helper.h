@@ -14,11 +14,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  */
-#ifndef ON_OFF_HELPER_H
-#define ON_OFF_HELPER_H
+#ifndef PERIODIC_APPLICATION_HELPER_H
+#define PERIODIC_APPLICATION_HELPER_H
 
 #include <stdint.h>
 #include <string>
@@ -28,26 +26,26 @@
 #include "ns3/net-device.h"
 #include "ns3/node-container.h"
 #include "ns3/application-container.h"
-#include "ns3/onoff-application.h"
+#include "ns3/periodic-application.h"
 
 namespace ns3 {
 
 class DataRate;
 
 /**
- * \ingroup onoff
- * \brief A helper to make it easier to instantiate an ns3::OnOffApplication 
+ * \ingroup application
+ * \brief A helper to make it easier to instantiate an ns3::PeriodicApplication 
  * on a set of nodes.
  */
-class OnOffHelper
+class PeriodicApplicationHelper
 {
 public:
   /**
-   * Create an OnOffHelper to make it easier to work with OnOffApplications
+   * Create an PeriodicApplicationHelper to make it easier to work with PeriodicApplications
    */
-  OnOffHelper ();
+  PeriodicApplicationHelper ();
   /**
-   * Create an OnOffHelper to make it easier to work with OnOffApplications
+   * Create an PeriodicApplicationHelper to make it easier to work with PeriodicApplications
    *
    * \param protocol the name of the protocol to use to send traffic
    *        by the applications. This string identifies the socket
@@ -56,7 +54,7 @@ public:
    * \param address the address of the remote node to send traffic
    *        to.
    */
-  OnOffHelper (std::string protocol, Address address);
+  PeriodicApplicationHelper (std::string protocol, Address address);
 
   /**
    * Helper function used to set the underlying application attributes.
@@ -67,39 +65,29 @@ public:
   void SetAttribute (std::string name, const AttributeValue &value);
 
   /**
-   * Helper function to set a constant rate source.  Equivalent to
-   * setting the attributes OnTime to constant 1000 seconds, OffTime to 
-   * constant 0 seconds, and the DataRate and PacketSize set accordingly
-   *
-   * \param dataRate DataRate object for the sending rate
-   * \param packetSize size in bytes of the packet payloads generated
-   */
-  void SetConstantRate (DataRate dataRate, uint32_t packetSize = 512);
-
-  /**
-   * Install an ns3::OnOffApplication on each node of the input container
+   * Install an ns3::PeriodicApplication on each node of the input container
    * configured with all the attributes set with SetAttribute.
    *
-   * \param c NodeContainer of the set of nodes on which an OnOffApplication 
+   * \param c NodeContainer of the set of nodes on which an PeriodicApplication 
    * will be installed.
    * \returns Container of Ptr to the applications installed.
    */
   ApplicationContainer Install (NodeContainer c) const;
 
   /**
-   * Install an ns3::OnOffApplication on the node configured with all the 
+   * Install an ns3::PeriodicApplication on the node configured with all the 
    * attributes set with SetAttribute.
    *
-   * \param node The node on which an OnOffApplication will be installed.
+   * \param node The node on which an PeriodicApplication will be installed.
    * \returns Container of Ptr to the applications installed.
    */
   ApplicationContainer Install (Ptr<Node> node) const;
 
   /**
-   * Install an ns3::OnOffApplication on the node configured with all the 
+   * Install an ns3::PeriodicApplication on the node configured with all the 
    * attributes set with SetAttribute.
    *
-   * \param nodeName The node on which an OnOffApplication will be installed.
+   * \param nodeName The node on which an PeriodicApplication will be installed.
    * \returns Container of Ptr to the applications installed.
    */
   ApplicationContainer Install (std::string nodeName) const;
@@ -111,7 +99,7 @@ public:
   * called by the user.
   *
   * \param stream first stream index to use
-  * \param c NodeContainer of the set of nodes for which the OnOffApplication
+  * \param c NodeContainer of the set of nodes for which the PeriodicApplication
   *          should be modified to use a fixed stream
   * \return the number of stream indices assigned by this helper
   */
@@ -119,10 +107,10 @@ public:
 
 private:
   /**
-   * Install an ns3::OnOffApplication on the node configured with all the 
+   * Install an ns3::PeriodicApplication on the node configured with all the 
    * attributes set with SetAttribute.
    *
-   * \param node The node on which an OnOffApplication will be installed.
+   * \param node The node on which an PeriodicApplication will be installed.
    * \returns Ptr to the application installed.
    */
   Ptr<Application> InstallPriv (Ptr<Node> node) const;
@@ -132,5 +120,5 @@ private:
 
 } // namespace ns3
 
-#endif /* ON_OFF_HELPER_H */
+#endif /* PERIODIC_APPLICATION_HELPER_H */
 
