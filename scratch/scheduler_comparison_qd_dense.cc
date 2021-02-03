@@ -174,8 +174,8 @@ InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address srcIp, Ipv
 
     // attributes
     helper.SetAttribute ("PacketSize", UintegerValue (packetSize));
-    helper.SetAttribute ("Period", StringValue (periodRv));
-    helper.SetAttribute ("BurstSize", StringValue (burstSizeRv));
+    helper.SetAttribute ("PeriodRv", StringValue (periodRv));
+    helper.SetAttribute ("BurstSizeRv", StringValue (burstSizeRv));
     srcApp = helper.Install (srcNode);
   }
 else if (applicationType == "bulk")

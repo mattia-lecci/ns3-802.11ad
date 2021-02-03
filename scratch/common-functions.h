@@ -215,10 +215,32 @@ StartApplication(CommunicationPair& communicationPair)
 void
 SuspendApplication(CommunicationPair& communicationPair)
 {
-  Ptr<OnOffApplication> app = DynamicCast<OnOffApplication> (communicationPair.srcApp);
-  if (app != 0)
+  Ptr<OnOffApplication> onoff = DynamicCast<OnOffApplication> (communicationPair.srcApp);
+  if (onoff != 0)
   {
-    app->SuspendApplication ();
+    onoff->SuspendApplication ();
+    return;
+  }
+
+  Ptr<PeriodicApplication> periodic = DynamicCast<PeriodicApplication> (communicationPair.srcApp);
+  if (periodic != 0)
+  {
+    periodic->SuspendApplication ();
+    return;
+  }
+
+  Ptr<CrazyTaxiStreamingServer> crazyTaxi = DynamicCast<CrazyTaxiStreamingServer> (communicationPair.srcApp);
+  if (crazyTaxi != 0)
+  {
+    crazyTaxi->SuspendApplication ();
+    return;
+  }
+
+  Ptr<FourElementsStreamingServer> fourElements = DynamicCast<FourElementsStreamingServer> (communicationPair.srcApp);
+  if (fourElements != 0)
+  {
+    fourElements->SuspendApplication ();
+    return;
   }
 }
 
@@ -501,9 +523,15 @@ StationDeAssociated (CommunicationPair& communicationPair, Ptr<DmgWifiMac> staWi
 }
 
 void
-SetAppDataRate (CommunicationPair& communicationPair, DataRateValue drv)
+SetAppDataRate (CommunicationPair& communicationPair, DataRateValue val)
 {
-  communicationPair.srcApp->SetAttribute ("DataRate", drv);   
+  communicationPair.srcApp->SetAttribute ("DataRate", val);   
+}
+
+void
+SetBurstSize (CommunicationPair& communicationPair, PointerValue val)
+{
+  communicationPair.srcApp->SetAttribute ("BurstSizeRv", val);   
 }
 
 void
@@ -564,15 +592,32 @@ ADDTSResponseReceivedSmart (std::string schedulerType,
         // to be dealt with during the first few SPs, producing an initial transient.
         // Reducing the rate to 10Gbps (remember: just a few tens of us for a burst) produces enough
         // packets to setup the connection while still being able to handle them with no transient
-        DataRateValue originalRate;
-        communicationPair.srcApp->GetAttribute ("DataRate", originalRate);
-        communicationPair.srcApp->SetAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
+        if (DynamicCast<OnOffApplication> (communicationPair.srcApp) ||
+            DynamicCast<CrazyTaxiStreamingServer> (communicationPair.srcApp) ||
+            DynamicCast<FourElementsStreamingServer> (communicationPair.srcApp))
+        {
+          DataRateValue originalRate;
+          communicationPair.srcApp->GetAttribute ("DataRate", originalRate);
+          communicationPair.srcApp->SetAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
+          Simulator::Schedule (MilliSeconds (1), &SetAppDataRate, communicationPair, originalRate);
+        }
+        else if (DynamicCast<PeriodicApplication> (communicationPair.srcApp))
+        {
+          PointerValue originalBurstSizeRv;
+          communicationPair.srcApp->GetAttribute ("BurstSizeRv", originalBurstSizeRv);
+          communicationPair.srcApp->SetAttribute ("BurstSizeRv", StringValue ("ns3::ConstantRandomVariable[Constant=100e3]"));
+          Simulator::Schedule (MilliSeconds (1), &SetBurstSize, communicationPair, originalBurstSizeRv);
+        }
+        else
+        {
+          NS_FATAL_ERROR ("Application type not recognized");
+        }
 
         StartApplication (communicationPair);
 
         // Immediately suspend the app and reset the data rate to the original one
         Simulator::Schedule (MilliSeconds (1), &SuspendApplication, communicationPair);
-        Simulator::Schedule (MilliSeconds (1), &SetAppDataRate, communicationPair, originalRate);
+        
 
       }
   }

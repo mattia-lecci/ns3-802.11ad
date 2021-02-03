@@ -59,11 +59,11 @@ PeriodicApplication::GetTypeId (void)
                    AddressValue (),
                    MakeAddressAccessor (&PeriodicApplication::m_peer),
                    MakeAddressChecker ())
-    .AddAttribute ("Period", "A RandomVariableStream used to pick the duration of the period [s].",
+    .AddAttribute ("PeriodRv", "A RandomVariableStream used to pick the duration of the period [s].",
                    StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"),
                    MakePointerAccessor (&PeriodicApplication::m_periodRv),
                    MakePointerChecker <RandomVariableStream>())
-    .AddAttribute ("BurstSize", "A RandomVariableStream used to pick the burst size in [B].",
+    .AddAttribute ("BurstSizeRv", "A RandomVariableStream used to pick the burst size in [B].",
                    StringValue ("ns3::ConstantRandomVariable[Constant=1e6]"),
                    MakePointerAccessor (&PeriodicApplication::m_burstSizeRv),
                    MakePointerChecker <RandomVariableStream>())
@@ -168,11 +168,7 @@ PeriodicApplication::StartApplication ()
     }
 
   // Ensure no pending event
-  CancelEvents ();
-  // If we are not yet connected, there is nothing to do here
-  // The ConnectionComplete upcall will start timers at that time
-  if (!m_connected) return;
-  
+  CancelEvents (); 
   StartSending ();
 }
 
@@ -234,6 +230,7 @@ PeriodicApplication::StartSending ()
   // schedule next burst
   Time period = Seconds (m_periodRv->GetValue ());
   NS_LOG_DEBUG ("Next burst scheduled in " << period);
+  NS_ABORT_MSG_IF (!period.IsPositive (), "Period must be non-negative, instead found period=" << period);
   m_nextBurstEvent = Simulator::Schedule (period, &PeriodicApplication::StartSending, this);
 }
 
