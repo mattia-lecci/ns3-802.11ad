@@ -22,12 +22,14 @@ def build(bld):
         'model/four-elements-game-streaming-application.cc',
         'model/mixture-random-variable.cc',
         'model/three-lognormal-random-variable.cc',
+        'model/periodic-application.cc',
         'helper/bulk-send-helper.cc',
         'helper/on-off-helper.cc',
         'helper/packet-sink-helper.cc',
         'helper/udp-client-server-helper.cc',
         'helper/udp-echo-helper.cc',
         'helper/game-streaming-application-helper.cc',
+        'helper/periodic-application-helper.cc',
         ]
 
     applications_test = bld.create_ns3_module_test_library('applications')
@@ -57,12 +59,14 @@ def build(bld):
         'model/four-elements-game-streaming-application.h',
         'model/mixture-random-variable.h',# TODO
         'model/three-lognormal-random-variable.h',# TODO
+        'model/periodic-application.h',
         'helper/bulk-send-helper.h',
         'helper/on-off-helper.h',
         'helper/packet-sink-helper.h',
         'helper/udp-client-server-helper.h',
         'helper/udp-echo-helper.h',
         'helper/game-streaming-application-helper.h',
+        'helper/periodic-application-helper.h',
         ]
 
     bld.ns3_python_bindings()
