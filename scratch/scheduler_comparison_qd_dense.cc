@@ -155,32 +155,28 @@ InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address srcIp, Ipv
   else if (applicationType == "onoff")
   {
     NS_ABORT_MSG_IF (onoffPeriodMean == 0, "onoffPeriodMean==0");
-    OnOffHelper onoff (socketType, dstInet);
+    PeriodicApplicationHelper helper (socketType, dstInet);
 
-    // params: constant on time (burst), truncated positive gaussian off time
-    double onTime = 50e-6;
-    std::string onTimeStr = std::to_string (onTime);
-    
-    std::string meanOffTimeStr = std::to_string (onoffPeriodMean - onTime);
+    // params
+    std::string meanOffTimeStr = std::to_string (onoffPeriodMean);
     std::string varOffTimeStr = std::to_string (onoffPeriodStdev * onoffPeriodStdev);
-    std::string boundOffTimeStr = meanOffTimeStr;
+    std::string boundOffTimeStr = meanOffTimeStr; // avoid negative periods
 
-    std::string onTimeRv = "ns3::ConstantRandomVariable[Constant=" + onTimeStr + "]";
-    std::string offTimeRv = "ns3::NormalRandomVariable[Mean=" + meanOffTimeStr + 
+    double burstSize = DataRate (appDataRate).GetBitRate ()/ 8.0 * onoffPeriodMean;
+    std::string burstSizeStr = std::to_string (burstSize);
+
+    std::string periodRv = "ns3::NormalRandomVariable[Mean=" + meanOffTimeStr + 
                             "|Variance=" + varOffTimeStr +
                             "|Bound=" + boundOffTimeStr + "]";
-    NS_LOG_DEBUG ("onTimeRv=" << onTimeRv);
-    NS_LOG_DEBUG ("offTimeRv=" << offTimeRv);
-
-    uint64_t adjustedAppDataRate = DataRate (appDataRate).GetBitRate () * onoffPeriodMean / onTime;
-    NS_LOG_DEBUG ("adjustedAppDataRate=" << DataRate (adjustedAppDataRate));
+    std::string burstSizeRv = "ns3::ConstantRandomVariable[Constant=" + burstSizeStr + "]";
+    NS_LOG_DEBUG ("periodRv=" << periodRv);
+    NS_LOG_DEBUG ("burstSizeRv=" << burstSizeRv);
 
     // attributes
-    onoff.SetAttribute ("PacketSize", UintegerValue (packetSize));
-    onoff.SetAttribute ("OnTime", StringValue (onTimeRv));
-    onoff.SetAttribute ("OffTime", StringValue (offTimeRv));
-    onoff.SetAttribute ("DataRate", DataRateValue (DataRate (adjustedAppDataRate)));
-    srcApp = onoff.Install (srcNode);
+    helper.SetAttribute ("PacketSize", UintegerValue (packetSize));
+    helper.SetAttribute ("Period", StringValue (periodRv));
+    helper.SetAttribute ("BurstSize", StringValue (burstSizeRv));
+    srcApp = helper.Install (srcNode);
   }
 else if (applicationType == "bulk")
   {
