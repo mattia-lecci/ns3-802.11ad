@@ -409,8 +409,37 @@ if __name__ == '__main__':
         # bar plots var
         for_each = 'normOfferedTraffic'
 
-    elif args.paramSet == 'onoff':
+    elif args.paramSet == 'onoff_smartOn':
         applicationType = "onoff"
+        smartStart = True
+        normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+
+        param_combination = get_param_combination(applicationType=applicationType,
+                                            normOfferedTraffic=normOfferedTraffic,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
+
+        # line plots vars
+        xx = normOfferedTraffic
+        hue_var = "allocationPeriod"
+        xlabel = "Aggr. Offered Rate / PHY Rate"
+
+        # bar plots var
+        for_each = 'normOfferedTraffic'
+
+    elif args.paramSet == 'onoff_smartOff':
+        applicationType = "onoff"
+        smartStart = False
         normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
         param_combination = get_param_combination(applicationType=applicationType,
@@ -468,7 +497,7 @@ if __name__ == '__main__':
         alias_name = 'onOffPeriodDeviationRatio'
         alias_vals = onOffPeriodDeviationRatio
 
-    elif args.paramSet == 'spPeriodicity':
+    elif args.paramSet == 'allApps':
         applicationType = ["constant", "onoff", "crazyTaxi", "fourElements"]
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
         onoffPeriodMean = 1 / 30  # 30 FPS
