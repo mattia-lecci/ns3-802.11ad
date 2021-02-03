@@ -224,6 +224,7 @@ if __name__ == '__main__':
 
     elif args.paramSet == 'onoff_stdev':
         applicationType = "onoff"
+        allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
         onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
         onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
 
