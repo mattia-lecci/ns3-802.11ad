@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//
-// Author: George F. Riley<riley@ece.gatech.edu>
-//
 
-// ns3 - On/Off Data Source Application class
-// George F. Riley, Georgia Tech, Spring 2007
-// Adapted from ApplicationOnOff in GTNetS.
 
 #include "ns3/log.h"
 #include "ns3/address.h"
@@ -37,7 +31,7 @@
 #include "ns3/packet.h"
 #include "ns3/uinteger.h"
 #include "ns3/trace-source-accessor.h"
-#include "onoff-application.h"
+#include "periodic-application.h"
 #include "ns3/udp-socket-factory.h"
 #include "ns3/string.h"
 #include "ns3/pointer.h"
@@ -46,123 +40,91 @@
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("OnOffApplication");
+NS_LOG_COMPONENT_DEFINE ("PeriodicApplication");
 
-NS_OBJECT_ENSURE_REGISTERED (OnOffApplication);
+NS_OBJECT_ENSURE_REGISTERED (PeriodicApplication);
 
 TypeId
-OnOffApplication::GetTypeId (void)
+PeriodicApplication::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::OnOffApplication")
+  static TypeId tid = TypeId ("ns3::PeriodicApplication")
     .SetParent<Application> ()
     .SetGroupName("Applications")
-    .AddConstructor<OnOffApplication> ()
-    .AddAttribute ("DataRate", "The data rate in on state.",
-                   DataRateValue (DataRate ("500kb/s")),
-                   MakeDataRateAccessor (&OnOffApplication::m_cbrRate),
-                   MakeDataRateChecker ())
+    .AddConstructor<PeriodicApplication> ()
     .AddAttribute ("PacketSize", "The size of packets sent in on state",
                    UintegerValue (512),
-                   MakeUintegerAccessor (&OnOffApplication::m_pktSize),
+                   MakeUintegerAccessor (&PeriodicApplication::m_pktSize),
                    MakeUintegerChecker<uint32_t> (1))
     .AddAttribute ("Remote", "The address of the destination",
                    AddressValue (),
-                   MakeAddressAccessor (&OnOffApplication::m_peer),
+                   MakeAddressAccessor (&PeriodicApplication::m_peer),
                    MakeAddressChecker ())
-    .AddAttribute ("OnTime", "A RandomVariableStream used to pick the duration of the 'On' state.",
+    .AddAttribute ("Period", "A RandomVariableStream used to pick the duration of the period [s].",
                    StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"),
-                   MakePointerAccessor (&OnOffApplication::m_onTime),
+                   MakePointerAccessor (&PeriodicApplication::m_periodRv),
                    MakePointerChecker <RandomVariableStream>())
-    .AddAttribute ("OffTime", "A RandomVariableStream used to pick the duration of the 'Off' state.",
-                   StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"),
-                   MakePointerAccessor (&OnOffApplication::m_offTime),
+    .AddAttribute ("BurstSize", "A RandomVariableStream used to pick the burst size in [B].",
+                   StringValue ("ns3::ConstantRandomVariable[Constant=1e6]"),
+                   MakePointerAccessor (&PeriodicApplication::m_burstSizeRv),
                    MakePointerChecker <RandomVariableStream>())
-    .AddAttribute ("MaxBytes", 
-                   "The total number of bytes to send. Once these bytes are sent, "
-                   "no packet is sent again, even in on state. The value zero means "
-                   "that there is no limit.",
-                   UintegerValue (0),
-                   MakeUintegerAccessor (&OnOffApplication::m_maxBytes),
-                   MakeUintegerChecker<uint64_t> ())
-    .AddAttribute ("MaxPackets",
-                   "The total number of packets to send. Once these packets are sent, "
-                   "no packet is sent again, even in on state. The value zero means "
-                   "that there is no limit.",
-                   UintegerValue (0),
-                   MakeUintegerAccessor (&OnOffApplication::m_maxPackets),
-                   MakeUintegerChecker<uint64_t> ())
     .AddAttribute ("Protocol", "The type of protocol to use. This should be "
                    "a subclass of ns3::SocketFactory",
                    TypeIdValue (UdpSocketFactory::GetTypeId ()),
-                   MakeTypeIdAccessor (&OnOffApplication::m_tid),
+                   MakeTypeIdAccessor (&PeriodicApplication::m_socketTid),
                    // This should check for SocketFactory as a parent
                    MakeTypeIdChecker ())
-    .AddAttribute ("StartOn", "Start the application with an On time if true, or Off if false.",
-                   BooleanValue (false),
-                   MakeBooleanAccessor (&OnOffApplication::m_startOn),
-                   MakeBooleanChecker ())
     .AddTraceSource ("Tx", "A new packet is created and is sent",
-                     MakeTraceSourceAccessor (&OnOffApplication::m_txTrace),
+                     MakeTraceSourceAccessor (&PeriodicApplication::m_txTrace),
                      "ns3::Packet::TracedCallback")
   ;
   return tid;
 }
 
 
-OnOffApplication::OnOffApplication ()
+PeriodicApplication::PeriodicApplication ()
   : m_socket (0),
     m_connected (false),
-    m_residualBits (0),
-    m_lastStartTime (Seconds (0)),
     m_totBytes (0),
-    m_txPackets (0),
-    m_startOn (false)
+    m_txPackets (0)
 {
   NS_LOG_FUNCTION (this);
 }
 
-OnOffApplication::~OnOffApplication()
+PeriodicApplication::~PeriodicApplication()
 {
   NS_LOG_FUNCTION (this);
-}
-
-void 
-OnOffApplication::SetMaxBytes (uint64_t maxBytes)
-{
-  NS_LOG_FUNCTION (this << maxBytes);
-  m_maxBytes = maxBytes;
 }
 
 Ptr<Socket>
-OnOffApplication::GetSocket (void) const
+PeriodicApplication::GetSocket (void) const
 {
   NS_LOG_FUNCTION (this);
   return m_socket;
 }
 
 uint64_t
-OnOffApplication::GetTotalTxPackets (void) const
+PeriodicApplication::GetTotalTxPackets (void) const
 {
   return m_txPackets;
 }
 
 uint64_t
-OnOffApplication::GetTotalTxBytes (void) const
+PeriodicApplication::GetTotalTxBytes (void) const
 {
   return m_totBytes;
 }
 
 int64_t 
-OnOffApplication::AssignStreams (int64_t stream)
+PeriodicApplication::AssignStreams (int64_t stream)
 {
   NS_LOG_FUNCTION (this << stream);
-  m_onTime->SetStream (stream);
-  m_offTime->SetStream (stream + 1);
+  m_periodRv->SetStream (stream);
+  m_burstSizeRv->SetStream (stream + 1);
   return 2;
 }
 
 void
-OnOffApplication::DoDispose (void)
+PeriodicApplication::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
 
@@ -172,14 +134,15 @@ OnOffApplication::DoDispose (void)
 }
 
 // Application Methods
-void OnOffApplication::StartApplication () // Called at time specified by Start
+void
+PeriodicApplication::StartApplication ()
 {
   NS_LOG_FUNCTION (this);
 
   // Create the socket if not already
   if (!m_socket)
     {
-      m_socket = Socket::CreateSocket (GetNode (), m_tid);
+      m_socket = Socket::CreateSocket (GetNode (), m_socketTid);
       if (Inet6SocketAddress::IsMatchingType (m_peer))
         {
           if (m_socket->Bind6 () == -1)
@@ -200,27 +163,21 @@ void OnOffApplication::StartApplication () // Called at time specified by Start
       m_socket->ShutdownRecv ();
 
       m_socket->SetConnectCallback (
-        MakeCallback (&OnOffApplication::ConnectionSucceeded, this),
-        MakeCallback (&OnOffApplication::ConnectionFailed, this));
+        MakeCallback (&PeriodicApplication::ConnectionSucceeded, this),
+        MakeCallback (&PeriodicApplication::ConnectionFailed, this));
     }
-  m_cbrRateFailSafe = m_cbrRate;
 
-  // Insure no pending event
+  // Ensure no pending event
   CancelEvents ();
   // If we are not yet connected, there is nothing to do here
   // The ConnectionComplete upcall will start timers at that time
-  //if (!m_connected) return;
-  if (m_startOn)
-    {
-      StartSending ();
-    }
-  else
-    {
-      ScheduleStartEvent ();
-    }
+  if (!m_connected) return;
+  
+  StartSending ();
 }
 
-void OnOffApplication::StopApplication () // Called at time specified by Stop
+void
+PeriodicApplication::StopApplication ()
 {
   NS_LOG_FUNCTION (this);
 
@@ -231,116 +188,76 @@ void OnOffApplication::StopApplication () // Called at time specified by Stop
     }
   else
     {
-      NS_LOG_WARN ("OnOffApplication found null socket to close in StopApplication");
+      NS_LOG_WARN ("PeriodicApplication found null socket to close in StopApplication");
     }
 }
 
-void OnOffApplication::SuspendApplication ()
+void
+PeriodicApplication::SuspendApplication ()
 {
   NS_LOG_FUNCTION (this);
 
   CancelEvents ();
 }
 
-void OnOffApplication::CancelEvents ()
+void
+PeriodicApplication::CancelEvents ()
 {
   NS_LOG_FUNCTION (this);
 
-  if (m_sendEvent.IsRunning () && m_cbrRateFailSafe == m_cbrRate )
-    { // Cancel the pending send packet event
-      // Calculate residual bits since last packet sent
-      Time delta (Simulator::Now () - m_lastStartTime);
-      int64x64_t bits = delta.To (Time::S) * m_cbrRate.GetBitRate ();
-      m_residualBits += bits.GetHigh ();
-    }
-  m_cbrRateFailSafe = m_cbrRate;
-  Simulator::Cancel (m_sendEvent);
-  Simulator::Cancel (m_startStopEvent);
+  Simulator::Cancel (m_nextBurstEvent);
 }
 
-// Event handlers
-void OnOffApplication::StartSending ()
-{
-  NS_LOG_FUNCTION (this);
-  m_lastStartTime = Simulator::Now ();
-  ScheduleNextTx ();  // Schedule the send packet event
-  ScheduleStopEvent ();
-}
 
-void OnOffApplication::StopSending ()
-{
-  NS_LOG_FUNCTION (this);
-  CancelEvents ();
-
-  ScheduleStartEvent ();
-}
-
-// Private helpers
-void OnOffApplication::ScheduleNextTx ()
+void
+PeriodicApplication::StartSending ()
 {
   NS_LOG_FUNCTION (this);
 
-  if ((m_maxBytes == 0 || m_totBytes < m_maxBytes) && (m_maxPackets == 0 || m_txPackets < m_maxPackets))
-    {
-      uint32_t bits = m_pktSize * 8 - m_residualBits;
-      NS_LOG_LOGIC ("bits = " << bits);
-      Time nextTime (Seconds (bits /
-                              static_cast<double>(m_cbrRate.GetBitRate ()))); // Time till next packet
-      NS_LOG_LOGIC ("nextTime = " << nextTime);
-      m_sendEvent = Simulator::Schedule (nextTime,
-                                         &OnOffApplication::SendPacket, this);
-    }
-  else
-    { // All done, cancel any pending events
-      StopApplication ();
-    }
-}
+  // send packets for current burst
+  uint32_t burstSize = m_burstSizeRv->GetInteger (); // NOTE: limited to 4 GB per burst by GetInteger
+  uint32_t numPkts = burstSize / m_pktSize; // integer division
+  uint32_t lastPktSize = burstSize - numPkts * m_pktSize;
+  NS_LOG_DEBUG ("Current burst size: " << burstSize << " B. " <<
+                "Sending " << numPkts << " packets of " << m_pktSize << " B, and one of " << lastPktSize << " B");
 
-void OnOffApplication::ScheduleStartEvent ()
-{  // Schedules the event to start sending data (switch to the "On" state)
-  NS_LOG_FUNCTION (this);
+  for (uint32_t i = 0; i < numPkts; i++)
+  {
+    SendPacket (m_pktSize);
+  }
 
-  Time offInterval = Seconds (m_offTime->GetValue ());
-  NS_LOG_LOGIC ("start at " << offInterval);
-  m_startStopEvent = Simulator::Schedule (offInterval, &OnOffApplication::StartSending, this);
-}
-
-void OnOffApplication::ScheduleStopEvent ()
-{  // Schedules the event to stop sending data (switch to "Off" state)
-  NS_LOG_FUNCTION (this);
-
-  Time onInterval = Seconds (m_onTime->GetValue ());
-  NS_LOG_LOGIC ("stop at " << onInterval);
-  m_startStopEvent = Simulator::Schedule (onInterval, &OnOffApplication::StopSending, this);
+  if (lastPktSize > 0)
+  {
+    SendPacket (lastPktSize);
+  }
+  
+  // schedule next burst
+  Time period = Seconds (m_periodRv->GetValue ());
+  NS_LOG_DEBUG ("Next burst scheduled in " << period);
+  m_nextBurstEvent = Simulator::Schedule (period, &PeriodicApplication::StartSending, this);
 }
 
 
-void OnOffApplication::SendPacket ()
+void
+PeriodicApplication::SendPacket (uint32_t pktSize)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this << pktSize);
 
-  NS_ASSERT (m_sendEvent.IsExpired ());
-
-//  static uint32_t m_seq = 0;
-//  SeqTsHeader header;
-//  header.SetSeq (m_seq++);
-//  NS_ABORT_IF (m_pktSize < header.GetSerializedSize ());
-//  Ptr<Packet> packet = Create<Packet> (m_pktSize - header.GetSerializedSize ());
-//  packet->AddHeader (header);
-//  NS_ABORT_IF (packet->GetSize () != m_pktSize);
-//  NS_LOG_UNCOND ("TRX: " << header.GetSeq () << " " << header.GetTs ().GetSeconds ());
   TimestampTag timestamp;
   timestamp.SetTimestamp (Simulator::Now ());
-  Ptr<Packet> packet = Create<Packet> (m_pktSize);
+  Ptr<Packet> packet = Create<Packet> (pktSize);
   packet->AddByteTag (timestamp);
+  // TODO add info on burst size and current packet counter
+
   m_txTrace (packet);
   m_socket->Send (packet);
-  m_totBytes += m_pktSize;
+
+  m_totBytes += pktSize;
   m_txPackets++;
   if (InetSocketAddress::IsMatchingType (m_peer))
     {
       NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
-                   << "s on-off application sent "
+                   << "s PeriodicApplication sent "
                    <<  packet->GetSize () << " bytes to "
                    << InetSocketAddress::ConvertFrom(m_peer).GetIpv4 ()
                    << " port " << InetSocketAddress::ConvertFrom (m_peer).GetPort ()
@@ -349,25 +266,25 @@ void OnOffApplication::SendPacket ()
   else if (Inet6SocketAddress::IsMatchingType (m_peer))
     {
       NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
-                   << "s on-off application sent "
+                   << "s PeriodicApplication sent "
                    <<  packet->GetSize () << " bytes to "
                    << Inet6SocketAddress::ConvertFrom(m_peer).GetIpv6 ()
                    << " port " << Inet6SocketAddress::ConvertFrom (m_peer).GetPort ()
                    << " total Tx " << m_totBytes << " bytes");
     }
-  m_lastStartTime = Simulator::Now ();
-  m_residualBits = 0;
-  ScheduleNextTx ();
+
 }
 
 
-void OnOffApplication::ConnectionSucceeded (Ptr<Socket> socket)
+void
+PeriodicApplication::ConnectionSucceeded (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);
   m_connected = true;
 }
 
-void OnOffApplication::ConnectionFailed (Ptr<Socket> socket)
+void
+PeriodicApplication::ConnectionFailed (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);
 }
