@@ -16,6 +16,7 @@ import sem_utils
 import numpy as np
 from matplotlib import pyplot as plt
 import copy
+import tikzplotlib
 
 sys.stdout.flush()
 
@@ -98,7 +99,8 @@ def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, x
     plt.ylim(ylim)
     plt.legend()
     plt.grid()
-    fig.savefig(os.path.join(img_dir, filename))
+    fig.savefig(os.path.join(img_dir, filename + ".png"))
+    tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
     plt.close(fig)
 
 
@@ -131,7 +133,8 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     ax.set_xticks(range(len(out_labels)))
     ax.set_xticklabels(out_labels)
     plt.grid()
-    fig.savefig(os.path.join(img_dir, filename))
+    fig.savefig(os.path.join(img_dir, filename + ".png"))
+    tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
     plt.close(fig)
 
 
@@ -823,7 +826,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Aggr. Throughput / Aggr. Offered Rate',
-                     filename='norm_thr.png',
+                     filename='norm_thr',
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -833,7 +836,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Aggregated Throughput [Mbps]',
-                     filename='aggr_thr.png',
+                     filename='aggr_thr',
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -843,7 +846,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Avg delay [ms]',
-                     filename='avg_delay.png',
+                     filename='avg_delay',
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -853,7 +856,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Avg delay [ms]',
-                     filename='avg_delay_100ms.png',
+                     filename='avg_delay_100ms',
                      ylim=(0, 100),
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
@@ -864,7 +867,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Delay stdev [ms]',
-                     filename='delay_stdev.png',
+                     filename='delay_stdev',
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -874,7 +877,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Avg delay variation [ms]',
-                     filename='avg_delay_variation.png',
+                     filename='avg_delay_variation',
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -884,7 +887,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel="Jain's Fairness Index",
-                     filename='jain_fairness.png',
+                     filename='jain_fairness',
                      **line_plot_kwargs)
 
     # bar plots
@@ -894,7 +897,7 @@ if __name__ == '__main__':
                         runs=numRuns,
                         for_each=for_each,
                         ylabel="Throughput [Mbps]",
-                        filename='user_thr.png',
+                        filename='user_thr',
                         alias_name=alias_name,
                         alias_vals=alias_vals)
     plot_all_bars_metric(campaign=campaign,
@@ -903,6 +906,6 @@ if __name__ == '__main__':
                         runs=numRuns,
                         for_each=for_each,
                         ylabel="Avg delay [ms]",
-                        filename='user_delay.png',
+                        filename='user_delay',
                         alias_name=alias_name,
                         alias_vals=alias_vals)

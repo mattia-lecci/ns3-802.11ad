@@ -1,40 +1,50 @@
 #!/bin/bash
 
-#SBATCH --job-name parallel_run_11ad_sem_slurm
-#SBATCH --output parallel_run_11ad_sem_slurm.o%j
-#SBATCH --error parallel_run_11ad_sem_slurm.e%j
+#SBATCH --job-name parallel_run_11ad_sem
+#SBATCH --output parallel_run_11ad_sem.o%j
+#SBATCH --error parallel_run_11ad_sem.e%j
 #SBATCH --mail-user leccimat@dei.unipd.it
 #SBATCH --mail-type ALL
 #SBATCH
 #SBATCH --time 365-00:00:00
 #SBATCH --ntasks 1
-#SBATCH --cpus-per-task 24
+#SBATCH --cpus-per-task 32
 #SBATCH --partition allgroups
 #SBATCH --exclude runner-[04-08,13-15,16-19],gpu1,gpu2
 #SBATCH --mem 64G
 
-
 cd $SLURM_SUBMIT_DIR
 
 # simulation parameters
-CORES=24
-NUM_RUNS=10
-CAMPAIGN_NAME=e35599
-# declare -a PARAM_SETS=("basic" "onoff" "onoff_stdev" "spPeriodicity" "onoffPeriodicity" "mcs" "numStas" "smartStart" "accessCbapIfAllocated")
-declare -a PARAM_SETS=("mcs")
+CORES=32
+NUM_RUNS=30
+CAMPAIGN_NAME=2ec7e0
 
 # activate conda env
 source /nfsd/opt/anaconda37/anaconda.sh
 source activate /nfsd/signet3/leccimat/private/conda_envs/11ad-env
 
 # compile ns-3
-# NOTE: the optimized build is not working properly on the blade
-./waf configure --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static -d debug --out=build/
+# NOTE: the optimized and release builds are not working properly on the blade
+./waf configure -d debug --out=build/ --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static
+# CXXFLAGS="-Wall" ./waf configure -d optimized --out=build/optimized --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static
+# CXXFLAGS="-Wall" ./waf configure -d release --out=build/optimized --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static
 ./waf build
 
+declare -a PARAM_SETS=("onoff_smartOn" "onoff_smartOff_cbapOn" "onoff_smartOff_cbapOff" "onoff_stdev_smartOn" "onoff_stdev_smartOff_cbapOn" "onoff_stdev_smartOff_cbapOff" "onoffPeriodicity" "numStas")
 for PARAM_SET in "${PARAM_SETS[@]}"; do
+  ## Separate run and plot with another job (NOT WORKING)
   # run simulations for param set
-  srun python3 sem-conference-showcase-run.py --cores=$CORES --numRuns=$NUM_RUNS --campaignName=$CAMPAIGN_NAME --paramSet=$PARAM_SET
+  # srun python3 sem-conference-showcase-run.py --cores=$CORES --numRuns=$NUM_RUNS --campaignName=$CAMPAIGN_NAME --paramSet=$PARAM_SET
   # sbatch a separate job for plotting
-  sbatch plot_11ad_sem_slurm $NUM_RUNS $CAMPAIGN_NAME $PARAM_SET
+  # sbatch plot_11ad_sem_slurm $NUM_RUNS $CAMPAIGN_NAME $PARAM_SET
+
+  ## Joint run and plot
+  srun python3 sem-conference-showcase.py --cores=$CORES --numRuns=$NUM_RUNS --campaignName=$CAMPAIGN_NAME --paramSet=$PARAM_SET
+done
+
+declare -a APP_RATES=("50Mbps" "100Mbps" "200Mbps")
+for APP_RATE in "${APP_RATES[@]}"; do
+  ## Joint run and plot
+  srun python3 sem-conference-showcase-fixed-app-rate.py --cores=$CORES --numRuns=$NUM_RUNS --campaignName=$CAMPAIGN_NAME --appRate=$APP_RATE
 done

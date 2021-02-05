@@ -16,6 +16,7 @@ import sem_utils
 import numpy as np
 from matplotlib import pyplot as plt
 import copy
+import tikzplotlib
 
 sys.stdout.flush()
 
@@ -98,7 +99,8 @@ def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, x
     plt.ylim(ylim)
     plt.legend()
     plt.grid()
-    fig.savefig(os.path.join(img_dir, filename))
+    fig.savefig(os.path.join(img_dir, filename + ".png"))
+    tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
     plt.close(fig)
 
 
@@ -131,7 +133,8 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     ax.set_xticks(range(len(out_labels)))
     ax.set_xticklabels(out_labels)
     plt.grid()
-    fig.savefig(os.path.join(img_dir, filename))
+    fig.savefig(os.path.join(img_dir, filename + ".png"))
+    tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
     plt.close(fig)
 
 
@@ -176,7 +179,7 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Aggr. Throughput / Aggr. Offered Rate',
-                     filename=os.path.join(folder, 'norm_thr.png'),
+                     filename=os.path.join(folder, 'norm_thr'),
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -186,7 +189,7 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Aggregated Throughput [Mbps]',
-                     filename=os.path.join(folder, 'aggr_thr.png'),
+                     filename=os.path.join(folder, 'aggr_thr'),
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -196,7 +199,7 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Avg delay [ms]',
-                     filename=os.path.join(folder, 'avg_delay.png'),
+                     filename=os.path.join(folder, 'avg_delay'),
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -206,7 +209,7 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Avg delay [ms]',
-                     filename=os.path.join(folder, 'avg_delay_100ms.png'),
+                     filename=os.path.join(folder, 'avg_delay_100ms'),
                      ylim=(0, 100),
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
@@ -217,7 +220,7 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Delay stdev [ms]',
-                     filename=os.path.join(folder, 'delay_stdev.png'),
+                     filename=os.path.join(folder, 'delay_stdev'),
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -227,7 +230,7 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Avg delay variation [ms]',
-                     filename=os.path.join(folder, 'avg_delay_variation.png'),
+                     filename=os.path.join(folder, 'avg_delay_variation'),
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -237,7 +240,7 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel="Jain's Fairness Index",
-                     filename=os.path.join(folder, 'jain_fairness.png'),
+                     filename=os.path.join(folder, 'jain_fairness'),
                      **line_plot_kwargs)
 
     # bar plots
@@ -248,7 +251,7 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
                         for_each=for_each,
                         ylabel="Throughput [Mbps]",
                         folder=folder,
-                        filename='user_thr.png',
+                        filename='user_thr',
                         alias_name=alias_name,
                         alias_vals=alias_vals)
     plot_all_bars_metric(campaign=campaign,
@@ -258,7 +261,7 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
                         for_each=for_each,
                         ylabel="Avg delay [ms]",
                         folder=folder,
-                        filename='user_delay.png',
+                        filename='user_delay',
                         alias_name=alias_name,
                         alias_vals=alias_vals)
 
