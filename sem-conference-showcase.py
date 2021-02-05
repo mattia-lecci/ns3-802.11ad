@@ -160,9 +160,15 @@ def plot_all_bars_metric(campaign, parameter_space, result_parsing_function, run
                             filename=os.path.join(folder_name, filename))
 
 
-def compute_avg_thr_mbps(pkts_df, dt):
+def compute_avg_thr_mbps(pkts_df, params):
     if len(pkts_df) > 0:
-        rx_mb = pkts_df['PktSize_B'].sum() * 8 / 1e6
+        tstart = params["biDurationUs"] / 1e6
+        tend = params["simulationTime"]
+        dt = tend - tstart
+
+        # exclude packets from first BI
+        rx_mb = pkts_df[pkts_df['TxTimestamp_ns']/1e9 > tstart]['PktSize_B'].sum() * 8 / 1e6
+
         thr_mbps = rx_mb / dt
     else:
         thr_mbps = 0
@@ -204,7 +210,7 @@ def compute_norm_aggr_thr(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params']['simulationTime'])
+    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params'])
     aggr_rate_mbps = result['params']['numStas'] * sem_utils.sta_data_rate_mbps(result['params']['numStas'],
                                                                                 result['params']['phyMode'],
                                                                                 result['params']['normOfferedTraffic'],
@@ -213,13 +219,23 @@ def compute_norm_aggr_thr(result):
     return norm_thr
 
 
+def compute_aggr_thr(result):
+    pkts_df = sem_utils.output_to_df(result,
+                                     data_filename="packetsTrace.csv",
+                                     column_sep=',',
+                                     numeric_cols='all')
+
+    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params'])
+    return thr_mbps
+
+
 def compute_user_thr(result):
     pkts_df = sem_utils.output_to_df(result,
                                      data_filename="packetsTrace.csv",
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr_mbps = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']['simulationTime']))
+    user_thr_mbps = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']))
     return user_thr_mbps
 
 
@@ -282,7 +298,7 @@ def compute_jain_fairness(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']['simulationTime']))
+    user_thr = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']))
     
     if result['params']['allocationPeriod'] == 0:
         # fairness among all STAs
@@ -708,7 +724,17 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Aggr. Throughput / Aggr. Offered Rate',
-                     filename='thr.png',
+                     filename='norm_thr.png',
+                     **line_plot_kwargs)
+    plot_line_metric(campaign=campaign,
+                     parameter_space=param_combination,
+                     result_parsing_function=compute_aggr_thr,
+                     runs=numRuns,
+                     xx=xx,
+                     hue_var=hue_var,
+                     xlabel=xlabel,
+                     ylabel='Aggregated Throughput [Mbps]',
+                     filename='aggr_thr.png',
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,

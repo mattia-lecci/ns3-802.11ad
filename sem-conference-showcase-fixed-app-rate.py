@@ -263,10 +263,15 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
                         alias_vals=alias_vals)
 
 
-
-def compute_avg_thr_mbps(pkts_df, dt):
+def compute_avg_thr_mbps(pkts_df, params):
     if len(pkts_df) > 0:
-        rx_mb = pkts_df['PktSize_B'].sum() * 8 / 1e6
+        tstart = params["biDurationUs"] / 1e6
+        tend = params["simulationTime"]
+        dt = tend - tstart
+
+        # exclude packets from first BI
+        rx_mb = pkts_df[pkts_df['TxTimestamp_ns']/1e9 > tstart]['PktSize_B'].sum() * 8 / 1e6
+
         thr_mbps = rx_mb / dt
     else:
         thr_mbps = 0
@@ -308,7 +313,7 @@ def compute_norm_aggr_thr(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params']['simulationTime'])
+    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params'])
     aggr_rate_mbps = result['params']['numStas'] * sem_utils.data_rate_bps_2_float_mbps(result['params']['appRate'])
     norm_thr = thr_mbps / aggr_rate_mbps
     return norm_thr
@@ -320,7 +325,7 @@ def compute_aggr_thr(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params']['simulationTime'])
+    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params'])
     return thr_mbps
 
 
@@ -330,7 +335,7 @@ def compute_user_thr(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr_mbps = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']['simulationTime']))
+    user_thr_mbps = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']))
     return user_thr_mbps
 
 
@@ -393,7 +398,7 @@ def compute_jain_fairness(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']['simulationTime']))
+    user_thr = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']))
     
     if result['params']['allocationPeriod'] == 0:
         # fairness among all STAs
