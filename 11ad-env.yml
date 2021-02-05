@@ -8,6 +8,10 @@
 # WARNING: installing the sem wheel this way makes it install for the given user, irrespective of the conda env. This might create some problems.
 # NOTE 1: sem-0.2.3-py3-none-any.whl has beem obtained from develop branch, `poetry build`, creating the wheel in the `dist/` folder
 # NOTE 2: since python 2.7 is the default one, you need to launch sem scripts using python3
+#
+# In order to generate tikz plots you also need to install a library for python3
+# python3 -m pip install --user tikzplotlib
+#
 name: 11ad-env
 channels:
   - defaults

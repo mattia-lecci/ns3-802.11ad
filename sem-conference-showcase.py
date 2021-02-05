@@ -16,6 +16,7 @@ import sem_utils
 import numpy as np
 from matplotlib import pyplot as plt
 import copy
+import tikzplotlib
 
 sys.stdout.flush()
 
@@ -98,7 +99,8 @@ def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, x
     plt.ylim(ylim)
     plt.legend()
     plt.grid()
-    fig.savefig(os.path.join(img_dir, filename))
+    fig.savefig(os.path.join(img_dir, filename + ".png"))
+    tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
     plt.close(fig)
 
 
@@ -131,7 +133,8 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     ax.set_xticks(range(len(out_labels)))
     ax.set_xticklabels(out_labels)
     plt.grid()
-    fig.savefig(os.path.join(img_dir, filename))
+    fig.savefig(os.path.join(img_dir, filename + ".png"))
+    tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
     plt.close(fig)
 
 
@@ -160,9 +163,15 @@ def plot_all_bars_metric(campaign, parameter_space, result_parsing_function, run
                             filename=os.path.join(folder_name, filename))
 
 
-def compute_avg_thr_mbps(pkts_df, dt):
+def compute_avg_thr_mbps(pkts_df, params):
     if len(pkts_df) > 0:
-        rx_mb = pkts_df['PktSize_B'].sum() * 8 / 1e6
+        tstart = params["biDurationUs"] / 1e6
+        tend = params["simulationTime"]
+        dt = tend - tstart
+
+        # exclude packets from first BI
+        rx_mb = pkts_df[pkts_df['TxTimestamp_ns']/1e9 > tstart]['PktSize_B'].sum() * 8 / 1e6
+
         thr_mbps = rx_mb / dt
     else:
         thr_mbps = 0
@@ -204,7 +213,7 @@ def compute_norm_aggr_thr(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params']['simulationTime'])
+    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params'])
     aggr_rate_mbps = result['params']['numStas'] * sem_utils.sta_data_rate_mbps(result['params']['numStas'],
                                                                                 result['params']['phyMode'],
                                                                                 result['params']['normOfferedTraffic'],
@@ -213,13 +222,23 @@ def compute_norm_aggr_thr(result):
     return norm_thr
 
 
+def compute_aggr_thr(result):
+    pkts_df = sem_utils.output_to_df(result,
+                                     data_filename="packetsTrace.csv",
+                                     column_sep=',',
+                                     numeric_cols='all')
+
+    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params'])
+    return thr_mbps
+
+
 def compute_user_thr(result):
     pkts_df = sem_utils.output_to_df(result,
                                      data_filename="packetsTrace.csv",
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr_mbps = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']['simulationTime']))
+    user_thr_mbps = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']))
     return user_thr_mbps
 
 
@@ -282,7 +301,7 @@ def compute_jain_fairness(result):
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']['simulationTime']))
+    user_thr = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']))
     
     if result['params']['allocationPeriod'] == 0:
         # fairness among all STAs
@@ -469,9 +488,10 @@ if __name__ == '__main__':
         # bar plots var
         for_each = 'normOfferedTraffic'
 
-    elif args.paramSet == 'onoff_smartOff':
+    elif args.paramSet == 'onoff_smartOff_cbapOn':
         applicationType = "onoff"
         smartStart = False
+        accessCbapIfAllocated = True
         normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
         param_combination = run_simulations(applicationType=applicationType,
@@ -497,9 +517,107 @@ if __name__ == '__main__':
         # bar plots var
         for_each = 'normOfferedTraffic'
 
-    elif args.paramSet == 'onoff_stdev':
+    elif args.paramSet == 'onoff_smartOff_cbapOff':
         applicationType = "onoff"
-        allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
+        smartStart = False
+        accessCbapIfAllocated = False
+        normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+
+        param_combination = run_simulations(applicationType=applicationType,
+                                            normOfferedTraffic=normOfferedTraffic,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
+
+        # line plots vars
+        xx = normOfferedTraffic
+        hue_var = "allocationPeriod"
+        xlabel = "Aggr. Offered Rate / PHY Rate"
+
+        # bar plots var
+        for_each = 'normOfferedTraffic'
+
+    elif args.paramSet == 'onoff_stdev_smartOn':
+        applicationType = "onoff"
+        smartStart = True
+        allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
+        onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
+        onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
+
+        param_combination = run_simulations(applicationType=applicationType,
+                                            normOfferedTraffic=normOfferedTraffic,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
+
+        # line plots vars
+        xx = onOffPeriodDeviationRatio
+        hue_var = "allocationPeriod"
+        xlabel = "Period Deviation Ratio"
+        line_plot_kwargs = {"xscale": "log"}
+
+        # bar plots var
+        for_each = 'onoffPeriodStdev'
+        alias_name = 'onOffPeriodDeviationRatio'
+        alias_vals = onOffPeriodDeviationRatio
+
+    elif args.paramSet == 'onoff_stdev_smartOff_cbapOn':
+        applicationType = "onoff"
+        smartStart = False
+        accessCbapIfAllocated = True
+        allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
+        onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
+        onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
+
+        param_combination = run_simulations(applicationType=applicationType,
+                                            normOfferedTraffic=normOfferedTraffic,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
+
+        # line plots vars
+        xx = onOffPeriodDeviationRatio
+        hue_var = "allocationPeriod"
+        xlabel = "Period Deviation Ratio"
+        line_plot_kwargs = {"xscale": "log"}
+
+        # bar plots var
+        for_each = 'onoffPeriodStdev'
+        alias_name = 'onOffPeriodDeviationRatio'
+        alias_vals = onOffPeriodDeviationRatio
+
+    elif args.paramSet == 'onoff_stdev_smartOff_cbapOff':
+        applicationType = "onoff"
+        smartStart = False
+        accessCbapIfAllocated = False
+        allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
         onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
         onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
 
@@ -589,7 +707,7 @@ if __name__ == '__main__':
 
     elif args.paramSet == "mcs":
         applicationType = "onoff"
-        phyMode = [f"DMG_MCS{n}" for n in range(12 + 1)]  # MCS 0, ..., MCS 12
+        phyMode = [f"DMG_MCS{n}" for n in range(1, 12 + 1)]  # MCS 1, ..., 12
 
         param_combination = run_simulations(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
@@ -708,7 +826,17 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Aggr. Throughput / Aggr. Offered Rate',
-                     filename='thr.png',
+                     filename='norm_thr',
+                     **line_plot_kwargs)
+    plot_line_metric(campaign=campaign,
+                     parameter_space=param_combination,
+                     result_parsing_function=compute_aggr_thr,
+                     runs=numRuns,
+                     xx=xx,
+                     hue_var=hue_var,
+                     xlabel=xlabel,
+                     ylabel='Aggregated Throughput [Mbps]',
+                     filename='aggr_thr',
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -718,7 +846,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Avg delay [ms]',
-                     filename='avg_delay.png',
+                     filename='avg_delay',
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -728,7 +856,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Avg delay [ms]',
-                     filename='avg_delay_100ms.png',
+                     filename='avg_delay_100ms',
                      ylim=(0, 100),
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
@@ -739,7 +867,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Delay stdev [ms]',
-                     filename='delay_stdev.png',
+                     filename='delay_stdev',
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -749,7 +877,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel='Avg delay variation [ms]',
-                     filename='avg_delay_variation.png',
+                     filename='avg_delay_variation',
                      **line_plot_kwargs)
     plot_line_metric(campaign=campaign,
                      parameter_space=param_combination,
@@ -759,7 +887,7 @@ if __name__ == '__main__':
                      hue_var=hue_var,
                      xlabel=xlabel,
                      ylabel="Jain's Fairness Index",
-                     filename='jain_fairness.png',
+                     filename='jain_fairness',
                      **line_plot_kwargs)
 
     # bar plots
@@ -769,7 +897,7 @@ if __name__ == '__main__':
                         runs=numRuns,
                         for_each=for_each,
                         ylabel="Throughput [Mbps]",
-                        filename='user_thr.png',
+                        filename='user_thr',
                         alias_name=alias_name,
                         alias_vals=alias_vals)
     plot_all_bars_metric(campaign=campaign,
@@ -778,6 +906,6 @@ if __name__ == '__main__':
                         runs=numRuns,
                         for_each=for_each,
                         ylabel="Avg delay [ms]",
-                        filename='user_delay.png',
+                        filename='user_delay',
                         alias_name=alias_name,
                         alias_vals=alias_vals)

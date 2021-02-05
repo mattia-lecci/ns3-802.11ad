@@ -76,7 +76,7 @@
  *
  */
 
-NS_LOG_COMPONENT_DEFINE ("SchedulerComparisonQdDense");
+NS_LOG_COMPONENT_DEFINE ("SchedulerComparisonQdDenseFixedAppRate");
 
 using namespace ns3;
 
@@ -130,7 +130,7 @@ main (int argc, char *argv[])
 {
   uint32_t bufferSize = 131072;                   /* TCP Send/Receive Buffer Size [bytes]. */
   uint32_t queueSize = 0xFFFFFFFF;                /* Wifi MAC Queue Size [packets]. */
-  double normOfferedTraffic = 0.7;                /* Normalized offered traffic, i.e., the aggregated traffic offered by all TXs as a ratio of the PHY rate. [0, 1] */
+  std::string appRate = "100Mbps";                /* Average app data rate as DataRate string */
   bool frameCapture = false;                      /* Use a frame capture model. */
   double frameCaptureMargin = 10;                 /* Frame capture margin [dB]. */
   bool verbose = false;                           /* Print Logging Information. */
@@ -161,7 +161,7 @@ main (int argc, char *argv[])
   CommandLine cmd;
   cmd.AddValue ("applicationType", "Type of the Tx Application: constant, onoff, bulk, crazyTaxi, fourElements", applicationType);
   // cmd.AddValue ("packetSize", "Application packet size [bytes]", packetSize);
-  cmd.AddValue ("normOfferedTraffic", "Normalized offered traffic, i.e., the aggregated traffic offered by all TXs as a ratio of the PHY rate. [0, 1]", normOfferedTraffic);
+  cmd.AddValue ("appRate", "Average app data rate as DataRate string", appRate);
   // cmd.AddValue ("tcpVariant", "Transport protocol to use: TcpHighSpeed, TcpVegas, TcpNewReno, TcpWestwood, TcpWestwoodPlus", tcpVariant);
   cmd.AddValue ("socketType", "Socket type (default: ns3::UdpSocketFactory)", socketType);
   // cmd.AddValue ("bufferSize", "TCP Buffer Size (Send/Receive) [bytes]", bufferSize);
@@ -383,11 +383,10 @@ main (int argc, char *argv[])
 
   /** Install Applications **/
   Config::SetDefault ("ns3::OnOffApplication::StartOn", BooleanValue (true));
-  std::string dataRate = ComputeUserDataRateFromNormOfferedTraffic (phyMode, numStas, normOfferedTraffic, msduAggregationSize, mpduAggregationSize);
   for (uint32_t i = 0; i < staWifiNodes.GetN (); i++)
     {
       communicationPairMap[staWifiNodes.Get (i)] = InstallApplication (staWifiNodes.Get (i), apWifiNode.Get (0),
-                                                                       staInterfaces.GetAddress (i), apInterface.GetAddress (0), dataRate, i,
+                                                                       staInterfaces.GetAddress (i), apInterface.GetAddress (0), appRate, i,
                                                                        simulationTime, applicationType, socketType, packetSize,
                                                                        onoffPeriodMean, onoffPeriodStdev, receivedPktsTrace, communicationPairMap);
     }

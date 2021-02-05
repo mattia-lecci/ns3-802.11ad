@@ -17,21 +17,21 @@ cd $SLURM_SUBMIT_DIR
 
 # simulation parameters
 CORES=32
-NUM_RUNS=5
-CAMPAIGN_NAME=e3ab37
-declare -a PARAM_SETS=("onoff_smartOn" "onoff_smartOff" "onoff_stdev" "numStas" "onoffPeriodicity" "mcs" "allApps")
+NUM_RUNS=30
+CAMPAIGN_NAME=2ec7e0
 
 # activate conda env
 source /nfsd/opt/anaconda37/anaconda.sh
 source activate /nfsd/signet3/leccimat/private/conda_envs/11ad-env
 
 # compile ns-3
-# NOTE: the optimized build is not working properly on the blade
+# NOTE: the optimized and release builds are not working properly on the blade
 ./waf configure -d debug --out=build/ --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static
 # CXXFLAGS="-Wall" ./waf configure -d optimized --out=build/optimized --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static
 # CXXFLAGS="-Wall" ./waf configure -d release --out=build/optimized --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static
 ./waf build
 
+declare -a PARAM_SETS=("onoff_smartOn" "onoff_smartOff_cbapOn" "onoff_smartOff_cbapOff" "onoff_stdev_smartOn" "onoff_stdev_smartOff_cbapOn" "onoff_stdev_smartOff_cbapOff" "onoffPeriodicity" "numStas")
 for PARAM_SET in "${PARAM_SETS[@]}"; do
   ## Separate run and plot with another job (NOT WORKING)
   # run simulations for param set
@@ -41,4 +41,10 @@ for PARAM_SET in "${PARAM_SETS[@]}"; do
 
   ## Joint run and plot
   srun python3 sem-conference-showcase.py --cores=$CORES --numRuns=$NUM_RUNS --campaignName=$CAMPAIGN_NAME --paramSet=$PARAM_SET
+done
+
+declare -a APP_RATES=("50Mbps" "100Mbps" "200Mbps")
+for APP_RATE in "${APP_RATES[@]}"; do
+  ## Joint run and plot
+  srun python3 sem-conference-showcase-fixed-app-rate.py --cores=$CORES --numRuns=$NUM_RUNS --campaignName=$CAMPAIGN_NAME --appRate=$APP_RATE
 done
