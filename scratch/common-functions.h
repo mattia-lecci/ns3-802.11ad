@@ -22,7 +22,7 @@ class DmgStaWifiMac;
 class PacketSink;
 
 /* define const */
-const std::string RATE_NORMALIZATION_TYPE = "mac";
+const std::string RATE_NORMALIZATION_TYPE = "app";
 
 /* Type definitions */
 struct Parameters : public SimpleRefCount<Parameters>
@@ -364,7 +364,7 @@ ComputeServicePeriodDuration (uint64_t appDataRate, uint64_t phyModeDataRate, ui
   double dataRateRatio = double (appDataRate) / phyModeDataRate;
   uint32_t spDuration = ceil (dataRateRatio * biDurationUs);
 
-  return spDuration * 1.1;
+  return spDuration * 1.01;
 }
 
 
@@ -479,6 +479,44 @@ GetWifiRate (std::string phyMode, uint32_t msduAggregationSize_B, uint32_t mpduA
     }
   }
 
+  if (RATE_NORMALIZATION_TYPE == "app")
+  {
+    int mcs = std::stoi (phyMode.substr (7));
+    
+    if (msduAggregationSize_B == 7935 && mpduAggregationSize_B == 262143)
+    {
+      switch (mcs)
+      {
+        case 1:
+          return 371355860;
+        case 2:
+          return 740066284;
+        case 3:
+          return 924107739;
+        case 4:
+          return 1107782893;
+        case 5:
+          return 1199790607;
+        case 6:
+          return 1474081443;
+        case 7:
+          return 1838998395;
+        case 8:
+          return 2202194744;
+        // case 9:
+        //   return 2273125221;
+        // case 10:
+        //   return 2739606669;
+        // case 11:
+        //   return 3332262090;
+        // case 12:
+        //   return 3893826210;
+        default:
+          NS_FATAL_ERROR ("mcs=" << mcs << " not recognized (phyMode=" << phyMode << ")");
+      }
+    }
+  }
+  
   NS_FATAL_ERROR ("Invalid configuration: phyMode=" << phyMode << ", msduAggregationSize_B=" << msduAggregationSize_B <<
                   ", mpduAggregationSize_B=" << mpduAggregationSize_B << ", RATE_NORMALIZATION_TYPE=" << RATE_NORMALIZATION_TYPE);
 }

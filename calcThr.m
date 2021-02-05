@@ -75,14 +75,14 @@ for i=1:2:size(sps_temp,1)
     sp_start = sps_temp(i,:).Timestamp_ns;
     sp_end = sps_temp(i+1,:).Timestamp_ns;
     mask_3 = (pkts_temp.RxTimestamp_ns >= sp_start) & (pkts_temp.RxTimestamp_ns <= sp_end);
-    mask_app = (app_temp.Timestamp_ns >= (sp_start-1e6)) & (app_temp.Timestamp_ns <= (sp_end+1e6));
+    mask_app = (app_temp.Timestamp_ns >= (sp_start)) & (app_temp.Timestamp_ns <= (sp_end));
     
     rx_pkts = pkts_temp(mask_3,:);
-    time_interval = rx_pkts.RxTimestamp_ns(end) - rx_pkts.TxTimestamp_ns(1);
+    time_interval = rx_pkts.RxTimestamp_ns(end) - rx_pkts.RxTimestamp_ns(1);
     
     num_tx_pkts = size(app_temp(mask_app,:),1);
     num_pkts = size(rx_pkts,1);
-    thr = (num_pkts * 1448 * 8) / (time_interval/1e9)/ 1e6; % calculate thr in Mbps
+    thr = (num_pkts * 1448 * 8) / (time_interval/1e9); % calculate thr in Mbps
     fprintf('SP start %.2fs, SP duration %.2fms, pkt time %.2fms, THR %.2fMbps, %d pkts tx, %d pkts rx \n', sp_start/1e9, (sp_end-sp_start)/1e6, time_interval/1e6, thr, num_tx_pkts, num_pkts);
 end
 
