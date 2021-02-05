@@ -793,6 +793,113 @@ ComputeUserDataRateFromNormOfferedTraffic (std::string phyMode, uint16_t numStas
 }
 
 
+
+CommunicationPair
+InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address srcIp, Ipv4Address dstIp, std::string appDataRate, uint16_t appNumber,
+                    double simulationTime, std::string applicationType, std::string socketType, uint32_t packetSize,
+                    double onoffPeriodMean, double onoffPeriodStdev, Ptr<OutputStreamWrapper> receivedPktsTrace, CommunicationPairMap& communicationPairMap)
+{
+  // NS_LOG_FUNCTION (srcNode->GetId () << dstNode->GetId () << srcIp << dstIp << appDataRate << +appNumber);
+  CommunicationPair commPair;
+  ApplicationContainer srcApp;
+  ApplicationContainer dstApp;
+
+  /* Install TCP/UDP Transmitter on the source node */
+  uint16_t portNumber = 9000 + appNumber;
+  srcIp = Ipv4Address::GetAny (); // 0.0.0.0
+  Address dstInet (InetSocketAddress (dstIp, portNumber));
+  Address srcInet (InetSocketAddress (srcIp, portNumber));
+
+  /* The APP is manually started when the corresponding ADDTS request succeeded (or failed only for CbapOnlyDmgWifiScheduler) */
+  /* Here the start time is to a value greater than the simulation time otherwise the APP will start at 0 by default */
+  Time appStartTime = Seconds (simulationTime + 1);
+  Time appStopTime = Seconds (simulationTime);
+
+  if (applicationType == "constant")
+  {
+    OnOffHelper onoff (socketType, dstInet);
+    onoff.SetAttribute ("PacketSize", UintegerValue (packetSize));
+    onoff.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1e6]"));
+    onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+    onoff.SetAttribute ("DataRate", DataRateValue (DataRate (appDataRate)));
+    srcApp = onoff.Install (srcNode);
+  }
+  else if (applicationType == "onoff")
+  {
+    NS_ABORT_MSG_IF (onoffPeriodMean == 0, "onoffPeriodMean==0");
+    PeriodicApplicationHelper helper (socketType, dstInet);
+
+    // params
+    std::string meanOffTimeStr = std::to_string (onoffPeriodMean);
+    std::string varOffTimeStr = std::to_string (onoffPeriodStdev * onoffPeriodStdev);
+    std::string boundOffTimeStr = meanOffTimeStr; // avoid negative periods
+
+    double burstSize = DataRate (appDataRate).GetBitRate ()/ 8.0 * onoffPeriodMean;
+    std::string burstSizeStr = std::to_string (burstSize);
+
+    std::string periodRv = "ns3::NormalRandomVariable[Mean=" + meanOffTimeStr + 
+                            "|Variance=" + varOffTimeStr +
+                            "|Bound=" + boundOffTimeStr + "]";
+    std::string burstSizeRv = "ns3::ConstantRandomVariable[Constant=" + burstSizeStr + "]";
+    // NS_LOG_DEBUG ("periodRv=" << periodRv);
+    // NS_LOG_DEBUG ("burstSizeRv=" << burstSizeRv);
+
+    // attributes
+    helper.SetAttribute ("PacketSize", UintegerValue (packetSize));
+    helper.SetAttribute ("PeriodRv", StringValue (periodRv));
+    helper.SetAttribute ("BurstSizeRv", StringValue (burstSizeRv));
+    srcApp = helper.Install (srcNode);
+  }
+else if (applicationType == "bulk")
+  {
+    // Bulk Send needs TCP sockets
+    socketType = "ns3::TcpSocketFactory";
+    BulkSendHelper bulk (socketType, dstInet);
+    srcApp = bulk.Install (srcNode);
+  }
+else if (applicationType == "crazyTaxi" || applicationType == "fourElements")
+  {
+    std::string gamingServerId;
+
+    if (applicationType == "crazyTaxi")
+      {
+        gamingServerId = "ns3::CrazyTaxiStreamingServer";
+      }
+    else if (applicationType == "fourElements")
+      {
+        gamingServerId = "ns3::FourElementsStreamingServer";
+      }
+    else
+      {
+        NS_FATAL_ERROR ("applicationType=" << applicationType << " not recognized");
+      }
+
+    GameStreamingApplicationHelper serverStreamingHelper (gamingServerId, dstInet);
+    serverStreamingHelper.SetAttribute ("DataRate", DataRateValue (DataRate (appDataRate)));
+
+    srcApp = serverStreamingHelper.Install (srcNode);
+  }
+else
+  {
+    NS_FATAL_ERROR ("applicationType=" << applicationType << " not recognized");
+  }
+
+  srcApp.Start (appStartTime);
+  srcApp.Stop (appStopTime);
+  commPair.srcApp = srcApp.Get (0);
+  commPair.appDataRate = DataRate (appDataRate).GetBitRate ();
+
+  /* Install Simple TCP/UDP Server on the destination node */
+  PacketSinkHelper sinkHelper (socketType, srcInet);
+  dstApp = sinkHelper.Install (dstNode);
+  commPair.packetSink = StaticCast<PacketSink> (dstApp.Get (0));
+  commPair.packetSink->TraceConnectWithoutContext ("Rx", MakeBoundCallback (&ReceivedPacket, receivedPktsTrace, &communicationPairMap, srcNode));
+  dstApp.Start (Seconds (0));
+
+  return commPair;
+}
+
+
 } // namespace ns3
 
 #endif /* COMMON_FUNCTIONS_H */

@@ -41,6 +41,12 @@ MCS_PARAMS = {"DMG_MCS0": {"phy_rate": 27.5e6,
 def data_rate_bps_2_float_mbps(str):
     if str[-3:] == "bps" and str[:-3].isnumeric():
         return float(str[:-3]) / 1e6
+    elif str[-4:] == "kbps" and str[:-4].isnumeric():
+        return float(str[:-4]) / 1e3
+    elif str[-4:] == "Mbps" and str[:-4].isnumeric():
+        return float(str[:-4])
+    elif str[-4:] == "Gbps" and str[:-4].isnumeric():
+        return float(str[:-4]) *1e3
     else:
         raise ValueError("String '{}' is not a valid data rate".format(str))
 
