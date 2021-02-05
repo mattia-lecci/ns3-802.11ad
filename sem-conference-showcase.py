@@ -485,9 +485,10 @@ if __name__ == '__main__':
         # bar plots var
         for_each = 'normOfferedTraffic'
 
-    elif args.paramSet == 'onoff_smartOff':
+    elif args.paramSet == 'onoff_smartOff_cbapOn':
         applicationType = "onoff"
         smartStart = False
+        accessCbapIfAllocated = True
         normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
         param_combination = run_simulations(applicationType=applicationType,
@@ -513,9 +514,107 @@ if __name__ == '__main__':
         # bar plots var
         for_each = 'normOfferedTraffic'
 
-    elif args.paramSet == 'onoff_stdev':
+    elif args.paramSet == 'onoff_smartOff_cbapOff':
         applicationType = "onoff"
-        allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
+        smartStart = False
+        accessCbapIfAllocated = False
+        normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+
+        param_combination = run_simulations(applicationType=applicationType,
+                                            normOfferedTraffic=normOfferedTraffic,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
+
+        # line plots vars
+        xx = normOfferedTraffic
+        hue_var = "allocationPeriod"
+        xlabel = "Aggr. Offered Rate / PHY Rate"
+
+        # bar plots var
+        for_each = 'normOfferedTraffic'
+
+    elif args.paramSet == 'onoff_stdev_smartOn':
+        applicationType = "onoff"
+        smartStart = True
+        allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
+        onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
+        onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
+
+        param_combination = run_simulations(applicationType=applicationType,
+                                            normOfferedTraffic=normOfferedTraffic,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
+
+        # line plots vars
+        xx = onOffPeriodDeviationRatio
+        hue_var = "allocationPeriod"
+        xlabel = "Period Deviation Ratio"
+        line_plot_kwargs = {"xscale": "log"}
+
+        # bar plots var
+        for_each = 'onoffPeriodStdev'
+        alias_name = 'onOffPeriodDeviationRatio'
+        alias_vals = onOffPeriodDeviationRatio
+
+    elif args.paramSet == 'onoff_stdev_smartOff_cbapOn':
+        applicationType = "onoff"
+        smartStart = False
+        accessCbapIfAllocated = True
+        allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
+        onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
+        onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
+
+        param_combination = run_simulations(applicationType=applicationType,
+                                            normOfferedTraffic=normOfferedTraffic,
+                                            socketType=socketType,
+                                            mpduAggregationSize=mpduAggregationSize,
+                                            phyMode=phyMode,
+                                            simulationTime=simulationTime,
+                                            numStas=numStas,
+                                            allocationPeriod=allocationPeriod,
+                                            accessCbapIfAllocated=accessCbapIfAllocated,
+                                            biDurationUs=biDurationUs,
+                                            onoffPeriodMean=onoffPeriodMean,
+                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            smartStart=smartStart,
+                                            numRuns=numRuns)
+
+        # line plots vars
+        xx = onOffPeriodDeviationRatio
+        hue_var = "allocationPeriod"
+        xlabel = "Period Deviation Ratio"
+        line_plot_kwargs = {"xscale": "log"}
+
+        # bar plots var
+        for_each = 'onoffPeriodStdev'
+        alias_name = 'onOffPeriodDeviationRatio'
+        alias_vals = onOffPeriodDeviationRatio
+
+    elif args.paramSet == 'onoff_stdev_smartOff_cbapOff':
+        applicationType = "onoff"
+        smartStart = False
+        accessCbapIfAllocated = False
+        allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
         onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
         onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
 
@@ -605,7 +704,7 @@ if __name__ == '__main__':
 
     elif args.paramSet == "mcs":
         applicationType = "onoff"
-        phyMode = [f"DMG_MCS{n}" for n in range(12 + 1)]  # MCS 0, ..., MCS 12
+        phyMode = [f"DMG_MCS{n}" for n in range(1, 12 + 1)]  # MCS 1, ..., 12
 
         param_combination = run_simulations(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
