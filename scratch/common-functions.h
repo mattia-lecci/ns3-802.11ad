@@ -572,6 +572,42 @@ SetBurstSize (CommunicationPair& communicationPair, PointerValue val)
   communicationPair.srcApp->SetAttribute ("BurstSizeRv", val);   
 }
 
+void 
+ApplicationSlowStart(CommunicationPair& communicationPair) 
+{
+  // necessary when users have multiple SPs
+  communicationPair.inSlowStart = true;
+
+  // For high required rates, the first few packets might create lots of collisions which need
+  // to be dealt with during the first few SPs, producing an initial transient.
+  // Reducing the rate to 10Gbps (remember: just a few tens of us for a burst) produces enough
+  // packets to setup the connection while still being able to handle them with no transient
+  if (DynamicCast<OnOffApplication> (communicationPair.srcApp) ||
+      DynamicCast<CrazyTaxiStreamingServer> (communicationPair.srcApp) ||
+      DynamicCast<FourElementsStreamingServer> (communicationPair.srcApp))
+  {
+    DataRateValue originalRate;
+    communicationPair.srcApp->GetAttribute ("DataRate", originalRate);
+    communicationPair.srcApp->SetAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
+    Simulator::Schedule (MilliSeconds (1), &SetAppDataRate, communicationPair, originalRate);
+  }
+  else if (DynamicCast<PeriodicApplication> (communicationPair.srcApp))
+  {
+    PointerValue originalBurstSizeRv;
+    communicationPair.srcApp->GetAttribute ("BurstSizeRv", originalBurstSizeRv);
+    communicationPair.srcApp->SetAttribute ("BurstSizeRv", StringValue ("ns3::ConstantRandomVariable[Constant=100e3]"));
+    Simulator::Schedule (MilliSeconds (1), &SetBurstSize, communicationPair, originalBurstSizeRv);
+  }
+  else
+  {
+    NS_FATAL_ERROR ("Application type not recognized");
+  }
+
+  StartApplication (communicationPair);
+  // Immediately suspend the app and reset the data rate to the original one
+  Simulator::Schedule (MilliSeconds (1), &SuspendApplication, communicationPair);
+}
+
 void
 ADDTSResponseReceived (std::string schedulerType, 
   CommunicationPair& communicationPair,
@@ -581,13 +617,25 @@ ADDTSResponseReceived (std::string schedulerType,
   DmgTspecElement element)
 {
   // TODO: Add this code to DmgStaWifiMac class.
-  if (status.IsSuccess () || schedulerType == "ns3::CbapOnlyDmgWifiScheduler")
+  uint64_t delay = 0;
+  if (status.IsSuccess() || schedulerType == "ns3::CbapOnlyDmgWifiScheduler")
   {
+    // APP is started right away if using SPs
+    // Looks like there are problems to start directly from a SP (probably the setup of block ACKs)
+    // The app is thus started during the CBAP with a few packets and suspended immediately
+    // NOTE: stopping the application results in closing the socket (cannot restart in a later moment).
+    // The application is thus suspended (custom method)
+    if (!communicationPair.inSlowStart && schedulerType != "ns3::CbapOnlyDmgWifiScheduler")
+    {
+      ApplicationSlowStart(communicationPair);
+      delay = 1000; // Starting from the end of the slow start transient (1000 us)
+    }
+    
     // By default, the applications at the STAs begin at distributed
     // time-instants, on an interval equivalent to the BI duration.
     Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
-    x->SetAttribute ("Min", DoubleValue (0));
-    x->SetAttribute ("Max", DoubleValue (biDurationUs));
+    x->SetAttribute ("Min", DoubleValue (delay)); 
+    x->SetAttribute ("Max", DoubleValue (biDurationUs + delay));
     Time startTime = MicroSeconds(x->GetValue ());
     Simulator::Schedule (startTime, &StartApplication, communicationPair);
   }
@@ -614,7 +662,7 @@ ADDTSResponseReceivedSmart (std::string schedulerType,
     Time startTime = MicroSeconds(x->GetValue ());
     Simulator::Schedule (startTime, &StartApplication, communicationPair);
   }
-  else
+  else if (status.IsSuccess())
   {
     // APP is started right away if using SPs
     // Looks like there are problems to start directly from a SP (probably the setup of block ACKs)
@@ -623,40 +671,7 @@ ADDTSResponseReceivedSmart (std::string schedulerType,
     // The application is thus suspended (custom method)
     if (!communicationPair.inSlowStart)
       {
-        // necessary when users have multiple SPs
-        communicationPair.inSlowStart = true;
-
-        // For high required rates, the first few packets might create lots of collisions which need
-        // to be dealt with during the first few SPs, producing an initial transient.
-        // Reducing the rate to 10Gbps (remember: just a few tens of us for a burst) produces enough
-        // packets to setup the connection while still being able to handle them with no transient
-        if (DynamicCast<OnOffApplication> (communicationPair.srcApp) ||
-            DynamicCast<CrazyTaxiStreamingServer> (communicationPair.srcApp) ||
-            DynamicCast<FourElementsStreamingServer> (communicationPair.srcApp))
-        {
-          DataRateValue originalRate;
-          communicationPair.srcApp->GetAttribute ("DataRate", originalRate);
-          communicationPair.srcApp->SetAttribute ("DataRate", DataRateValue (DataRate ("10Gbps")));
-          Simulator::Schedule (MilliSeconds (1), &SetAppDataRate, communicationPair, originalRate);
-        }
-        else if (DynamicCast<PeriodicApplication> (communicationPair.srcApp))
-        {
-          PointerValue originalBurstSizeRv;
-          communicationPair.srcApp->GetAttribute ("BurstSizeRv", originalBurstSizeRv);
-          communicationPair.srcApp->SetAttribute ("BurstSizeRv", StringValue ("ns3::ConstantRandomVariable[Constant=100e3]"));
-          Simulator::Schedule (MilliSeconds (1), &SetBurstSize, communicationPair, originalBurstSizeRv);
-        }
-        else
-        {
-          NS_FATAL_ERROR ("Application type not recognized");
-        }
-
-        StartApplication (communicationPair);
-
-        // Immediately suspend the app and reset the data rate to the original one
-        Simulator::Schedule (MilliSeconds (1), &SuspendApplication, communicationPair);
-        
-
+        ApplicationSlowStart(communicationPair);
       }
   }
   
