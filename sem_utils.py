@@ -59,45 +59,45 @@ def data_rate_bps_2_float_mbps(str):
         raise ValueError("String '{}' is not a valid data rate".format(str))
 
 
-def output_to_df(result, data_filename, column_sep, row_sep='\n', columns=None, numeric_cols=None):
-    """Convert generic output into DataFrame
+def output_to_arr(result, data_filename, column_sep, row_sep='\n', columns=None, numeric_cols=None):
+    """Convert generic output into np.array
 
-    If empty or not found, return empty df
+    If empty or not found, return 0x0 np.array
     """
 
     if columns is None:
         columns = []
     if numeric_cols is None:
         numeric_cols = []
+    assert numeric_cols is 'all', "Only support all int columns for improved performance"
 
     output = result['output']
     assert data_filename in output.keys(), "Output file not found"
 
     data = output[data_filename].rstrip('\n')  # remove trailing newlines
-    parsed_data = [x.split(column_sep) for x in data.split(row_sep)]
+    parsed_data = [x for x in data.split(row_sep)]
 
     if len(parsed_data) == 0:
         # Empty output file
-        return pd.DataFrame()
+        return np.zeros((0,0))
 
     if not columns:
-        columns = parsed_data[0]
+        columns = parsed_data[0].split(column_sep)
         data_start_idx = 1
     else:
         data_start_idx = 0
 
-    if len(parsed_data[data_start_idx:]) > 1:
-        df = pd.DataFrame(parsed_data[data_start_idx:],
-                          columns=columns)
-
-        if numeric_cols is 'all':
-            numeric_cols = df.columns
-        df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric)
+    parsed_data_len = len(parsed_data[data_start_idx:])
+    if parsed_data_len > 1:
+        arr = np.empty((parsed_data_len, len(columns)), dtype=int)
+        for i, line in enumerate(parsed_data[data_start_idx:]):
+            for j, val in enumerate(line.split(column_sep)):
+                arr[i, j] = int(val)
 
     else:
-        df = pd.DataFrame(columns=columns)
+        arr = np.zeros((0, len(columns)))
 
-    return df
+    return arr
 
 
 def jain_fairness(xx):
@@ -157,6 +157,9 @@ def bar_plot(ax, data, data_yerr=None, colors=None, total_width=0.8, single_widt
 
     # Iterate over all data
     for i, (name, values) in enumerate(data.items()):
+        if (len(values.dims) == 0):
+          return
+
         # The offset in x direction of that bar
         x_offset = (i - n_bars / 2) * bar_width + bar_width / 2
 

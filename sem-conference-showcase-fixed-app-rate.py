@@ -78,7 +78,7 @@ def check_stderr(result):
 
 
 def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, xx, hue_var, xlabel, ylabel, filename, ylim=None, xscale="linear", yscale="linear"):
-    print("Plotting (line): ", result_parsing_function.__name__)
+    print("Plotting (line): ", os.path.join(img_dir, filename))
     metric = campaign.get_results_as_xarray(parameter_space,
                                             result_parsing_function,
                                             xlabel,
@@ -105,7 +105,7 @@ def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, x
 
 
 def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labels, runs, xlabel, ylabel, filename):
-    print("Plotting (bar): ", result_parsing_function.__name__)
+    print("Plotting (bar): ", os.path.join(img_dir, filename))
     metric = campaign.get_results_as_xarray(parameter_space,
                                              result_parsing_function,
                                              out_labels,
@@ -113,7 +113,8 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
 
     # extract group variable
     metric_dims = list(metric.squeeze().dims)
-    metric_dims.remove("metrics")  # multiple output from parsing function mapped into "metrics"
+    if "metrics" in metric_dims:
+        metric_dims.remove("metrics")  # multiple output from parsing function mapped into "metrics"
     if runs > 1:
         metric_dims.remove("runs")  # multiple runs are averaged
     assert len(metric_dims) == 1, f"There must only be one group_var, instead, metric_dims={metric_dims}"
@@ -134,7 +135,11 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     ax.set_xticklabels(out_labels)
     plt.grid()
     fig.savefig(os.path.join(img_dir, filename + ".png"))
-    tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
+    try:
+        tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
+    except Exception as e:
+        print("Did not convert to tikz, error occurred: ", e)
+
     plt.close(fig)
 
 
@@ -151,7 +156,7 @@ def plot_all_bars_metric(campaign, parameter_space, result_parsing_function, run
             folder_name = os.path.join(f"{alias_name}_{alias}_bars", folder)
             os.makedirs(os.path.join(img_dir, folder_name), exist_ok=True)
 
-            xtick_labels = ["AP"] + ["STA {}".format(i + 1) for i in range(bar_plots_params['numStas'][0])]
+            xtick_labels = ["STA {}".format(i + 1) for i in range(bar_plots_params['numStas'][0])]
 
             plot_bar_metric(campaign,
                             bar_plots_params,
@@ -266,14 +271,14 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
                         alias_vals=alias_vals)
 
 
-def compute_avg_thr_mbps(pkts_df, params):
-    if len(pkts_df) > 0:
+def compute_avg_thr_mbps(pkts_arr, params):
+    if pkts_arr.shape[0] > 0:
         tstart = params["biDurationUs"] / 1e6
         tend = params["simulationTime"]
         dt = tend - tstart
 
         # exclude packets from first BI
-        rx_mb = pkts_df[pkts_df['TxTimestamp_ns']/1e9 > tstart]['PktSize_B'].sum() * 8 / 1e6
+        rx_mb = np.sum(pkts_arr[pkts_arr[:,1]/1e9 > tstart, 3]) * 8 / 1e6
 
         thr_mbps = rx_mb / dt
     else:
@@ -282,9 +287,9 @@ def compute_avg_thr_mbps(pkts_df, params):
     return thr_mbps
 
 
-def compute_avg_delay_ms(pkts_df):
-    if len(pkts_df) > 0:
-        delay = (pkts_df['RxTimestamp_ns'] - pkts_df['TxTimestamp_ns']).mean() / 1e9 * 1e3  # [ms]
+def compute_avg_delay_ms(pkts_arr):
+    if pkts_arr.shape[0] > 0:
+        delay = np.mean(pkts_arr[:,2] - pkts_arr[:,1]) / 1e9 * 1e3  # [ms]
     else:
         delay = np.nan
 
@@ -292,88 +297,88 @@ def compute_avg_delay_ms(pkts_df):
 
 
 def get_allocated_stas(result):
-    sp_trace_df = sem_utils.output_to_df(result,
+    sp_trace_arr = sem_utils.output_to_arr(result,
                                       data_filename="spTrace.csv",
                                       column_sep=',',
                                       numeric_cols='all')
 
-    unique_stas = set(sp_trace_df['SrcNodeId'])
+    unique_stas = set(sp_trace_arr[:,0])
     # remove AP (0) and CBAP (255)
     unique_stas -= {0, 255}
     return list(unique_stas)
 
 
-def compute_avg_user_metric(num_stas, pkts_df, metric):
-    user_metric = [metric(pkts_df[pkts_df['SrcNodeId'] == srcNodeId])
-                for srcNodeId in range(num_stas + 1)]
+def compute_avg_user_metric(num_stas, pkts_arr, metric):
+    user_metric = [metric(pkts_arr[pkts_arr[:,0] == srcNodeId, :])
+                for srcNodeId in range(1, num_stas + 1)]
 
     return user_metric
 
 
 def compute_norm_aggr_thr(result):
-    pkts_df = sem_utils.output_to_df(result,
+    pkts_arr = sem_utils.output_to_arr(result,
                                      data_filename="packetsTrace.csv",
                                      column_sep=',',
                                      numeric_cols='all')
 
-    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params'])
+    thr_mbps = compute_avg_thr_mbps(pkts_arr, result['params'])
     aggr_rate_mbps = result['params']['numStas'] * sem_utils.data_rate_bps_2_float_mbps(result['params']['appRate'])
     norm_thr = thr_mbps / aggr_rate_mbps
     return norm_thr
 
 
 def compute_aggr_thr(result):
-    pkts_df = sem_utils.output_to_df(result,
+    pkts_arr = sem_utils.output_to_arr(result,
                                      data_filename="packetsTrace.csv",
                                      column_sep=',',
                                      numeric_cols='all')
 
-    thr_mbps = compute_avg_thr_mbps(pkts_df, result['params'])
+    thr_mbps = compute_avg_thr_mbps(pkts_arr, result['params'])
     return thr_mbps
 
 
 def compute_user_thr(result):
-    pkts_df = sem_utils.output_to_df(result,
+    pkts_arr = sem_utils.output_to_arr(result,
                                      data_filename="packetsTrace.csv",
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr_mbps = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']))
+    user_thr_mbps = compute_avg_user_metric(result['params']['numStas'], pkts_arr, lambda arr: compute_avg_thr_mbps(arr, result['params']))
     return user_thr_mbps
 
 
 def compute_user_avg_delay(result):
-    pkts_df = sem_utils.output_to_df(result,
+    pkts_arr = sem_utils.output_to_arr(result,
                                      data_filename="packetsTrace.csv",
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_delay_ms = compute_avg_user_metric(result['params']['numStas'], pkts_df, compute_avg_delay_ms)
+    user_delay_ms = compute_avg_user_metric(result['params']['numStas'], pkts_arr, compute_avg_delay_ms)
     if np.any(np.isnan(user_delay_ms)):
         print(f"nan delay for {result['meta']['id']}", file=sys.stderr)
     return user_delay_ms
 
 
 def compute_avg_aggr_delay_ms(result):
-    pkts_df = sem_utils.output_to_df(result,
+    pkts_arr = sem_utils.output_to_arr(result,
                                      data_filename="packetsTrace.csv",
                                      column_sep=',',
                                      numeric_cols='all')
 
-    delay = compute_avg_delay_ms(pkts_df)
+    delay = compute_avg_delay_ms(pkts_arr)
     if np.isnan(delay):
         print(f"no packets for {result['meta']['id']}", file=sys.stderr)
     return delay
 
 
 def compute_std_aggr_delay_ms(result):
-    pkts_df = sem_utils.output_to_df(result,
+    pkts_arr = sem_utils.output_to_arr(result,
                                      data_filename="packetsTrace.csv",
                                      column_sep=',',
                                      numeric_cols='all')
 
-    if len(pkts_df) > 0:
-        delay_std_s = (pkts_df['RxTimestamp_ns'] - pkts_df['TxTimestamp_ns']).std() / 1e9 * 1e3  # [ms]
+    if pkts_arr.shape[0] > 0:
+        delay_std_s = np.std(pkts_arr[:,2] - pkts_arr[:,1]) / 1e9 * 1e3  # [ms]
     else:
         delay_std_s = np.nan
         print(f"no packets for {result['meta']['id']}", file=sys.stderr)
@@ -381,13 +386,13 @@ def compute_std_aggr_delay_ms(result):
 
 
 def compute_avg_delay_variation_ms(result):
-    pkts_df = sem_utils.output_to_df(result,
+    pkts_arr = sem_utils.output_to_arr(result,
                                      data_filename="packetsTrace.csv",
                                      column_sep=',',
                                      numeric_cols='all')
 
-    if len(pkts_df) > 1:
-        delay_s = (pkts_df['RxTimestamp_ns'] - pkts_df['TxTimestamp_ns']) / 1e9 * 1e3  # [ms]
+    if pkts_arr.shape[0] > 1:
+        delay_s = (pkts_arr[:,2] - pkts_arr[:,1]) / 1e9 * 1e3  # [ms]
         dv_s = np.mean(np.abs(np.diff(delay_s)))
     else:
         dv_s = np.nan
@@ -396,12 +401,12 @@ def compute_avg_delay_variation_ms(result):
 
 
 def compute_jain_fairness(result):
-    pkts_df = sem_utils.output_to_df(result,
+    pkts_arr = sem_utils.output_to_arr(result,
                                      data_filename="packetsTrace.csv",
                                      column_sep=',',
                                      numeric_cols='all')
 
-    user_thr = compute_avg_user_metric(result['params']['numStas'], pkts_df, lambda df: compute_avg_thr_mbps(df, result['params']))
+    user_thr = compute_avg_user_metric(result['params']['numStas'], pkts_arr, lambda arr: compute_avg_thr_mbps(arr, result['params']))
     
     if result['params']['allocationPeriod'] == 0:
         # fairness among all STAs
@@ -410,7 +415,8 @@ def compute_jain_fairness(result):
     else:
           # fairness only among STAs with allocated SPs
         allocated_stas = get_allocated_stas(result)
-    jain = sem_utils.jain_fairness([user_thr[i] for i in allocated_stas])
+    # AP=0 => STAs >0 => STA idx = STA id - 1
+    jain = sem_utils.jain_fairness([user_thr[i-1] for i in allocated_stas])
     return jain
 
 
