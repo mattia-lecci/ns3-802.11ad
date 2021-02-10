@@ -455,7 +455,7 @@ if __name__ == '__main__':
         # line plots vars
         xx = normOfferedTraffic
         hue_var = "allocationPeriod"
-        xlabel = "Aggr. Offered Rate / PHY Rate"
+        xlabel = "Aggr. Offered Rate / Nominal Rate"
 
         # bar plots var
         for_each = 'normOfferedTraffic'
@@ -483,7 +483,7 @@ if __name__ == '__main__':
         # line plots vars
         xx = normOfferedTraffic
         hue_var = "allocationPeriod"
-        xlabel = "Aggr. Offered Rate / PHY Rate"
+        xlabel = "Aggr. Offered Rate / Nominal Rate"
 
         # bar plots var
         for_each = 'normOfferedTraffic'
@@ -512,7 +512,7 @@ if __name__ == '__main__':
         # line plots vars
         xx = normOfferedTraffic
         hue_var = "allocationPeriod"
-        xlabel = "Aggr. Offered Rate / PHY Rate"
+        xlabel = "Aggr. Offered Rate / Nominal Rate"
 
         # bar plots var
         for_each = 'normOfferedTraffic'
@@ -541,7 +541,7 @@ if __name__ == '__main__':
         # line plots vars
         xx = normOfferedTraffic
         hue_var = "allocationPeriod"
-        xlabel = "Aggr. Offered Rate / PHY Rate"
+        xlabel = "Aggr. Offered Rate / Nominal Rate"
 
         # bar plots var
         for_each = 'normOfferedTraffic'
