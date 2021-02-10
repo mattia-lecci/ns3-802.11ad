@@ -138,7 +138,10 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     ax.set_xticklabels(out_labels)
     plt.grid()
     fig.savefig(os.path.join(img_dir, filename + ".png"))
-    tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
+    try:
+        tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
+    except Exception as e:
+        print("Did not convert to tikz, error occurred: ", e)
     plt.close(fig)
 
 
