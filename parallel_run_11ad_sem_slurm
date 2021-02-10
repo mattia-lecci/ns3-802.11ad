@@ -18,7 +18,7 @@ cd $SLURM_SUBMIT_DIR
 # simulation parameters
 CORES=32
 NUM_RUNS=30
-CAMPAIGN_NAME=2ec7e0
+CAMPAIGN_NAME=b22fa0
 
 # activate conda env
 source /nfsd/opt/anaconda37/anaconda.sh
@@ -33,12 +33,6 @@ source activate /nfsd/signet3/leccimat/private/conda_envs/11ad-env
 
 declare -a PARAM_SETS=("burst_smartOn" "burst_smartOff_cbapOn" "burst_smartOff_cbapOff" "burst_stdev_smartOn" "burst_stdev_smartOff_cbapOn" "burst_stdev_smartOff_cbapOff" "burstPeriodicity" "numStas")
 for PARAM_SET in "${PARAM_SETS[@]}"; do
-  ## Separate run and plot with another job (NOT WORKING)
-  # run simulations for param set
-  # srun python3 sem-conference-showcase-run.py --cores=$CORES --numRuns=$NUM_RUNS --campaignName=$CAMPAIGN_NAME --paramSet=$PARAM_SET
-  # sbatch a separate job for plotting
-  # sbatch plot_11ad_sem_slurm $NUM_RUNS $CAMPAIGN_NAME $PARAM_SET
-
   ## Joint run and plot
   srun python3 sem-conference-showcase.py --cores=$CORES --numRuns=$NUM_RUNS --campaignName=$CAMPAIGN_NAME --paramSet=$PARAM_SET
 done
