@@ -531,6 +531,10 @@ StationAssociated (AssocParams params, Mac48Address apAddress, uint16_t aid)
                                                       GetWifiRate (params.phyMode, params.msduAggregationSize, params.mpduAggregationSize),
                                                       params.apWifiMac->GetBeaconInterval ().GetMicroSeconds ());
   
+  if (params.allocationPeriod > 0 && params.communicationPair.appDataRate < 5000000) // low app rate
+  {
+    spDurationOverBi *= 1.10;
+  }
   uint32_t spBlockDuration = spDurationOverBi;
   if (params.allocationPeriod > 0)
     {
