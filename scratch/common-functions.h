@@ -843,7 +843,7 @@ InstallApplication (Ptr<Node> srcNode, Ptr<Node> dstNode, Ipv4Address srcIp, Ipv
     onoff.SetAttribute ("DataRate", DataRateValue (DataRate (appDataRate)));
     srcApp = onoff.Install (srcNode);
   }
-  else if (applicationType == "onoff")
+  else if (applicationType == "burst")
   {
     NS_ABORT_MSG_IF (onoffPeriodMean == 0, "onoffPeriodMean==0");
     PeriodicApplicationHelper helper (socketType, dstInet);

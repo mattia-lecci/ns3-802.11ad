@@ -31,7 +31,7 @@ source activate /nfsd/signet3/leccimat/private/conda_envs/11ad-env
 # CXXFLAGS="-Wall" ./waf configure -d release --out=build/optimized --disable-examples --disable-tests --disable-python --enable-modules='applications','core','internet','point-to-point','wifi','flow-monitor','spectrum' --enable-static
 ./waf build
 
-declare -a PARAM_SETS=("onoff_smartOn" "onoff_smartOff_cbapOn" "onoff_smartOff_cbapOff" "onoff_stdev_smartOn" "onoff_stdev_smartOff_cbapOn" "onoff_stdev_smartOff_cbapOff" "onoffPeriodicity" "numStas")
+declare -a PARAM_SETS=("burst_smartOn" "burst_smartOff_cbapOn" "burst_smartOff_cbapOff" "burst_stdev_smartOn" "burst_stdev_smartOff_cbapOn" "burst_stdev_smartOff_cbapOff" "burstPeriodicity" "numStas")
 for PARAM_SET in "${PARAM_SETS[@]}"; do
   ## Separate run and plot with another job (NOT WORKING)
   # run simulations for param set

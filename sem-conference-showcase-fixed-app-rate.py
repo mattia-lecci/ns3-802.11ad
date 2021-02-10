@@ -23,8 +23,8 @@ sys.stdout.flush()
 
 def run_simulations(applicationType, appRate, socketType, mpduAggregationSize,
                     phyMode, simulationTime, numStas, allocationPeriod,
-                    accessCbapIfAllocated, biDurationUs, onoffPeriodMean,
-                    onoffPeriodStdev, smartStart, numRuns):
+                    accessCbapIfAllocated, biDurationUs, burstPeriodMean,
+                    burstPeriodStdev, smartStart, numRuns):
     param_combination = OrderedDict({
         "applicationType": applicationType,
         "appRate": appRate,
@@ -36,8 +36,8 @@ def run_simulations(applicationType, appRate, socketType, mpduAggregationSize,
         "allocationPeriod": allocationPeriod,
         "accessCbapIfAllocated": accessCbapIfAllocated,
         "biDurationUs": biDurationUs,
-        "onoffPeriodMean": onoffPeriodMean,
-        "onoffPeriodStdev": onoffPeriodStdev,
+        "onoffPeriodMean": burstPeriodMean,
+        "onoffPeriodStdev": burstPeriodStdev,
         "smartStart": smartStart,
         "RngRun": list(range(numRuns)),
     })
@@ -438,9 +438,9 @@ if __name__ == '__main__':
                         default=None)
     # baseline parameters
     parser.add_argument("--applicationType",
-                        help="The baseline applicationType. Default: onoff",
+                        help="The baseline applicationType. Default: burst",
                         type=str,
-                        default="onoff")
+                        default="burst")
     parser.add_argument("--appRate",
                         help="The baseline appRate. Default: 100Mbps",
                         type=str,
@@ -465,12 +465,12 @@ if __name__ == '__main__':
                         help="The baseline biDurationUs [us]. Default: 102400",
                         type=int,
                         default=102400)
-    parser.add_argument("--onoffPeriodMean",
-                        help="The baseline onoffPeriodMean [s]. Default: 0.1024",
+    parser.add_argument("--burstPeriodMean",
+                        help="The baseline burstPeriodMean [s]. Default: 0.1024",
                         type=float,
                         default=102.4e-3)
-    parser.add_argument("--onoffPeriodStdev",
-                        help="The baseline onoffPeriodStdev [s]. Default: 0.0",
+    parser.add_argument("--burstPeriodStdev",
+                        help="The baseline burstPeriodStdev [s]. Default: 0.0",
                         type=float,
                         default=0.0)
     args = parser.parse_args()
@@ -511,8 +511,8 @@ if __name__ == '__main__':
     phyMode = args.phyMode
     simulationTime = args.simulationTime
     biDurationUs = args.biDurationUs
-    onoffPeriodMean = args.onoffPeriodMean
-    onoffPeriodStdev = args.onoffPeriodStdev
+    burstPeriodMean = args.burstPeriodMean
+    burstPeriodStdev = args.burstPeriodStdev
     appRate = args.appRate
     numRuns = args.numRuns
 
@@ -546,8 +546,8 @@ if __name__ == '__main__':
                                         allocationPeriod=allocationPeriod,
                                         accessCbapIfAllocated=accessCbapIfAllocated,
                                         biDurationUs=biDurationUs,
-                                        onoffPeriodMean=onoffPeriodMean,
-                                        onoffPeriodStdev=onoffPeriodStdev,
+                                        burstPeriodMean=burstPeriodMean,
+                                        burstPeriodStdev=burstPeriodStdev,
                                         smartStart=smartStart,
                                         numRuns=numRuns)
 
@@ -576,8 +576,8 @@ if __name__ == '__main__':
                                         allocationPeriod=allocationPeriod,
                                         accessCbapIfAllocated=accessCbapIfAllocated,
                                         biDurationUs=biDurationUs,
-                                        onoffPeriodMean=onoffPeriodMean,
-                                        onoffPeriodStdev=onoffPeriodStdev,
+                                        burstPeriodMean=burstPeriodMean,
+                                        burstPeriodStdev=burstPeriodStdev,
                                         smartStart=smartStart,
                                         numRuns=numRuns)
 
@@ -606,8 +606,8 @@ if __name__ == '__main__':
                                         allocationPeriod=allocationPeriod,
                                         accessCbapIfAllocated=accessCbapIfAllocated,
                                         biDurationUs=biDurationUs,
-                                        onoffPeriodMean=onoffPeriodMean,
-                                        onoffPeriodStdev=onoffPeriodStdev,
+                                        burstPeriodMean=burstPeriodMean,
+                                        burstPeriodStdev=burstPeriodStdev,
                                         smartStart=smartStart,
                                         numRuns=numRuns)
 
