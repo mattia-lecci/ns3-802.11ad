@@ -172,11 +172,11 @@ def plot_all_bars_metric(campaign, parameter_space, result_parsing_function, run
 
 def compute_avg_thr_mbps(pkts_arr, params):
     if pkts_arr.shape[0] > 0:
-        tstart = params["biDurationUs"] / 1e6
+        tstart = 5 * params["biDurationUs"] / 1e6 # skip 5 BIs
         tend = params["simulationTime"]
         dt = tend - tstart
 
-        # exclude packets from first BI
+        # exclude packets from first BIs
         rx_mb = np.sum(pkts_arr[pkts_arr[:,1]/1e9 > tstart, 3]) * 8 / 1e6
 
         thr_mbps = rx_mb / dt
