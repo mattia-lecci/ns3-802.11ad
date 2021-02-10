@@ -458,9 +458,9 @@ if __name__ == '__main__':
                         type=str,
                         default="DMG_MCS4")
     parser.add_argument("--simulationTime",
-                        help="The baseline simulationTime [s]. Default: 10.0",
+                        help="The baseline simulationTime [s]. Default: 10.24",
                         type=float,
-                        default=10.0)
+                        default=10.24)
     parser.add_argument("--biDurationUs",
                         help="The baseline biDurationUs [us]. Default: 102400",
                         type=int,
