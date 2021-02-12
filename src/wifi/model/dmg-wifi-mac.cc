@@ -290,8 +290,11 @@ void
 DmgWifiMac::MapAidToMacAddress (uint16_t aid, Mac48Address address)
 {
   NS_LOG_FUNCTION (this << aid << address);
-  m_aidMap[aid] = address;
-  m_macMap[address] = aid;
+  if (m_macMap[address] == 0)
+  {
+    m_aidMap[aid] = address;
+    m_macMap[address] = aid;
+  }
 }
 
 Time
