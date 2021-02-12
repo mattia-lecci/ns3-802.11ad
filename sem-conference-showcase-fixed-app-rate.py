@@ -23,8 +23,8 @@ sys.stdout.flush()
 
 def run_simulations(applicationType, appRate, socketType, mpduAggregationSize,
                     phyMode, simulationTime, numStas, allocationPeriod,
-                    accessCbapIfAllocated, biDurationUs, onoffPeriodMean,
-                    onoffPeriodStdev, smartStart, numRuns):
+                    accessCbapIfAllocated, biDurationUs, burstPeriodMean,
+                    burstPeriodStdev, smartStart, numRuns):
     param_combination = OrderedDict({
         "applicationType": applicationType,
         "appRate": appRate,
@@ -36,8 +36,8 @@ def run_simulations(applicationType, appRate, socketType, mpduAggregationSize,
         "allocationPeriod": allocationPeriod,
         "accessCbapIfAllocated": accessCbapIfAllocated,
         "biDurationUs": biDurationUs,
-        "onoffPeriodMean": onoffPeriodMean,
-        "onoffPeriodStdev": onoffPeriodStdev,
+        "onoffPeriodMean": burstPeriodMean,
+        "onoffPeriodStdev": burstPeriodStdev,
         "smartStart": smartStart,
         "RngRun": list(range(numRuns)),
     })
@@ -100,7 +100,10 @@ def plot_line_metric(campaign, parameter_space, result_parsing_function, runs, x
     plt.legend()
     plt.grid()
     fig.savefig(os.path.join(img_dir, filename + ".png"))
-    tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
+    try:
+        tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
+    except Exception as e:
+        print("Did not convert to tikz, error occurred: ", e)
     plt.close(fig)
 
 
@@ -273,11 +276,11 @@ def plotAll(campaign, parameter_space, runs, xx, hue_var, xlabel, line_plot_kwar
 
 def compute_avg_thr_mbps(pkts_arr, params):
     if pkts_arr.shape[0] > 0:
-        tstart = params["biDurationUs"] / 1e6
+        tstart = 5 * params["biDurationUs"] / 1e6 # skip first 5 BIs
         tend = params["simulationTime"]
         dt = tend - tstart
 
-        # exclude packets from first BI
+        # exclude packets from first BIs
         rx_mb = np.sum(pkts_arr[pkts_arr[:,1]/1e9 > tstart, 3]) * 8 / 1e6
 
         thr_mbps = rx_mb / dt
@@ -438,9 +441,9 @@ if __name__ == '__main__':
                         default=None)
     # baseline parameters
     parser.add_argument("--applicationType",
-                        help="The baseline applicationType. Default: onoff",
+                        help="The baseline applicationType. Default: burst",
                         type=str,
-                        default="onoff")
+                        default="burst")
     parser.add_argument("--appRate",
                         help="The baseline appRate. Default: 100Mbps",
                         type=str,
@@ -458,19 +461,19 @@ if __name__ == '__main__':
                         type=str,
                         default="DMG_MCS4")
     parser.add_argument("--simulationTime",
-                        help="The baseline simulationTime [s]. Default: 10.0",
+                        help="The baseline simulationTime [s]. Default: 10.24",
                         type=float,
-                        default=10.0)
+                        default=10.24)
     parser.add_argument("--biDurationUs",
                         help="The baseline biDurationUs [us]. Default: 102400",
                         type=int,
                         default=102400)
-    parser.add_argument("--onoffPeriodMean",
-                        help="The baseline onoffPeriodMean [s]. Default: 0.1024",
+    parser.add_argument("--burstPeriodMean",
+                        help="The baseline burstPeriodMean [s]. Default: 0.1024",
                         type=float,
                         default=102.4e-3)
-    parser.add_argument("--onoffPeriodStdev",
-                        help="The baseline onoffPeriodStdev [s]. Default: 0.0",
+    parser.add_argument("--burstPeriodStdev",
+                        help="The baseline burstPeriodStdev [s]. Default: 0.0",
                         type=float,
                         default=0.0)
     args = parser.parse_args()
@@ -511,8 +514,8 @@ if __name__ == '__main__':
     phyMode = args.phyMode
     simulationTime = args.simulationTime
     biDurationUs = args.biDurationUs
-    onoffPeriodMean = args.onoffPeriodMean
-    onoffPeriodStdev = args.onoffPeriodStdev
+    burstPeriodMean = args.burstPeriodMean
+    burstPeriodStdev = args.burstPeriodStdev
     appRate = args.appRate
     numRuns = args.numRuns
 
@@ -546,8 +549,8 @@ if __name__ == '__main__':
                                         allocationPeriod=allocationPeriod,
                                         accessCbapIfAllocated=accessCbapIfAllocated,
                                         biDurationUs=biDurationUs,
-                                        onoffPeriodMean=onoffPeriodMean,
-                                        onoffPeriodStdev=onoffPeriodStdev,
+                                        burstPeriodMean=burstPeriodMean,
+                                        burstPeriodStdev=burstPeriodStdev,
                                         smartStart=smartStart,
                                         numRuns=numRuns)
 
@@ -576,8 +579,8 @@ if __name__ == '__main__':
                                         allocationPeriod=allocationPeriod,
                                         accessCbapIfAllocated=accessCbapIfAllocated,
                                         biDurationUs=biDurationUs,
-                                        onoffPeriodMean=onoffPeriodMean,
-                                        onoffPeriodStdev=onoffPeriodStdev,
+                                        burstPeriodMean=burstPeriodMean,
+                                        burstPeriodStdev=burstPeriodStdev,
                                         smartStart=smartStart,
                                         numRuns=numRuns)
 
@@ -606,8 +609,8 @@ if __name__ == '__main__':
                                         allocationPeriod=allocationPeriod,
                                         accessCbapIfAllocated=accessCbapIfAllocated,
                                         biDurationUs=biDurationUs,
-                                        onoffPeriodMean=onoffPeriodMean,
-                                        onoffPeriodStdev=onoffPeriodStdev,
+                                        burstPeriodMean=burstPeriodMean,
+                                        burstPeriodStdev=burstPeriodStdev,
                                         smartStart=smartStart,
                                         numRuns=numRuns)
 

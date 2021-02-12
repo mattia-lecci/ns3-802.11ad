@@ -37,7 +37,7 @@ phyTx.Timestamp_s = phyTx.Timestamp_ns / 1e9; % Timestamp_s is actually in [ns]
 %% Global params
 nodeId = 1; % reference STA
 sta1Mask = pkts.SrcNodeId == nodeId;
-numStas = 4;
+numStas = max(pkts.SrcNodeId);
 
 %% Compute DTI structure
 dtiStructure = struct();
@@ -60,36 +60,36 @@ end
 
 biDuration_s = biStart(2) - biStart(1);
 
-%%
-figure
-stem(pkts.TxTimestamp_s(sta1Mask), pkts.PktSize_B(sta1Mask), 'DisplayName', sprintf('TxTimestamp SrcNodeId %d', nodeId)); hold on
-stem(pkts.RxTimestamp_s(sta1Mask), pkts.PktSize_B(sta1Mask), 'DisplayName', sprintf('RxTimestamp SrcNodeId %d', nodeId))
-legend('show', 'Location', 'southeast')
-xlabel('Time [s]')
-ylabel('PacketSize [B]')
-title(strrep(campaign, '_', '\_'))
-% xlim(biStart([0,1]+10))
+% %%
+% figure
+% stem(pkts.TxTimestamp_s(sta1Mask), pkts.PktSize_B(sta1Mask), 'DisplayName', sprintf('TxTimestamp SrcNodeId %d', nodeId)); hold on
+% stem(pkts.RxTimestamp_s(sta1Mask), pkts.PktSize_B(sta1Mask), 'DisplayName', sprintf('RxTimestamp SrcNodeId %d', nodeId))
+% legend('show', 'Location', 'southeast')
+% xlabel('Time [s]')
+% ylabel('PacketSize [B]')
+% title(strrep(campaign, '_', '\_'))
+% % xlim(biStart([0,1]+10))
+% 
+% %%
+% figure
+% stem(pkts.RxTimestamp_s(sta1Mask), pkts.Delay_s(sta1Mask) * 1e3)
+% xlabel('RxTime [s]')
+% ylabel('Delay [ms]')
+% title(strrep(campaign, '_', '\_'))
+% legend(sprintf('SrcNodeId %d', nodeId))
+% 
+% %%
+% figure
+% histogram(log10(pkts.Delay_s(sta1Mask)), 'DisplayName', 'Delay'); hold on
+% histogram(log10(diff(pkts.TxTimestamp_s(sta1Mask))), 'DisplayName', 'Inter-Departure Time')
+% histogram(log10(diff(pkts.RxTimestamp_s(sta1Mask))), 'DisplayName', 'Inter-Arrival Time')
+% legend('show')
+% xlabel('Time [s]')
+% ylabel('Bin Count')
+% xticks(-5:0)
+% xticklabels(strcat("$10^{",string(get(gca,'XTick')),"}$"))
 
-%%
-figure
-stem(pkts.RxTimestamp_s(sta1Mask), pkts.Delay_s(sta1Mask) * 1e3)
-xlabel('RxTime [s]')
-ylabel('Delay [ms]')
-title(strrep(campaign, '_', '\_'))
-legend(sprintf('SrcNodeId %d', nodeId))
-
-%%
-figure
-histogram(log10(pkts.Delay_s(sta1Mask)), 'DisplayName', 'Delay'); hold on
-histogram(log10(diff(pkts.TxTimestamp_s(sta1Mask))), 'DisplayName', 'Inter-Departure Time')
-histogram(log10(diff(pkts.RxTimestamp_s(sta1Mask))), 'DisplayName', 'Inter-Arrival Time')
-legend('show')
-xlabel('Time [s]')
-ylabel('Bin Count')
-xticks(-5:0)
-xticklabels(strcat("$10^{",string(get(gca,'XTick')),"}$"))
-
-%%
+%% Plot delay vs time over SPs
 height = biDuration_s * 1e3;
 
 figure
@@ -104,58 +104,58 @@ xlabel('Time [s]')
 ylabel('Delay [ms]')
 title(strrep(campaign, '_', '\_'))
 
-%%
-height = biDuration_s * 1e3;
+% %%
+% height = biDuration_s * 1e3;
+% 
+% figure
+% plotDti(dtiStructure, height)
+% set(gca,'ColorOrderIndex', 1)
+% for i = 1:numStas
+%     mask = phyTx.SrcNodeId == i;
+%     p(i) = stem(phyTx.Timestamp_s(mask), repmat(height, nnz(mask), 1), 'DisplayName', sprintf('SrcNodeId %d', i)); hold on
+% end
+% legend(p)
+% xlabel('Time [s]')
+% ylabel('PHY TX Start')
+% title(strrep(campaign, '_', '\_'))
+% 
+% %%
+% thr_mbps = zeros(length(biStart), numStas);
+% for id = 1:numStas
+%     staMask = pkts.SrcNodeId == id;
+%     for tIdx = 2:length(biStart)
+%         startTime = biStart(tIdx-1);
+%         endTime = biStart(tIdx);
+%         mask = staMask & (startTime <= pkts.RxTimestamp_s) & (pkts.RxTimestamp_s < endTime);
+%         totRxBytes = sum(pkts.PktSize_B(mask));
+%         thr_mbps(tIdx, id) = totRxBytes * 8 / biDuration_s / 1e6;
+%     end
+% end
+% 
+% figure
+% plot(biStart, thr_mbps)
+% xlabel('Time [s]')
+% ylabel('Avg Throughput per BI [Mbps]')
+% title(strrep(campaign, '_', '\_'))
+% legend(strcat("SrcNodeId ", string(1:numStas)), 'NumColumns', 2, 'Location', 'southeast')
+% 
+% %%
+% figure
+% boxplot(pkts.Delay_s * 1e3, pkts.SrcNodeId)
+% xlabel('SrcNodeId')
+% ylabel('Delay [ms]')
+% 
+% %%
+% groupedPkts = grpstats(pkts, 'SrcNodeId', {'mean', 'std'});
+% 
+% figure
+% bar(groupedPkts.SrcNodeId, groupedPkts.mean_Delay_s*1e3); hold on
+% xlabel('SrcNodeId')
+% ylabel('Mean Delay [ms]')
+% 
+% errorbar(groupedPkts.SrcNodeId, groupedPkts.mean_Delay_s*1e3, groupedPkts.std_Delay_s*1e3, 'k', 'LineStyle', 'none')
 
-figure
-plotDti(dtiStructure, height)
-set(gca,'ColorOrderIndex', 1)
-for i = 1:numStas
-    mask = phyTx.SrcNodeId == i;
-    p(i) = stem(phyTx.Timestamp_s(mask), repmat(height, nnz(mask), 1), 'DisplayName', sprintf('SrcNodeId %d', i)); hold on
-end
-legend(p)
-xlabel('Time [s]')
-ylabel('PHY TX Start')
-title(strrep(campaign, '_', '\_'))
-
-%%
-thr_mbps = zeros(length(biStart), numStas);
-for id = 1:numStas
-    staMask = pkts.SrcNodeId == id;
-    for tIdx = 2:length(biStart)
-        startTime = biStart(tIdx-1);
-        endTime = biStart(tIdx);
-        mask = staMask & (startTime <= pkts.RxTimestamp_s) & (pkts.RxTimestamp_s < endTime);
-        totRxBytes = sum(pkts.PktSize_B(mask));
-        thr_mbps(tIdx, id) = totRxBytes * 8 / biDuration_s / 1e6;
-    end
-end
-
-figure
-plot(biStart, thr_mbps)
-xlabel('Time [s]')
-ylabel('Avg Throughput per BI [Mbps]')
-title(strrep(campaign, '_', '\_'))
-legend(strcat("SrcNodeId ", string(1:numStas)), 'NumColumns', 2, 'Location', 'southeast')
-
-%%
-figure
-boxplot(pkts.Delay_s * 1e3, pkts.SrcNodeId)
-xlabel('SrcNodeId')
-ylabel('Delay [ms]')
-
-%%
-groupedPkts = grpstats(pkts, 'SrcNodeId', {'mean', 'std'});
-
-figure
-bar(groupedPkts.SrcNodeId, groupedPkts.mean_Delay_s*1e3); hold on
-xlabel('SrcNodeId')
-ylabel('Mean Delay [ms]')
-
-errorbar(groupedPkts.SrcNodeId, groupedPkts.mean_Delay_s*1e3, groupedPkts.std_Delay_s*1e3, 'k', 'LineStyle', 'none')
-
-%%
+%% Plot app pkts
 height = biDuration_s * 1e3;
 
 figure
@@ -168,24 +168,24 @@ for i = 1:numStas
 end
 legend(p)
 xlabel('Time [s]')
-ylabel('Delay [ms]')
+ylabel('PktSize [B/10]')
 title(strrep(campaign, '_', '\_'))
 
-%% PLOT QUEUE
-height = biDuration_s * 1e3;
-
-figure
-plotDti(dtiStructure, height)
-
-set(gca,'ColorOrderIndex', 1)
-for i = 1:numStas
-    mask = app.SrcNodeId == i;
-    stairs(queue.Timestamp_s(mask), queue.queueSize_pkts(mask)/10); hold on
-end
-legend(strcat("SrcNodeId ", string(1:numStas)), 'NumColumns', 2, 'Location', 'southeast')
-xlabel('Time [s]')
-ylabel('Queue Size [pkts]')
-title(strrep(campaign, '_', '\_'))
+% %% PLOT QUEUE
+% height = biDuration_s * 1e3;
+% 
+% figure
+% plotDti(dtiStructure, height)
+% 
+% set(gca,'ColorOrderIndex', 1)
+% for i = 1:numStas
+%     mask = app.SrcNodeId == i;
+%     stairs(queue.Timestamp_s(mask), queue.queueSize_pkts(mask)/10); hold on
+% end
+% legend(strcat("SrcNodeId ", string(1:numStas)), 'NumColumns', 2, 'Location', 'southeast')
+% xlabel('Time [s]')
+% ylabel('Queue Size [pkts]')
+% title(strrep(campaign, '_', '\_'))
 
 %% UTILS
 function plotSp(spStruct, height, alpha)

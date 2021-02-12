@@ -85,7 +85,7 @@ Ptr<QdPropagationLossModel> lossModelRaytracing;
 /** Simulation Arguments **/
 std::string schedulerType;                         /* The type of scheduler to be used */
 uint16_t allocationPeriod = 0;                     /* The periodicity of the requested SP allocation, 0 if not periodic */
-std::string applicationType = "onoff";             /* Type of the Tx application */
+std::string applicationType = "burst";             /* Type of the Tx application */
 std::string socketType = "ns3::UdpSocketFactory";  /* Socket Type (TCP/UDP) */
 std::string phyMode = "DMG_MCS12";                 /* The MCS to be used at the Physical Layer. */
 uint32_t packetSize = 1448;                        /* Application payload size [bytes]. */
@@ -548,7 +548,7 @@ main (int argc, char *argv[])
 
   /* Print Application Layer Results Summary */
   std::cout << "\nApplication Layer Statistics:" << std::endl;
-  Ptr<OnOffApplication> onoff;
+  Ptr<PeriodicApplication> periodic;
   Ptr<BulkSendApplication> bulk;
   Ptr<PacketSink> packetSink;
   Time avgJitter;
@@ -558,13 +558,13 @@ main (int argc, char *argv[])
   for (auto it = communicationPairMap.cbegin (); it != communicationPairMap.cend (); ++it)
     {
       std::cout << "Communication Link (" << communicationLinks << ") Statistics:" << std::endl;
-      if (applicationType == "onoff")
+      if (applicationType == "burst")
         {
-          onoff = StaticCast<OnOffApplication> (it->second.srcApp);
-          std::cout << "  Tx Packets: " << onoff->GetTotalTxPackets () << std::endl;
-          std::cout << "  Tx Bytes:   " << onoff->GetTotalTxBytes () << std::endl;
-          *e2eResults->GetStream () << onoff->GetTotalTxPackets () << ","
-                                    << onoff->GetTotalTxBytes () << ",";
+          periodic = StaticCast<PeriodicApplication> (it->second.srcApp);
+          std::cout << "  Tx Packets: " << periodic->GetTotalTxPackets () << std::endl;
+          std::cout << "  Tx Bytes:   " << periodic->GetTotalTxBytes () << std::endl;
+          *e2eResults->GetStream () << periodic->GetTotalTxPackets () << ","
+                                    << periodic->GetTotalTxBytes () << ",";
         }
       else
         {

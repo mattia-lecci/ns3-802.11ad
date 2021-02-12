@@ -23,8 +23,8 @@ sys.stdout.flush()
 
 def run_simulations(applicationType, normOfferedTraffic, socketType, mpduAggregationSize,
                     phyMode, simulationTime, numStas, allocationPeriod,
-                    accessCbapIfAllocated, biDurationUs, onoffPeriodMean,
-                    onoffPeriodStdev, smartStart, numRuns):
+                    accessCbapIfAllocated, biDurationUs, burstPeriodMean,
+                    burstPeriodStdev, smartStart, numRuns):
     param_combination = OrderedDict({
         "applicationType": applicationType,
         "normOfferedTraffic": normOfferedTraffic,
@@ -36,8 +36,8 @@ def run_simulations(applicationType, normOfferedTraffic, socketType, mpduAggrega
         "allocationPeriod": allocationPeriod,
         "accessCbapIfAllocated": accessCbapIfAllocated,
         "biDurationUs": biDurationUs,
-        "onoffPeriodMean": onoffPeriodMean,
-        "onoffPeriodStdev": onoffPeriodStdev,
+        "onoffPeriodMean": burstPeriodMean,
+        "onoffPeriodStdev": burstPeriodStdev,
         "smartStart": smartStart,
         "RngRun": list(range(numRuns)),
     })
@@ -138,7 +138,10 @@ def plot_bar_metric(campaign, parameter_space, result_parsing_function, out_labe
     ax.set_xticklabels(out_labels)
     plt.grid()
     fig.savefig(os.path.join(img_dir, filename + ".png"))
-    tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
+    try:
+        tikzplotlib.save(os.path.join(img_dir, filename + ".tex"))
+    except Exception as e:
+        print("Did not convert to tikz, error occurred: ", e)
     plt.close(fig)
 
 
@@ -169,11 +172,11 @@ def plot_all_bars_metric(campaign, parameter_space, result_parsing_function, run
 
 def compute_avg_thr_mbps(pkts_arr, params):
     if pkts_arr.shape[0] > 0:
-        tstart = params["biDurationUs"] / 1e6
+        tstart = 5 * params["biDurationUs"] / 1e6 # skip 5 BIs
         tend = params["simulationTime"]
         dt = tend - tstart
 
-        # exclude packets from first BI
+        # exclude packets from first BIs
         rx_mb = np.sum(pkts_arr[pkts_arr[:,1]/1e9 > tstart, 3]) * 8 / 1e6
 
         thr_mbps = rx_mb / dt
@@ -329,7 +332,7 @@ if __name__ == '__main__':
                         type=int,
                         default=1)
     parser.add_argument("--paramSet",
-                        help="The parameter set of a given campaign. Available: {basic, onoff, onoff_stdev}. Mandatory parameter!",
+                        help="The parameter set of a given campaign. Mandatory parameter!",
                         default='')
     parser.add_argument("--numRuns",
                         help="The number of runs per simulation. Default: 5",
@@ -340,9 +343,9 @@ if __name__ == '__main__':
                         default=None)
     # baseline parameters
     parser.add_argument("--applicationType",
-                        help="The baseline applicationType. Default: onoff",
+                        help="The baseline applicationType. Default: burst",
                         type=str,
-                        default="onoff")
+                        default="burst")
     parser.add_argument('--smartStartOn', dest='smartStart', action='store_true')
     parser.add_argument('--smartStartOff', dest='smartStart', action='store_false')
     parser.set_defaults(smartStart=True)
@@ -363,9 +366,9 @@ if __name__ == '__main__':
                         type=str,
                         default="DMG_MCS4")
     parser.add_argument("--simulationTime",
-                        help="The baseline simulationTime [s]. Default: 10.0",
+                        help="The baseline simulationTime [s]. Default: 10.24",
                         type=float,
-                        default=10.0)
+                        default=10.24)
     parser.add_argument("--numStas",
                         help="The baseline numStas. Default: 4",
                         type=int,
@@ -377,12 +380,12 @@ if __name__ == '__main__':
                         help="The baseline biDurationUs [us]. Default: 102400",
                         type=int,
                         default=102400)
-    parser.add_argument("--onoffPeriodMean",
-                        help="The baseline onoffPeriodMean [s]. Default: 0.1024",
+    parser.add_argument("--burstPeriodMean",
+                        help="The baseline burstPeriodMean [s]. Default: 0.1024",
                         type=float,
                         default=102.4e-3)
-    parser.add_argument("--onoffPeriodStdev",
-                        help="The baseline onoffPeriodStdev [s]. Default: 0.0",
+    parser.add_argument("--burstPeriodStdev",
+                        help="The baseline burstPeriodStdev [s]. Default: 0.0",
                         type=float,
                         default=0.0)
     args = parser.parse_args()
@@ -427,8 +430,8 @@ if __name__ == '__main__':
     allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
     accessCbapIfAllocated = args.accessCbapIfAllocated
     biDurationUs = args.biDurationUs
-    onoffPeriodMean = args.onoffPeriodMean
-    onoffPeriodStdev = args.onoffPeriodStdev
+    burstPeriodMean = args.burstPeriodMean
+    burstPeriodStdev = args.burstPeriodStdev
     normOfferedTraffic = args.normOfferedTraffic
     numRuns = args.numRuns
 
@@ -452,8 +455,8 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
@@ -465,8 +468,8 @@ if __name__ == '__main__':
         # bar plots var
         for_each = 'normOfferedTraffic'
 
-    elif args.paramSet == 'onoff_smartOn':
-        applicationType = "onoff"
+    elif args.paramSet == 'burst_smartOn':
+        applicationType = "burst"
         smartStart = True
         normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
@@ -480,8 +483,8 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
@@ -493,8 +496,8 @@ if __name__ == '__main__':
         # bar plots var
         for_each = 'normOfferedTraffic'
 
-    elif args.paramSet == 'onoff_smartOff_cbapOn':
-        applicationType = "onoff"
+    elif args.paramSet == 'burst_smartOff_cbapOn':
+        applicationType = "burst"
         smartStart = False
         accessCbapIfAllocated = True
         normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
@@ -509,8 +512,8 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
@@ -522,8 +525,8 @@ if __name__ == '__main__':
         # bar plots var
         for_each = 'normOfferedTraffic'
 
-    elif args.paramSet == 'onoff_smartOff_cbapOff':
-        applicationType = "onoff"
+    elif args.paramSet == 'burst_smartOff_cbapOff':
+        applicationType = "burst"
         smartStart = False
         accessCbapIfAllocated = False
         normOfferedTraffic = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
@@ -538,8 +541,8 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
@@ -551,12 +554,12 @@ if __name__ == '__main__':
         # bar plots var
         for_each = 'normOfferedTraffic'
 
-    elif args.paramSet == 'onoff_stdev_smartOn':
-        applicationType = "onoff"
+    elif args.paramSet == 'burst_stdev_smartOn':
+        applicationType = "burst"
         smartStart = True
         allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
-        onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
-        onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
+        burstPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
+        burstPeriodStdev = [r * burstPeriodMean for r in burstPeriodDeviationRatio]
 
         param_combination = run_simulations(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
@@ -568,29 +571,29 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
         # line plots vars
-        xx = onOffPeriodDeviationRatio
+        xx = burstPeriodDeviationRatio
         hue_var = "allocationPeriod"
         xlabel = "Period Deviation Ratio"
         line_plot_kwargs = {"xscale": "log"}
 
         # bar plots var
-        for_each = 'onoffPeriodStdev'
-        alias_name = 'onOffPeriodDeviationRatio'
-        alias_vals = onOffPeriodDeviationRatio
+        for_each = 'burstPeriodStdev'
+        alias_name = 'burstPeriodDeviationRatio'
+        alias_vals = burstPeriodDeviationRatio
 
-    elif args.paramSet == 'onoff_stdev_smartOff_cbapOn':
-        applicationType = "onoff"
+    elif args.paramSet == 'burst_stdev_smartOff_cbapOn':
+        applicationType = "burst"
         smartStart = False
         accessCbapIfAllocated = True
         allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
-        onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
-        onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
+        burstPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
+        burstPeriodStdev = [r * burstPeriodMean for r in burstPeriodDeviationRatio]
 
         param_combination = run_simulations(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
@@ -602,29 +605,29 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
         # line plots vars
-        xx = onOffPeriodDeviationRatio
+        xx = burstPeriodDeviationRatio
         hue_var = "allocationPeriod"
         xlabel = "Period Deviation Ratio"
         line_plot_kwargs = {"xscale": "log"}
 
         # bar plots var
-        for_each = 'onoffPeriodStdev'
-        alias_name = 'onOffPeriodDeviationRatio'
-        alias_vals = onOffPeriodDeviationRatio
+        for_each = 'burstPeriodStdev'
+        alias_name = 'burstPeriodDeviationRatio'
+        alias_vals = burstPeriodDeviationRatio
 
-    elif args.paramSet == 'onoff_stdev_smartOff_cbapOff':
-        applicationType = "onoff"
+    elif args.paramSet == 'burst_stdev_smartOff_cbapOff':
+        applicationType = "burst"
         smartStart = False
         accessCbapIfAllocated = False
         allocationPeriod = [0, 1]  # 0: CbapOnly, n>0: BI/n
-        onOffPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
-        onoffPeriodStdev = [r * onoffPeriodMean for r in onOffPeriodDeviationRatio]
+        burstPeriodDeviationRatio = [0, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 10e-2, 20e-2]
+        burstPeriodStdev = [r * burstPeriodMean for r in burstPeriodDeviationRatio]
 
         param_combination = run_simulations(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
@@ -636,27 +639,27 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
         # line plots vars
-        xx = onOffPeriodDeviationRatio
+        xx = burstPeriodDeviationRatio
         hue_var = "allocationPeriod"
         xlabel = "Period Deviation Ratio"
         line_plot_kwargs = {"xscale": "log"}
 
         # bar plots var
-        for_each = 'onoffPeriodStdev'
-        alias_name = 'onOffPeriodDeviationRatio'
-        alias_vals = onOffPeriodDeviationRatio
+        for_each = 'burstPeriodStdev'
+        alias_name = 'burstPeriodDeviationRatio'
+        alias_vals = burstPeriodDeviationRatio
 
     elif args.paramSet == 'allApps':
-        applicationType = ["constant", "onoff", "crazyTaxi", "fourElements"]
+        applicationType = ["constant", "burst", "crazyTaxi", "fourElements"]
         allocationPeriod = [0, 1, 2, 3, 4]  # 0: CbapOnly, n>0: BI/n
-        onoffPeriodMean = 1 / 30  # 30 FPS
-        onoffPeriodStdev = 0.1 * onoffPeriodMean
+        burstPeriodMean = 1 / 30  # 30 FPS
+        burstPeriodStdev = 0.1 * burstPeriodMean
 
         param_combination = run_simulations(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
@@ -668,8 +671,8 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
@@ -681,11 +684,11 @@ if __name__ == '__main__':
         # bar plots var
         for_each = 'applicationType'
 
-    elif args.paramSet == 'onoffPeriodicity':
-        applicationType = "onoff"
+    elif args.paramSet == 'burstPeriodicity':
+        applicationType = "burst"
         allocationPeriod = [0, 2]  # 0: CbapOnly, n>0: BI/n
-        onoffPeriodRatio = [1, 1.75*0.5, 1.5*0.5, 1.25*0.5, 1.1*0.5, 0.5, 0.5/1.1, 0.5/1.25, 0.5/1.5, 0.5/1.75, 1/4]
-        onoffPeriodMean = [r * biDurationUs/1e6 for r in onoffPeriodRatio]
+        burstPeriodRatio = [1, 1.75*0.5, 1.5*0.5, 1.25*0.5, 1.1*0.5, 0.5, 0.5/1.1, 0.5/1.25, 0.5/1.5, 0.5/1.75, 1/4]
+        burstPeriodMean = [r * biDurationUs/1e6 for r in burstPeriodRatio]
 
         param_combination = run_simulations(applicationType=applicationType,
                                             normOfferedTraffic=normOfferedTraffic,
@@ -697,21 +700,21 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
         # line plots vars
-        xx = onoffPeriodRatio
+        xx = burstPeriodRatio
         hue_var = "allocationPeriod"
-        xlabel = "OnOff App mean period (BI^-1)"
+        xlabel = "burst App mean period (BI^-1)"
 
         # bar plots var
         for_each = 'allocationPeriod'
 
     elif args.paramSet == "mcs":
-        applicationType = "onoff"
+        applicationType = "burst"
         phyMode = [f"DMG_MCS{n}" for n in range(1, 12 + 1)]  # MCS 1, ..., 12
 
         param_combination = run_simulations(applicationType=applicationType,
@@ -724,8 +727,8 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
@@ -738,7 +741,7 @@ if __name__ == '__main__':
         for_each = 'phyMode'
 
     elif args.paramSet == "numStas":
-        applicationType = "onoff"
+        applicationType = "burst"
         numStas = [2, 4, 6, 8, 10]
 
         param_combination = run_simulations(applicationType=applicationType,
@@ -751,8 +754,8 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
@@ -765,7 +768,7 @@ if __name__ == '__main__':
         for_each = 'numStas'
 
     elif args.paramSet == "smartStart":
-        applicationType = "onoff"
+        applicationType = "burst"
         smartStart = [True, False]
 
         param_combination = run_simulations(applicationType=applicationType,
@@ -778,8 +781,8 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
@@ -792,7 +795,7 @@ if __name__ == '__main__':
         for_each = 'allocationPeriod'
 
     elif args.paramSet == "accessCbapIfAllocated":
-        applicationType = "onoff"
+        applicationType = "burst"
         accessCbapIfAllocated = [True, False]
 
         param_combination = run_simulations(applicationType=applicationType,
@@ -805,8 +808,8 @@ if __name__ == '__main__':
                                             allocationPeriod=allocationPeriod,
                                             accessCbapIfAllocated=accessCbapIfAllocated,
                                             biDurationUs=biDurationUs,
-                                            onoffPeriodMean=onoffPeriodMean,
-                                            onoffPeriodStdev=onoffPeriodStdev,
+                                            burstPeriodMean=burstPeriodMean,
+                                            burstPeriodStdev=burstPeriodStdev,
                                             smartStart=smartStart,
                                             numRuns=numRuns)
 
