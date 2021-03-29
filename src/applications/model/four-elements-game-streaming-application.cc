@@ -22,12 +22,69 @@
 
 #include "ns3/log.h"
 #include "timestamp-tag.h"
-#include "four-elements-streaming-server.h"
+#include "four-elements-game-streaming-application.h"
 #include "three-lognormal-random-variable.h"
+
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("FourElementsStreamingServer");
+NS_LOG_COMPONENT_DEFINE ("FourElementsGameStreamingApplication");
+
+/*******************************/
+/* FourElementsStreamingClient */
+/*******************************/
+
+NS_OBJECT_ENSURE_REGISTERED (FourElementsStreamingClient);
+
+TypeId
+FourElementsStreamingClient::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::FourElementsStreamingClient")
+    .SetParent<GameStreamingApplication> ()
+    .SetGroupName ("Applications")
+    .AddConstructor<FourElementsStreamingClient> ()
+  ;
+  return tid;
+}
+
+FourElementsStreamingClient::FourElementsStreamingClient ()
+{
+  NS_LOG_FUNCTION (this);
+  m_referenceDataRate = DataRate ("56.197kbps");
+}
+
+FourElementsStreamingClient::~FourElementsStreamingClient ()
+{
+  NS_LOG_FUNCTION (this);
+}
+
+void
+FourElementsStreamingClient::InitializeStreams ()
+{
+  NS_LOG_FUNCTION (this);
+
+  /** Add key stream */
+  // Packet size
+  Ptr<UniformRandomVariable> pktKey = CreateObjectWithAttributes<UniformRandomVariable> ("Min", DoubleValue (25),
+                                                                                         "Max", DoubleValue (170));
+
+  // Packet inter-arrival time
+  Ptr<ConstantRandomVariable> iatKey1 = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (9));
+  Ptr<ConstantRandomVariable> iatKey2 = CreateObjectWithAttributes<ConstantRandomVariable> ("Constant", DoubleValue (50));
+  Ptr<WeibullRandomVariable> iatKey3 = CreateObjectWithAttributes<WeibullRandomVariable> ("Scale", DoubleValue (12.40),
+                                                                                          "Shape", DoubleValue (0.89),
+                                                                                          "Bound", DoubleValue (50));
+
+  Ptr<MixtureRandomVariable> iatKey = CreateObject<MixtureRandomVariable> ();
+  iatKey->SetRandomVariables ({iatKey1, iatKey2, iatKey3}, {0.4391, 0.0936, 0.4673});
+
+  AddNewTrafficStream (pktKey, iatKey);
+}
+
+
+/*******************************/
+/* FourElementsStreamingServer */
+/*******************************/
 
 NS_OBJECT_ENSURE_REGISTERED (FourElementsStreamingServer);
 
@@ -35,7 +92,7 @@ TypeId
 FourElementsStreamingServer::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::FourElementsStreamingServer")
-    .SetParent<GamingStreamingServer> ()
+    .SetParent<GameStreamingApplication> ()
     .SetGroupName ("Applications")
     .AddConstructor<FourElementsStreamingServer> ()
   ;
@@ -45,7 +102,7 @@ FourElementsStreamingServer::GetTypeId (void)
 FourElementsStreamingServer::FourElementsStreamingServer ()
 {
   NS_LOG_FUNCTION (this);
-  m_referenceBitRate = 2.544;
+  m_referenceDataRate = DataRate ("2.5745Mbps");
 }
 
 FourElementsStreamingServer::~FourElementsStreamingServer ()

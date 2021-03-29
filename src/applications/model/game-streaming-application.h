@@ -20,12 +20,13 @@
  *
  */
 
-#ifndef GAMING_STREAMING_SERVER_H
-#define GAMING_STREAMING_SERVER_H
+#ifndef GAME_STREAMING_APPLICATION_H
+#define GAME_STREAMING_APPLICATION_H
 
 #include "ns3/application.h"
 #include "ns3/random-variable-stream.h"
 #include "ns3/traced-callback.h"
+#include "ns3/data-rate.h"
 
 namespace ns3 {
 
@@ -40,7 +41,7 @@ class Socket;
  *      packetSize: A random variable which determines the size of generated packets
  *      interArrivalTime: A random variable which determines the packets inter-arrival time
 */
-class GamingStreamingServer : public Application
+class GameStreamingApplication : public Application
 {
 public:
   /**
@@ -50,19 +51,11 @@ public:
   static TypeId GetTypeId (void);
 
   /**
-   * \brief create a GamingStreamingServer object with default parameters
+   * \brief create a GameStreamingApplication object with default parameters
    */
-  GamingStreamingServer ();
+  GameStreamingApplication ();
 
-  virtual ~GamingStreamingServer () override;
-
-  /**
-   * \brief set the remote address and port
-   *
-   * \param ip remote IP address
-   * \param port remote port
-   */
-  void SetRemote (Address ip, uint16_t port);
+  virtual ~GameStreamingApplication () override;
 
   /**
    * \brief set the remote address
@@ -115,6 +108,34 @@ public:
 
   virtual void StartApplication (void) override;
   virtual void StopApplication (void) override;
+  /**
+   * Stop the application without closing the socket.
+   * This allows to restart the application later.
+   */
+  virtual void SuspendApplication (void);     // Called at time specified by Stop
+
+  /**
+   * Set the target application data rate of the game streaming application.
+   * Note: the target data rate is only approximately reached, and might
+   * not be accurate if low data rates are required.
+   * 
+   * \param targetDataRate the target application data rate
+   */
+  void SetTargetDataRate (DataRate targetDataRate);
+
+  /**
+   * Get the target application data rate
+   * \return the data rate
+   */
+  DataRate GetTargetDataRate (void) const;
+
+  /**
+   * Get the reference application data rate, i.e., the default application
+   * data rate when no target data rate is specified.
+   *
+   * \return the data rate
+   */
+  DataRate GetReferenceDataRate (void) const;
 
 protected:
   virtual void DoDispose (void)  override;
@@ -124,8 +145,13 @@ protected:
    */
   virtual void InitializeStreams () = 0;
 
-  double       m_referenceBitRate;  //!< Reference bit-rate
-  double       m_scalingFactor;     //!< Traffic scaling factor
+  /**
+   *  Cancel scheduled traffic events
+   */
+  void CancelEvents (void);
+
+  DataRate m_referenceDataRate;  //!< Reference bit-rate
+  double m_scalingFactor;        //!< Traffic scaling factor
 
 private:
   struct TrafficStream;
@@ -139,6 +165,16 @@ private:
   void Send (Ptr<TrafficStream> traffic);
 
   /**
+   * \brief Handle a Connection Succeed event
+   * \param socket the connected socket
+   */
+  void ConnectionSucceeded (Ptr<Socket> socket);
+  /**
+   * \brief Handle a Connection Failed event
+   * \param socket the not connected socket
+   */
+  void ConnectionFailed (Ptr<Socket> socket);
+  /**
    * \brief Handle a packet received by the application
    * \param socket the receiving socket
    */
@@ -151,13 +187,6 @@ private:
    */
   void ScheduleNextTx (Ptr<TrafficStream> traffic);
 
-  /**
-   * Set the scaling factor
-   *
-   * \param targetBitRate Applications data rate (Mbps)
-   */
-  void SetScalingFactor (double targetBitRate);
-
   uint32_t     m_seq;                  //!< Sequence number for packets
   uint32_t     m_totalSentPackets;     //!< Counter for sent packets
   uint32_t     m_totalReceivedPackets; //!< Counter for received packets
@@ -166,7 +195,8 @@ private:
   uint32_t     m_totalReceivedBytes;   //!< Total bytes sent so far
   Ptr<Socket>  m_socket;               //!< Socket
   Address      m_peerAddress;          //!< Remote peer address
-  uint16_t     m_peerPort;             //!< Remote peer port
+  DataRate     m_tagetDataRate;        //!< Target application data rate
+  bool         m_isOn;                 //!< Whether the app is on or suspended/stopped
 
   struct TrafficStream : public SimpleRefCount<TrafficStream>
   {
@@ -187,4 +217,4 @@ private:
 
 } // namespace ns3
 
-#endif /* GAMING_STREAMING_SERVER_H */
+#endif /* GAME_STREAMING_APPLICATION_H */
