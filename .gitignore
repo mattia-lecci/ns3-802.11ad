@@ -37,3 +37,9 @@ build-dir/
 build/
 /.cproject
 /.project
+
+# sem campaigns
+results/
+campaigns/
+
+*.csv
