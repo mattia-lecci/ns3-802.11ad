@@ -1,5 +1,11 @@
 ## Introduction:
-This is a repository for the development of the WLAN IEEE 802.11ad/ay standard in network simulator ns-3. Both IEEE 802.11ad/ay supports wireless networking in the unlicensed 60 GHz band. Our implementation paves the way to perform high fidelity simulations for large dense wireless networks consisting of devices with heterogeneous capabilities and constraints. For more information on the project, please refer to our publications.
+This is a repository for the development of a scheduling framework based on the the WLAN IEEE 802.11ad standard in network simulator ns-3, based on the precursor work of the forked repository implementing the standard itself (check publications below for more information).
+
+The code implements of Service Period (SP) scheduling, focusing mainly on pseudo-static isochronous allocations.
+For more information, please check our publications:
+* S. Mohebi, M. Lecci, A. Zanella, M. Zorzi, "The challenges of Scheduling and Resource Allocation in IEEE 802.11ad/ay," in 18th Mediterranean Communication and Computer Networking Conference (MedComNet), Arona, Italy, Jun. 2020, DOI: [10.1109/MedComNet49392.2020.9191491](http://doi.org/10.1109/MedComNet49392.2020.9191491).
+
+This project is maintained by the [SIGNET research group](http://signet.dei.unipd.it/), from the Department of Information Engineering of the University of Padova, Italy, and partially funded by [NIST](https://www.nist.gov/).
 
 ## New Release:
 We are happy to release a new version of our ns-3 IEEE 802.11ad model. The new version brings a lot of new features and capabilities:
@@ -64,6 +70,10 @@ The previous command builds the required models only to run IEEE 802.11ad with i
 The project includes different scripts located in the scratch folder to test the previously listed features and mechanisms. At the beginning of each script, we added some description regarding the tested functionality, network topology, expected output, and usage method.
 
 ## Publications:
+The implementation of the scheduling framework for IEEE 802.11ad networks is further explained in the following paper:
+
+* S. Mohebi, M. Lecci, A. Zanella, M. Zorzi, "The challenges of Scheduling and Resource Allocation in IEEE 802.11ad/ay," in 18th Mediterranean Communication and Computer Networking Conference (MedComNet), Arona, Italy, Jun. 2020, DOI: [10.1109/MedComNet49392.2020.9191491](http://doi.org/10.1109/MedComNet49392.2020.9191491).
+
 The implementation is based on the existing model of the WLAN IEEE 802.11 in ns-3. The following papers include background on IEEE 802.11ad, implementation details, and evaluation section for this model. If you use our model in your research, please cite the following papers: 
 
 * Hany Assasa, and Joerg Widmer.

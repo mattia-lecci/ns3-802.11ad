@@ -16,9 +16,7 @@ def build(bld):
         'model/application-packet-probe.cc',
         'model/timestamp-tag.cc',
         'model/game-streaming-application.cc',
-        # 'model/crazytaxi-streaming-server.cc',
         'model/crazy-taxi-game-streaming-application.cc',
-        # 'model/four-elements-streaming-server.cc',
         'model/four-elements-game-streaming-application.cc',
         'model/mixture-random-variable.cc',
         'model/three-lognormal-random-variable.cc',
@@ -53,9 +51,7 @@ def build(bld):
         'model/application-packet-probe.h',
         'model/timestamp-tag.h',
         'model/game-streaming-application.h',
-        # 'model/crazytaxi-streaming-server.h',
         'model/crazy-taxi-game-streaming-application.h',
-        # 'model/four-elements-streaming-server.h',
         'model/four-elements-game-streaming-application.h',
         'model/mixture-random-variable.h',# TODO
         'model/three-lognormal-random-variable.h',# TODO
