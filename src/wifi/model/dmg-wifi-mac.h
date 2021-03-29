@@ -891,10 +891,21 @@ protected:
    *
    * \param srcAddress The MAC address of the source station.
    * \param dstAddress The MAC address of the destination station.
+   * \param isSource True if the current STA is the source of this SP.
    */
-  typedef void (* ServicePeriodCallback)(Mac48Address srcAddress, Mac48Address dstAddress);
-  TracedCallback<Mac48Address, Mac48Address> m_servicePeriodStartedCallback;
-  TracedCallback<Mac48Address, Mac48Address> m_servicePeriodEndedCallback;
+  typedef void (* ServicePeriodCallback)(Mac48Address srcAddress, Mac48Address dstAddress, bool isSource);
+  TracedCallback<Mac48Address, Mac48Address, bool> m_servicePeriodStartedCallback;
+  TracedCallback<Mac48Address, Mac48Address, bool> m_servicePeriodEndedCallback;
+
+  /**
+   * TracedCallback signature for contention period initiation/termination.
+   *
+   * \param address The MAC address of the current station.
+   * \param stationType The type of station for the current node.
+   */
+  typedef void (* ContentionPeriodCallback)(Mac48Address address, TypeOfStation stationType);
+  TracedCallback<Mac48Address, TypeOfStation> m_contentionPeriodStartedCallback;
+  TracedCallback<Mac48Address, TypeOfStation> m_contentionPeriodEndedCallback;
 
   /* Association Traces */
   typedef void (* AssociationTracedCallback)(Mac48Address address, uint16_t aid);

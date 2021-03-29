@@ -110,6 +110,12 @@ DmgWifiMac::GetTypeId (void)
     .AddTraceSource ("ServicePeriodEnded", "A service period between two DMG STAs has ended.",
                      MakeTraceSourceAccessor (&DmgWifiMac::m_servicePeriodEndedCallback),
                      "ns3::DmgWifiMac::ServicePeriodTracedCallback")
+    .AddTraceSource ("ContentionPeriodStarted", "A contention period has started.",
+                     MakeTraceSourceAccessor (&DmgWifiMac::m_contentionPeriodStartedCallback),
+                     "ns3::DmgWifiMac::ContentionPeriodTracedCallback")
+    .AddTraceSource ("ContentionPeriodEnded", "A contention period has ended.",
+                     MakeTraceSourceAccessor (&DmgWifiMac::m_contentionPeriodEndedCallback),
+                     "ns3::DmgWifiMac::ContentionPeriodTracedCallback")
     .AddTraceSource ("SLSCompleted", "Sector Level Sweep (SLS) phase is completed",
                      MakeTraceSourceAccessor (&DmgWifiMac::m_slsCompleted),
                      "ns3::DmgWifiMac::SLSCompletedTracedCallback")
@@ -362,6 +368,7 @@ DmgWifiMac::StartContentionPeriod (AllocationID allocationID, Time contentionDur
 {
   NS_LOG_FUNCTION (this << contentionDuration);
   m_currentAllocation = CBAP_ALLOCATION;
+  m_contentionPeriodStartedCallback (GetAddress (), GetTypeOfStation ());
   if (GetTypeOfStation () == DMG_STA)
     {
       /* For the time being we assume in CBAP we communicate with the PCP/AP only */
@@ -387,6 +394,7 @@ void
 DmgWifiMac::EndContentionPeriod (void)
 {
   NS_LOG_FUNCTION (this);
+  m_contentionPeriodEndedCallback (GetAddress (), GetTypeOfStation ());
   m_dcfManager->DisableChannelAccess ();
   /* Signal Management DCA to suspend current transmission */
   m_dca->EndAllocationPeriod ();
@@ -450,7 +458,7 @@ DmgWifiMac::StartServicePeriod (AllocationID allocationID, Time length, uint8_t 
   m_peerStationAid = peerAid;
   m_peerStationAddress = peerAddress;
   m_spSource = isSource;
-  m_servicePeriodStartedCallback (GetAddress (), peerAddress);
+  m_servicePeriodStartedCallback (GetAddress (), peerAddress, m_spSource);
   SteerAntennaToward (peerAddress);
   /* Restore previously suspended transmission in LowMac */
   m_low->RestoreAllocationParameters (allocationID, GetAddress (), peerAddress);
@@ -499,7 +507,7 @@ DmgWifiMac::EndServicePeriod (void)
 {
   NS_LOG_FUNCTION (this);
   NS_ASSERT_MSG (m_currentAllocation == SERVICE_PERIOD_ALLOCATION, "The current allocation is not SP");
-  m_servicePeriodEndedCallback (GetAddress (), m_peerStationAddress);
+  m_servicePeriodEndedCallback (GetAddress (), m_peerStationAddress, m_spSource);
   m_edca[AC_BE]->EndAllocationPeriod ();
   /* Check if we have beamlink maintenance timer running */
   if (m_beamLinkMaintenanceTimeout.IsRunning ())
