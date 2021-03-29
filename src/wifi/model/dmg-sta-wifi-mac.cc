@@ -1281,8 +1281,9 @@ DmgStaWifiMac::StartDataTransmissionInterval (void)
                     }
                 }
               else if ((field.GetAllocationType () == CBAP_ALLOCATION) &&
-                      ((field.GetSourceAid () == AID_BROADCAST) ||
-                       (field.GetSourceAid () == m_aid) || (field.GetDestinationAid () == m_aid)))
+                      (((field.GetSourceAid () == AID_BROADCAST) && AccessAllowedInBroadcastCbap (m_aid)) ||
+                       (field.GetSourceAid () == m_aid) || 
+                       (field.GetDestinationAid () == m_aid)))
 
                 {
                   Simulator::Schedule (MicroSeconds (field.GetAllocationStart ()), &DmgStaWifiMac::StartContentionPeriod, this,
