@@ -20,22 +20,22 @@
  *
  */
 
-#ifndef CRAZY_TAXI_STREAMING_SERVER_H
-#define CRAZY_TAXI_STREAMING_SERVER_H
+#ifndef FOUR_ELEMENTS_GAME_STREAMING_APPLICATION_H
+#define FOUR_ELEMENTS_GAME_STREAMING_APPLICATION_H
 
 #include "ns3/mixture-random-variable.h"
-#include "ns3/gaming-streaming-server.h"
+#include "ns3/game-streaming-application.h"
 
 namespace ns3 {
 
 /**
  * \ingroup applications
  *
- * Implement the gaming traffic streams for the Crazy Taxi based on following paper:
+ * Implement the gaming traffic streams for the Four Element client based on following paper:
  * Manzano, Marc, et al. "Dissecting the protocol and network traffic of the OnLive
  * cloud gaming platform." Multimedia systems 20.5 (2014): 451-470.
  */
-class CrazyTaxiStreamingServer : public GamingStreamingServer
+class FourElementsStreamingClient : public GameStreamingApplication
 {
 public:
   /**
@@ -45,11 +45,11 @@ public:
   static TypeId GetTypeId (void);
 
   /**
-   * \brief create a CrazyTaxiStreamingServer object with default parameters
+   * \brief create a FourElementsStreamingClient object with default parameters
    */
-  CrazyTaxiStreamingServer ();
+  FourElementsStreamingClient ();
 
-  virtual ~CrazyTaxiStreamingServer () override;
+  virtual ~FourElementsStreamingClient () override;
 
 private:
   /**
@@ -59,6 +59,38 @@ private:
 
 };
 
+
+/**
+ * \ingroup applications
+ *
+ * Implement the gaming traffic streams for the 4-Elements based on following paper:
+ * Manzano, Marc, et al. "Dissecting the protocol and network traffic of the OnLive
+ * cloud gaming platform." Multimedia systems 20.5 (2014): 451-470.
+ */
+class FourElementsStreamingServer : public GameStreamingApplication
+{
+public:
+  /**
+   * \brief Get the type ID.
+   * \return the object TypeId
+   */
+  static TypeId GetTypeId (void);
+
+  /**
+   * \brief create a FourElementsStreamingServer object with default parameters
+   */
+  FourElementsStreamingServer ();
+
+  virtual ~FourElementsStreamingServer () override;
+
+private:
+  /**
+   *  Initialize the parameters of different streams
+   */
+  void InitializeStreams () override;
+
+};
+
 } // namespace ns3
 
-#endif /* CRAZY_TAXI_STREAMING_SERVER_H */
+#endif /* FOUR_ELEMENTS_GAME_STREAMING_APPLICATION_H */
