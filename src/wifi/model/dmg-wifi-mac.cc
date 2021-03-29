@@ -76,7 +76,7 @@ DmgWifiMac::GetTypeId (void)
                     MakeBooleanAccessor (&DmgWifiMac::m_supportRdp),
                     MakeBooleanChecker ())
 
-      /* DMG Relay Capabilities common between PCP/AP and DMG STA */
+    /* DMG Relay Capabilities common between PCP/AP and DMG STA */
     .AddAttribute ("REDSActivated", "Whether the DMG STA is REDS.",
                     BooleanValue (false),
                     MakeBooleanAccessor (&DmgWifiMac::m_redsActivated),
@@ -314,6 +314,20 @@ AllocationType
 DmgWifiMac::GetCurrentAllocation (void) const
 {
   return m_currentAllocation;
+}
+
+void
+DmgWifiMac::RegisterAllocatedRequest (const DmgAllocationInfo &info)
+{
+  NS_LOG_FUNCTION (this);
+  AllocationID id = info.GetAllocationID ();
+  NS_ASSERT_MSG (id != BROADCAST_CBAP, "A broadcast CBAP cannot be registered among the allocated requests");
+  AllocatedDataStruct data;
+  data.id = id;
+  data.dstAid = info.GetDestinationAid ();
+  m_allocatedRequests.push_back (data);
+  NS_LOG_DEBUG ("Registered allocation with ID=" << +id << ", destAid=" << data.dstAid << 
+                ", type=" << info.GetAllocationType () << ", at Station with address=" << GetAddress ());
 }
 
 void

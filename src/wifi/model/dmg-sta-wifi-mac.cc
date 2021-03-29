@@ -177,7 +177,7 @@ DmgStaWifiMac::GetTypeId (void)
                      "ns3::DmgWifiMac::AssociationTracedCallback")
     .AddTraceSource ("DeAssoc", "Association with an access point lost.",
                      MakeTraceSourceAccessor (&DmgStaWifiMac::m_deAssocLogger),
-                     "ns3::Mac48Address::TracedCallback")
+                     "ns3::DmgWifiMac::DeAssociationTracedCallback")
 
     /* DMG BSS peer and service discovery */
     .AddTraceSource ("InformationResponseReceived", "Received information response regarding specific station.",
@@ -559,6 +559,16 @@ DmgStaWifiMac::DeleteAllocation (uint16_t reason, DmgAllocationInfo &allocationI
   DelTsFrame frame;
   frame.SetReasonCode (reason);
   frame.SetDmgAllocationInfo (allocationInfo);
+
+  /* Remove the allocation from the list of allocated requests */
+  for (auto it = m_allocatedRequests.begin (); it != m_allocatedRequests.end (); ++it)
+    {
+      if (it->id == allocationInfo.GetAllocationID () && it->dstAid == allocationInfo.GetDestinationAid ())
+        {
+          m_allocatedRequests.erase (it);
+          break;
+        }
+    }
 
   WifiActionHeader actionHdr;
   WifiActionHeader::ActionValue action;
@@ -1209,7 +1219,7 @@ DmgStaWifiMac::StartDataTransmissionInterval (void)
           for (AllocationFieldListI iter = m_allocationList.begin (); iter != m_allocationList.end (); iter++)
             {
               field = (*iter);
-              if (field.GetAllocationType () == SERVICE_PERIOD_ALLOCATION)
+              if (field.GetAllocationType () == SERVICE_PERIOD_ALLOCATION && IsAssociated ())
                 {
                   Time spStart = MicroSeconds (field.GetAllocationStart ());
                   Time spLength = MicroSeconds (field.GetAllocationBlockDuration ());
@@ -2651,6 +2661,7 @@ DmgStaWifiMac::Receive (Ptr<Packet> packet, const WifiMacHeader *hdr)
                 if (frame.GetStatusCode ().IsSuccess ())
                   {
                     NS_LOG_LOGIC ("DMG Allocation Request accepted by the PCP/AP");
+                    RegisterAllocatedRequest (frame.GetDmgTspec ().GetDmgAllocationInfo ());
                   }
                 else if (frame.GetStatusCode ().GetStatusCodeValue () == STATUS_CODE_REJECTED_WITH_SUGGESTED_CHANGES)
                   {
